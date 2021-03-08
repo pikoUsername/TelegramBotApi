@@ -5,3 +5,7 @@ type Message struct {
 	MessageID int   `json:"message_id"`
 	From      *User `json:"from"`
 }
+
+_ := { 
+	"name": "kek"
+}
