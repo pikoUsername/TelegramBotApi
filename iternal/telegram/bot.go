@@ -14,11 +14,14 @@ import (
 // Bot ...
 type Bot struct {
 	Token string
+
+	Me types.User `json:"-"`
 }
 
 // TelegramURL ...
 var TelegramURL string = "https://api.telegram.org/"
 
+// NewBot ...
 func NewBot(token string, checkToken bool) *Bot {
 	if checkToken {
 		err := utils.CheckToken(token)
@@ -33,7 +36,7 @@ func NewBot(token string, checkToken bool) *Bot {
 
 // MakeRequest to telegram servers
 // and result parses
-func MakeRequest(Method string, Token string) (*http.Response, error) {
+func MakeRequest(Method string, Token string) (*types.TelegramResponse, error) {
 	resp, err := http.Post(TelegramURL+"/"+Token+"/"+Method, "application/json", &strings.Reader{})
 	if err != nil {
 		return nil, errors.New("Error on sending request")
@@ -47,6 +50,12 @@ func MakeRequest(Method string, Token string) (*http.Response, error) {
 	return resp, nil
 }
 
+// GetMe ...
+func (bot *Bot) GetMe() *types.User {
+
+}
+
+// SendMessage ...
 func (b *Bot) SendMessage(text string) (*types.Message, error) {
 	resp, err := MakeRequest("SendMessage", b.Token)
 	if err != nil {
