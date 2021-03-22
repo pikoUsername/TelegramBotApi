@@ -21,6 +21,6 @@ type Location struct {
 // Ofc, if you are in FBI, FSB, or OMON(riot police)
 type ChatLocation struct {
 	// По айпи вычеслю
-	location *Location `json:"location"`
-	address  string    `json:"address"`
+	Location *Location `json:"location"`
+	Address  string    `json:"address"`
 }
