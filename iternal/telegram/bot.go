@@ -52,7 +52,7 @@ func MakeRequest(Method string, Token string) (*types.TelegramResponse, error) {
 
 // GetMe ...
 func (bot *Bot) GetMe() *types.User {
-
+	return nil
 }
 
 // SendMessage ...
@@ -62,4 +62,5 @@ func (b *Bot) SendMessage(text string) (*types.Message, error) {
 		return &types.Message{}, nil
 	}
 	json.Unmarshal(resp.Body)
+	return &types.Message{}, nil
 }

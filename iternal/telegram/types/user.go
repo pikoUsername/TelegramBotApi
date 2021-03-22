@@ -2,8 +2,9 @@ package types
 
 // User ...
 type User struct {
-	ID    int  `json:"id"`
-	IsBot bool `json:"is_bot"`
+	ID    int32 `json:"id"`
+	IsBot bool  `json:"is_bot"`
+
 	// Usernames
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`

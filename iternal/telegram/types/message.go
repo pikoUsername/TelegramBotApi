@@ -1,11 +1,35 @@
 package types
 
-// Message ...
+// Message Telegram object
+// https://core.telegram.org/bots/api#message
 type Message struct {
-	MessageID int   `json:"message_id"`
-	From      *User `json:"from"`
-}
+	// MessageId ...
+	MessageID int32 `json:"message_id"`
 
-_ := { 
-	"name": "kek"
+	// From User
+	From *User `json:"from"`
+
+	// Reply to Message, can be replied too
+	ReplyToMessage *Message `json:"reply_to_message"`
+
+	// ViaBot is Bot user, All Bots is Users
+	ViaBot *User `json:"via_bot"`
+
+	// EditDate int64 will work until end of Universe ;)
+	EditDate int64 `json:"edit_date"`
+
+	// MediaGroupId idk what is it, but docs say so, you need to make that
+	MediaGroupId string `json:"media_group_id"`
+
+	// AuthorSignature ...
+	AuthorSignature string `json:"author_signature"`
+
+	// Text the most important part of Message struct
+	Text string `json:"text"`
+
+	// PinnedMessage in 99% bot will be blocked by user if bot will ping user
+	PinnedMessage *Message `json:"pinned_message"`
+
+	// ReplyMarkup second most important thing
+	ReplyMarkup *InlineKeyboardMarkup `json:"reply_markup"`
 }
