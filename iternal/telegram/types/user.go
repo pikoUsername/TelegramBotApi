@@ -1,6 +1,7 @@
 package types
 
-// User ...
+// User represents Telegram User object
+// docs: https://core.telegram.org/bots/api#user
 type User struct {
 	ID    int32 `json:"id"`
 	IsBot bool  `json:"is_bot"`
@@ -12,4 +13,6 @@ type User struct {
 
 	// You can use this, for i18n, or more for collect data from user ;(
 	LanguageCode string `json:"language_code"`
+
+	Location *ChatLocation `json:"location"`
 }

@@ -9,7 +9,7 @@ package types
 type InlineQuery struct {
 	Id       string    `json:"id"`
 	From     *User     `json:"from"`
-	location *Location `json:"Location"`
+	Location *Location `json:"Location"`
 	Query    string    `json:"query"`
 	Offset   string    `json:"offset"`
 }
