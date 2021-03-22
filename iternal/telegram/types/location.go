@@ -8,6 +8,7 @@ package types
 // heading	Integer	Optional. The direction in which user is moving, in degrees; 1-360. For active live locations only.
 // proximity_alert_radius	Integer	Optional. Maximum distance for proximity alerts about approaching another chat member, in meters. For sent live locations only.
 type Location struct {
+	// Longitude is
 	Longitude            float32 `json:"longitude"`
 	Latitude             float32 `json:"latitude"`
 	HorizontalAccuracy   float32 `json:"horizontal_accuracy"`

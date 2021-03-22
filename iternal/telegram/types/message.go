@@ -33,3 +33,14 @@ type Message struct {
 	// ReplyMarkup second most important thing
 	ReplyMarkup *InlineKeyboardMarkup `json:"reply_markup"`
 }
+
+// MessageEntity Uses in Message struct
+// https://core.telegram.org/bots/api#messageentity
+type MessageEntity struct {
+	Type     string `json:"type"`
+	Offset   int    `json:"offset"`
+	Length   int    `json:"length"`
+	URL      string `json:"url"`
+	User     *User  `json:"user"`
+	Language string `json:"language"`
+}
