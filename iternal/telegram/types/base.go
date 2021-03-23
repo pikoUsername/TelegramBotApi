@@ -7,6 +7,6 @@ import (
 type TelegramResponse struct {
 	Ok          bool            `json:"ok"`
 	Result      json.RawMessage `json:"result"`
-	ErrorCode   string          `json:"error_code"`
+	ErrorCode   int             `json:"error_code"`
 	Description string          `json:"description"`
 }
