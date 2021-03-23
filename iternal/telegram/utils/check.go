@@ -12,3 +12,7 @@ func CheckToken(token string) error {
 	}
 	return nil
 }
+
+func CheckResult(MethodName string, StatusCode int) error {
+	return nil
+}
