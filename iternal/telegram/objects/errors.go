@@ -1,4 +1,4 @@
-package tg_types
+package objects
 
 // Represents Telegram ResponseParameters object
 // https://core.telegram.org/bots/api#responseparameters

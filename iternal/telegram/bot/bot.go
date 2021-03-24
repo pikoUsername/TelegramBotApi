@@ -3,7 +3,7 @@ package bot
 import (
 	"encoding/json"
 
-	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/ttypes"
+	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/objects"
 	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/utils"
 )
 
@@ -11,7 +11,7 @@ import (
 type Bot struct {
 	Token string
 
-	Me *ttypes.User `json:"-"`
+	Me *objects.User `json:"-"`
 }
 
 // NewBot get a new Bot
@@ -31,12 +31,12 @@ func NewBot(token string, checkToken bool) (*Bot, error) {
 
 // GetMe reporesents telegram method
 // https://core.telegram.org/bots/api#getme
-func (bot *Bot) GetMe() (*ttypes.User, error) {
-	resp, err := MakeRequest(utils.GETME, bot.Token, nil)
+func (bot *Bot) GetMe() (*objects.User, error) {
+	resp, err := MakeRequest(GETME, bot.Token, nil)
 	if err != nil {
-		return &ttypes.User{}, err
+		return &objects.User{}, err
 	}
-	var user ttypes.User
+	var user objects.User
 	json.Unmarshal(resp.Result, &user)
 	bot.Me = &user
 	return &user, nil
@@ -44,7 +44,7 @@ func (bot *Bot) GetMe() (*ttypes.User, error) {
 
 // SendMessage
 // see: https://core.telegram.org/bots/api#sendmessage
-func (b *Bot) SendMessage(ChatID int, Text string) (*ttypes.Message, error) {
+func (b *Bot) SendMessage(ChatID int, Text string) (*objects.Message, error) {
 	// resp, err := MakeRequest("sendMessage", b.Token)
-	return &ttypes.Message{}, nil
+	return &objects.Message{}, nil
 }

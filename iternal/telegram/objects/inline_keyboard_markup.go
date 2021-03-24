@@ -1,4 +1,4 @@
-package ttypes
+package objects
 
 // InlineKeyboardMarkup ...
 type InlineKeyboardMarkup struct {

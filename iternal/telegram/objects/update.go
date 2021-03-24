@@ -1,4 +1,4 @@
-package ttypes
+package objects
 
 // Update Represents telegram Update object
 //

@@ -1,4 +1,4 @@
-package ttypes
+package objects
 
 import (
 	"encoding/json"

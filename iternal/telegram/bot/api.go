@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/ttypes"
+	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/objects"
 	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/utils"
 )
 
@@ -46,7 +46,7 @@ var DefaultTelegramServer *TelegramApiServer = NewTelegramApiServer("https://api
 
 // MakeRequest to telegram servers
 // and result parses
-func MakeRequest(Method string, Token string, params url.Values) (*ttypes.TelegramResponse, error) {
+func MakeRequest(Method string, Token string, params url.Values) (*objects.TelegramResponse, error) {
 	// Bad Code, but working, huh
 	// Content Type is Application/json
 	// Telegram uses application/json content type
@@ -65,3 +65,13 @@ func MakeRequest(Method string, Token string, params url.Values) (*ttypes.Telegr
 	}
 	return tgresp, nil
 }
+
+// Here will be all telegram methods
+// Using consts bc you can change typo here
+// not serach in code a typo
+// See: https://core.telegram.org/bots/api#available-methods
+var (
+	getUpdate   string = "getUpdate"
+	sendMessage string = "sendMessage"
+	GETME       string = "getMe"
+)

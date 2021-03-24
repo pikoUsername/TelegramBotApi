@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/ttypes"
+	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/objects"
 )
 
 // ResponseDecode ...
-func ResponseDecode(respBody io.ReadCloser) (*ttypes.TelegramResponse, error) {
-	var tgresp ttypes.TelegramResponse
+func ResponseDecode(respBody io.ReadCloser) (*objects.TelegramResponse, error) {
+	var tgresp objects.TelegramResponse
 	dec := json.NewDecoder(respBody)
 	err := dec.Decode(&tgresp)
 	if err != nil {

@@ -1,4 +1,4 @@
-package types
+package objects
 
 // File represents telegram File object
 // https://core.telegram.org/bots/api#file

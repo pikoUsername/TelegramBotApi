@@ -1,4 +1,5 @@
-package tg_types
+package objects
+
 // BotCommand respresents BotCommand object, ofc
 // https://core.telegram.org/bots/api#botcommand
 type BotCommand struct {

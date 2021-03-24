@@ -1,4 +1,4 @@
-package types
+package objects
 
 // Message Telegram object
 // https://core.telegram.org/bots/api#message

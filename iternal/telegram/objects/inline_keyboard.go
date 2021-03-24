@@ -1,4 +1,4 @@
-package types
+package objects
 
 // InlineKeyboard represents telegram inline keyboard object
 // https://core.telegram.org/bots/api#inlinekeyboardmarkup

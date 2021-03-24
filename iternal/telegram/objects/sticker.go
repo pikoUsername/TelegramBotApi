@@ -1,4 +1,4 @@
-package types
+package objects
 
 // Sticker ...
 type Sticker struct {

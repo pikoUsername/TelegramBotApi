@@ -1,4 +1,4 @@
-package types
+package objects
 
 // Chat type
 type Chat struct {

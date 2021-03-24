@@ -1,4 +1,4 @@
-package types
+package objects
 
 // From https://core.telegram.org/bots/api#inlinequery:
 // id	String	Unique identifier for this query

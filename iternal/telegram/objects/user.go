@@ -1,4 +1,4 @@
-package ttypes
+package objects
 
 // User represents Telegram User object
 // docs: https://core.telegram.org/bots/api#user
