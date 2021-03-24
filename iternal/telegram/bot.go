@@ -3,7 +3,6 @@ package telegram
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"strings"
 
@@ -22,16 +21,16 @@ type Bot struct {
 var TelegramURL string = "https://api.telegram.org/"
 
 // NewBot ...
-func NewBot(token string, checkToken bool) *Bot {
+func NewBot(token string, checkToken bool) (*Bot, error) {
 	if checkToken {
 		err := utils.CheckToken(token)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 	}
 	return &Bot{
 		Token: token,
-	}
+	}, nil
 }
 
 // MakeRequest to telegram servers
@@ -51,7 +50,7 @@ func MakeRequest(Method string, Token string) (*types.TelegramResponse, error) {
 		return nil, err
 	}
 
-	if err := utils.CheckResult(Method, tgresp.ErrorCode); err != nil {
+	if err := utils.CheckResult(Method, tgresp.ErrorCode, tgresp.Description); err != nil {
 		return &tgresp, err
 	}
 
@@ -64,7 +63,7 @@ func (bot *Bot) GetMe() *types.User {
 }
 
 // SendMessage ...
-func (b *Bot) SendMessage(text string) (*types.Message, error) {
+func (b *Bot) SendMessage(ChatID int, Text string) (*types.Message, error) {
 	// resp, err := MakeRequest("SendMessage", b.Token)
 	return &types.Message{}, nil
 }
