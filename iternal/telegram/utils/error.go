@@ -4,7 +4,7 @@ package utils
 // If in request have a error
 // It will be a true, if not false
 // all simple
-func FindError(jsonResp []string) bool {
+func FindError(jsonResp string) bool {
 
 	// Default Value
 	return false

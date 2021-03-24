@@ -1,4 +1,4 @@
-package types
+package ttypes
 
 // Update Represents telegram Update object
 //
@@ -12,6 +12,7 @@ type Update struct {
 	InlineQuery        *InlineQuery        `json:"inline_query"`
 	ChosenInlineResult *ChosenInlineResult `json:"chosen_inline_result"`
 	CallbackQuery      *CallbackQuery      `json:"callback_query"`
+	// TODO: this
 	// ShippingQuery      *ShippingQuery      `json:"shipping_query"`
 	// Poll         *Poll         `json:"poll"`
 	// PollAnswer   *PollAnswer   `json:"poll_answer"`
