@@ -2,6 +2,7 @@ package bot
 
 import (
 	"encoding/json"
+	"net/url"
 
 	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/objects"
 	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/utils"
@@ -42,7 +43,23 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 	return &user, nil
 }
 
-// SendMessage
+// GetUpdates uses for long polling
+// https://core.telegram.org/bots/api#getupdates
+func (bot *Bot) GetUpdates() (*objects.Update, error) {
+	resp, err := MakeRequest("getUpdates", bot.Token, url.Values{})
+	if err != nil {
+		return &objects.Update{}, &objects.TelegramApiError{
+			Code:               resp.ErrorCode,
+			Description:        resp.Description,
+			ResponseParameters: objects.ResponseParameters{},
+		}
+	}
+	var upd objects.Update
+	json.Unmarshal(resp.Result, &upd)
+	return &upd, nil
+}
+
+// SendMessage sends message using ChatID
 // see: https://core.telegram.org/bots/api#sendmessage
 func (b *Bot) SendMessage(ChatID int, Text string) (*objects.Message, error) {
 	// resp, err := MakeRequest("sendMessage", b.Token)
