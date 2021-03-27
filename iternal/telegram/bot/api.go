@@ -51,6 +51,7 @@ func MakeRequest(Method string, Token string, params url.Values) (*objects.Teleg
 	// Content Type is Application/json
 	// Telegram uses application/json content type
 	cntype := "application/json"
+	// Creating URL
 	url := DefaultTelegramServer.ApiUrl(Token, Method)
 
 	resp, err := http.Post(url, cntype, strings.NewReader(params.Encode()))
@@ -59,6 +60,7 @@ func MakeRequest(Method string, Token string, params url.Values) (*objects.Teleg
 	}
 	defer resp.Body.Close()
 
+	// Response make eatable
 	tgresp, err := utils.ResponseDecode(resp.Body)
 	if err != nil {
 		return nil, err
@@ -74,4 +76,5 @@ var (
 	getUpdate   string = "getUpdate"
 	sendMessage string = "sendMessage"
 	GETME       string = "getMe"
+	logout      string = "logout"
 )
