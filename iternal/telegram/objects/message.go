@@ -44,3 +44,9 @@ type MessageEntity struct {
 	User     *User  `json:"user"`
 	Language string `json:"language"`
 }
+
+// MessageID, idk why it s need
+// https://core.telegram.org/bots/api#messageid
+type MessageID struct {
+	messageID int32
+}
