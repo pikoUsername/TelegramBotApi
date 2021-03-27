@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/objects"
-	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/utils"
+	"github.com/pikoUsername/TelegramBotApiWrapper/telegrambotapiwrapper/objects"
+	"github.com/pikoUsername/TelegramBotApiWrapper/telegrambotapiwrapper/utils"
 )
 
 // TelegramApiServer need in
