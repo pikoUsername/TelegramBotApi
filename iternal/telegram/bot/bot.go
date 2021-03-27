@@ -70,6 +70,60 @@ func (bot *Bot) CopyMessage(config *CopyMessageConfig) (*objects.MessageID, erro
 	return &msg, nil
 }
 
+// ----------------HardCoded for now Dont watch this place pls-----------------
+
+// SendPhoto ...
+func (bot *Bot) SendPhoto(config *SendPhotoConfig) (*objects.Message, error) {
+	return &objects.Message{}, nil
+}
+
+// SendAudio ...
+func (bot *Bot) SendAudio(config *SendAudioConfig) (*objects.Message, error) {
+	return &objects.Message{}, nil
+}
+
+// SendDocument ...
+func (bot *Bot) SendDocument(config *SendDocumentConfig) (*objects.Message, error) {
+	return &objects.Message{}, nil
+}
+
+// SendVideo ...
+func (bot *Bot) SendVideo(config *SendVideoConfig) (*objects.Message, error) {
+	return &objects.Message{}, nil
+}
+
+// SendAnimation ...
+func (bot *Bot) SendAnimation(config *SendAnimation) (*objects.Message, error) {
+	return &objects.Message{}, nil
+}
+
+// SendVoice ...
+func (bot *Bot) SendVoice(config *SendVoiceConfig) (*objects.Message, error) {
+	return &objects.Message{}, nil
+}
+
+// SendVideoName ...
+func (bot *Bot) SendVideoName(config *SendVideoNameConfig) (*objects.Message, error) {
+	return &objects.Message{}, nil
+}
+
+// SendMediaGroup ...
+func (bot *Bot) SendMediaGroup(config *SendMediaGroupConfig) (*objects.Message, error) {
+	return &objects.Message{}, nil
+}
+
+// SendLocation ...
+func (bot *Bot) SendLocation(config *SendLocationConfig) (*objects.Message, error) {
+	return &objects.Message{}, nil
+}
+
+// editMessageLiveLocation ...
+func (bot *Bot) EditMessageLiveLocation(config *LiveLocationConfig) (*objects.Message, error) {
+	return &objects.Message{}, nil
+}
+
+// ------------------EndHardCode, Phew----------------------
+
 // GetUpdates uses for long polling
 // https://core.telegram.org/bots/api#getupdates
 func (bot *Bot) GetUpdates() (*objects.Update, error) {
