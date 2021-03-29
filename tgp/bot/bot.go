@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"net/url"
 
-	"github.com/pikoUsername/TelegramBotApiWrapper/telegrambotapiwrapper/objects"
-	"github.com/pikoUsername/TelegramBotApiWrapper/telegrambotapiwrapper/utils"
+	"github.com/pikoUsername/tgp/tgp/configs"
+	"github.com/pikoUsername/tgp/tgp/objects"
+	"github.com/pikoUsername/tgp/tgp/utils"
 )
 
 // Bot ...
@@ -56,9 +57,24 @@ func (bot *Bot) Logout() (bool, error) {
 	return true, nil
 } // Indeed
 
+// Send uses as sender for almost all stuff
+func (bot *Bot) SendMessageable(configable *configs.Configurable) (*objects.Message, error) {
+	v, err := configable.values()
+	if err != nil {
+		return &objects.Message{}, err
+	}
+	resp, err := MakeRequest(configable.method(), bot.Token, v)
+	if err != nil {
+		return &objects.Message{}, err
+	}
+	var msg objects.Message
+	json.Unmarshal(resp.Result, &msg)
+	return &msg, nil
+}
+
 // CopyMessage copies message
 // https://core.telegram.org/bots/api#copymessage
-func (bot *Bot) CopyMessage(config *CopyMessageConfig) (*objects.MessageID, error) {
+func (bot *Bot) CopyMessage(config *configs.CopyMessageConfig) (*objects.MessageID, error) {
 	// Stub here, TODO: make for every config a values function/method
 	resp, err := MakeRequest("copyMessage", bot.Token, url.Values{})
 	if err != nil {
@@ -73,52 +89,52 @@ func (bot *Bot) CopyMessage(config *CopyMessageConfig) (*objects.MessageID, erro
 // ----------------HardCoded for now Dont watch this place pls-----------------
 
 // SendPhoto ...
-func (bot *Bot) SendPhoto(config *SendPhotoConfig) (*objects.Message, error) {
+func (bot *Bot) SendPhoto(config *configs.SendPhotoConfig) (*objects.Message, error) {
 	return &objects.Message{}, nil
 }
 
 // SendAudio ...
-func (bot *Bot) SendAudio(config *SendAudioConfig) (*objects.Message, error) {
+func (bot *Bot) SendAudio(config *configs.SendAudioConfig) (*objects.Message, error) {
 	return &objects.Message{}, nil
 }
 
 // SendDocument ...
-func (bot *Bot) SendDocument(config *SendDocumentConfig) (*objects.Message, error) {
+func (bot *Bot) SendDocument(config *configs.SendDocumentConfig) (*objects.Message, error) {
 	return &objects.Message{}, nil
 }
 
 // SendVideo ...
-func (bot *Bot) SendVideo(config *SendVideoConfig) (*objects.Message, error) {
+func (bot *Bot) SendVideo(config *configs.SendVideoConfig) (*objects.Message, error) {
 	return &objects.Message{}, nil
 }
 
 // SendAnimation ...
-func (bot *Bot) SendAnimation(config *SendAnimation) (*objects.Message, error) {
+func (bot *Bot) SendAnimation(config *configs.SendAnimation) (*objects.Message, error) {
 	return &objects.Message{}, nil
 }
 
 // SendVoice ...
-func (bot *Bot) SendVoice(config *SendVoiceConfig) (*objects.Message, error) {
+func (bot *Bot) SendVoice(config *configs.SendVoiceConfig) (*objects.Message, error) {
 	return &objects.Message{}, nil
 }
 
 // SendVideoName ...
-func (bot *Bot) SendVideoName(config *SendVideoNameConfig) (*objects.Message, error) {
+func (bot *Bot) SendVideoName(config *configs.SendVideoNameConfig) (*objects.Message, error) {
 	return &objects.Message{}, nil
 }
 
 // SendMediaGroup ...
-func (bot *Bot) SendMediaGroup(config *SendMediaGroupConfig) (*objects.Message, error) {
+func (bot *Bot) SendMediaGroup(config *configs.SendMediaGroupConfig) (*objects.Message, error) {
 	return &objects.Message{}, nil
 }
 
 // SendLocation ...
-func (bot *Bot) SendLocation(config *SendLocationConfig) (*objects.Message, error) {
+func (bot *Bot) SendLocation(config *configs.SendLocationConfig) (*objects.Message, error) {
 	return &objects.Message{}, nil
 }
 
 // editMessageLiveLocation ...
-func (bot *Bot) EditMessageLiveLocation(config *LiveLocationConfig) (*objects.Message, error) {
+func (bot *Bot) EditMessageLiveLocation(config *configs.LiveLocationConfig) (*objects.Message, error) {
 	return &objects.Message{}, nil
 }
 
@@ -142,8 +158,8 @@ func (bot *Bot) GetUpdates() (*objects.Update, error) {
 
 // SendMessage sends message using ChatID
 // see: https://core.telegram.org/bots/api#sendmessage
-func (bot *Bot) SendMessage(ChatID int, Text string) (*objects.Message, error) {
-	resp, err := MakeRequest("sendMessage", bot.Token, url.Values{})
+func (bot *Bot) SendMessage(config *configs.SendMessageConfig) (*objects.Message, error) {
+	resp, err := MakeRequest("sendMessage", bot.Token, config.values())
 	if err != nil {
 		return &objects.Message{}, err
 	}

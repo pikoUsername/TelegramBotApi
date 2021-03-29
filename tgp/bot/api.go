@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/pikoUsername/TelegramBotApiWrapper/telegrambotapiwrapper/objects"
-	"github.com/pikoUsername/TelegramBotApiWrapper/telegrambotapiwrapper/utils"
+	"github.com/pikoUsername/tgp/tgp/objects"
+	"github.com/pikoUsername/tgp/tgp/utils"
 )
 
 // TelegramApiServer need in
@@ -45,7 +45,7 @@ func (tas *TelegramApiServer) FileUrl(Token string, File string) string {
 var DefaultTelegramServer *TelegramApiServer = NewTelegramApiServer("https://api.telegram.org")
 
 // MakeRequest to telegram servers
-// and result parses
+// and result parses to TelegramResponse
 func MakeRequest(Method string, Token string, params url.Values) (*objects.TelegramResponse, error) {
 	// Bad Code, but working, huh
 	// Content Type is Application/json
@@ -60,7 +60,7 @@ func MakeRequest(Method string, Token string, params url.Values) (*objects.Teleg
 	}
 	defer resp.Body.Close()
 
-	// Response make eatable
+	// make eatable
 	tgresp, err := utils.ResponseDecode(resp.Body)
 	if err != nil {
 		return nil, err
