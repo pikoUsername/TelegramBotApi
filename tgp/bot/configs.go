@@ -3,7 +3,7 @@ package bot
 import (
 	"net/url"
 
-	"github.com/pikoUsername/TelegramBotApiWrapper/telegram/objects"
+	"github.com/pikoUsername/tgp/tgp/objects"
 )
 
 // This file stores ALL method configs

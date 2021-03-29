@@ -1,8 +1,8 @@
 package dispatcher
 
 import (
-	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/bot"
-	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/objects"
+	"github.com/pikoUsername/tgp/tgp/bot"
+	"github.com/pikoUsername/tgp/tgp/objects"
 )
 
 // Dispatcher need for Polling, and webhook

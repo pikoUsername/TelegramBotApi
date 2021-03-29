@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/pikoUsername/TelegramBotApiWrapper/iternal/telegram/objects"
+	"github.com/pikoUsername/tgp/tgp/objects"
 )
 
 // ResponseDecode ...
