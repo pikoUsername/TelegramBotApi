@@ -15,6 +15,10 @@ type Configurable interface {
 	method() string
 }
 
+type FileableConf interface {
+	Configurable
+}
+
 // For CopyMessage method config
 type CopyMessageConfig struct {
 	ChatID                int64
