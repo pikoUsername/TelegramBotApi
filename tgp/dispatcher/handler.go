@@ -1,5 +1,6 @@
 package dispatcher
 
+// HandlerObj uses for save Callback
 type HandlerObj struct {
-	Callable func(interface{})
+	Callabacks []interface{}
 }
