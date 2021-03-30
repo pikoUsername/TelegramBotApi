@@ -9,8 +9,10 @@ import (
 // For Bot run,
 // Bot struct uses as API wrapper
 // Dispatcher uses as Bot starter
+// Middlewares uses function
 type Dispatcher struct {
-	Bot *bot.Bot
+	Bot         *bot.Bot
+	Middlewares []*func(handler *HandlerObj, obj interface{})
 }
 
 // ProcessUpdates havenot got any efficient
