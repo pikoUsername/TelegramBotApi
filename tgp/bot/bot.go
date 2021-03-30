@@ -58,18 +58,28 @@ func (bot *Bot) Logout() (bool, error) {
 } // Indeed
 
 // Send uses as sender for almost all stuff
-func (bot *Bot) SendMessageable(configable *configs.Configurable) (*objects.Message, error) {
-	v, err := configable.values()
+func (bot *Bot) SendMessageable(c *configs.Configurable) (*objects.Message, error) {
+	v, err := c.values()
 	if err != nil {
 		return &objects.Message{}, err
 	}
-	resp, err := MakeRequest(configable.method(), bot.Token, v)
+	resp, err := MakeRequest(c.method(), bot.Token, v)
 	if err != nil {
 		return &objects.Message{}, err
 	}
 	var msg objects.Message
 	json.Unmarshal(resp.Result, &msg)
 	return &msg, nil
+}
+
+// Send ...
+func (bot *Bot) Send(config configs.Configurable) (*objects.Message, error) {
+	switch config.(type) {
+	case configs.FileableConf:
+		return nil, nil
+	default:
+		return bot.SendMessageable(&config)
+	}
 }
 
 // CopyMessage copies message
