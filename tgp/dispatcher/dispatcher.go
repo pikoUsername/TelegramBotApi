@@ -28,16 +28,6 @@ func (dp *Dispatcher) ProcessUpdates(update *objects.Update) {
 	return
 }
 
-// SetWebhook make subscribe to telegram events
-// or sends to telegram a request for make
-// Subscribe to specific IP, and when user
-// sends a message to your bot, Telegram know
-// Your bot IP and sends to your bot a Update
-// https://core.telegram.org/bots/api#setwebhook
-func (dp *Dispatcher) SetWebhook(config *WebhookConfig) error {
-	return nil
-}
-
 // StartPolling check out to comming updates
 // If yes, Telegram Get to your bot a Update
 // Using GetUpdates function in Bot structure
