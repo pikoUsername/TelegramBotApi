@@ -17,6 +17,7 @@ type Configurable interface {
 
 type FileableConf interface {
 	Configurable
+	getFile() interface{}
 }
 
 // For CopyMessage method config
