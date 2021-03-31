@@ -1,5 +1,5 @@
 package objects
 
 type CallbackQuery struct {
-	id int
+	id int `json:"id"`
 }

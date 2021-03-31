@@ -11,7 +11,7 @@ import (
 )
 
 // TelegramApiServer need in
-// make easer use custom telegram api server
+// make easier use custom telegram api server
 type TelegramApiServer struct {
 	// Base telegram, sendMessage and etc.
 	Base string
@@ -22,11 +22,11 @@ type TelegramApiServer struct {
 
 // NewTelegramApiServer ...
 func NewTelegramApiServer(Base string) *TelegramApiServer {
-	telplate := "/bot%s/%s"
+	template := "/bot%s/%s"
 	// /bot%s/%s means /bot<TOKEN>/<METHOD>
 	return &TelegramApiServer{
-		Base: fmt.Sprint(Base, telplate),
-		File: fmt.Sprint(Base, "/file", telplate),
+		Base: fmt.Sprint(Base, template),
+		File: fmt.Sprint(Base, "/file", template),
 	}
 }
 
@@ -52,9 +52,9 @@ func MakeRequest(Method string, Token string, params url.Values) (*objects.Teleg
 	// Telegram uses application/json content type
 	cntype := "application/json"
 	// Creating URL
-	url := DefaultTelegramServer.ApiUrl(Token, Method)
+	tgurl := DefaultTelegramServer.ApiUrl(Token, Method)
 
-	resp, err := http.Post(url, cntype, strings.NewReader(params.Encode()))
+	resp, err := http.Post(tgurl, cntype, strings.NewReader(params.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -63,18 +63,7 @@ func MakeRequest(Method string, Token string, params url.Values) (*objects.Teleg
 	// make eatable
 	tgresp, err := utils.ResponseDecode(resp.Body)
 	if err != nil {
-		return nil, err
+		return tgresp, err
 	}
 	return tgresp, nil
 }
-
-// Here will be all telegram methods
-// Using consts bc you can change typo here
-// not serach in code a typo
-// See: https://core.telegram.org/bots/api#available-methods
-var (
-	getUpdate   string = "getUpdate"
-	sendMessage string = "sendMessage"
-	GETME       string = "getMe"
-	logout      string = "logout"
-)

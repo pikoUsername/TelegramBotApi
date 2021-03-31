@@ -12,6 +12,7 @@ import (
 // Bot ...
 type Bot struct {
 	Token string
+	ParseMode string
 
 	// Using prefix Bot, for avoid names conflict
 	// and golang dont love name conflicts
@@ -31,18 +32,26 @@ func NewBot(token string, checkToken bool, parseMode string) (*Bot, error) {
 	}
 	return &Bot{
 		Token: token,
+		ParseMode: parseMode,
 	}, nil
 }
 
 // GetMe reporesents telegram method
 // https://core.telegram.org/bots/api#getme
 func (bot *Bot) GetMe() (*objects.User, error) {
-	resp, err := MakeRequest(GETME, bot.Token, nil)
+	if bot.Me != nil  {
+		return bot.Me, nil
+	}
+	resp, err := MakeRequest("getMe", bot.Token, nil)
 	if err != nil {
 		return &objects.User{}, err
 	}
 	var user objects.User
-	json.Unmarshal(resp.Result, &user)
+	err = json.Unmarshal(resp.Result, &user)
+	if err != nil {
+		return &user, err
+	}
+
 	bot.Me = &user
 	return &user, nil
 }
@@ -68,7 +77,10 @@ func (bot *Bot) SendMessageable(c *configs.Configurable) (*objects.Message, erro
 		return &objects.Message{}, err
 	}
 	var msg objects.Message
-	json.Unmarshal(resp.Result, &msg)
+	err = json.Unmarshal(resp.Result, &msg)
+	if err != nil {
+		return &msg, err
+	}
 	return &msg, nil
 }
 
@@ -93,7 +105,8 @@ func (bot *Bot) CopyMessage(config *configs.CopyMessageConfig) (*objects.Message
 	}
 	var msg objects.MessageID
 
-	json.Unmarshal(resp.Result, &msg)
+	err = json.Unmarshal(resp.Result, &msg)
+	if err != nil { return &msg, err }
 	return &msg, nil
 }
 
@@ -167,7 +180,10 @@ func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) (*objects.Update, error)
 		}
 	}
 	var upd objects.Update
-	json.Unmarshal(resp.Result, &upd)
+	err = json.Unmarshal(resp.Result, &upd)
+	if err != nil {
+		return &upd, err
+	}
 	return &upd, nil
 }
 
@@ -187,6 +203,9 @@ func (bot *Bot) SendMessage(config *configs.SendMessageConfig) (*objects.Message
 		}
 	}
 	var msg objects.Message
-	json.Unmarshal(resp.Result, &msg)
+	err = json.Unmarshal(resp.Result, &msg)
+	if err != nil {
+		return &msg, nil
+	}
 	return &msg, nil
 }
