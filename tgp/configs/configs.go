@@ -18,6 +18,7 @@ type Configurable interface {
 type FileableConf interface {
 	Configurable
 	getFile() interface{}
+	Url() string
 }
 
 // For CopyMessage method config
@@ -46,10 +47,6 @@ func (cmc *CopyMessageConfig) Values() (*url.Values, error) {
 	return v, nil
 }
 
-func (cmc *CopyMessageConfig) Method() string {
-	return "copyMessage"
-}
-
 // SendMessageConfig respresnests method,
 // and fields of sendMessage method of telegram
 // https://core.telegram.org/bots/api#sendmessage
@@ -76,9 +73,32 @@ func (smc *SendMessageConfig) Values() (*url.Values, error) {
 	return result, nil
 }
 
-// method ...
-func (smc *SendMessageConfig) Method() string {
-	return "sendMessage"
+
+
+// WebhookConfig uses for Using as arguemnt
+// You may not fill all fields in struct
+// https://core.telegram.org/bots/api#setwebhook
+type SetWebhookConfig struct {
+	URL            *url.URL // required
+	Certificate    interface{}
+	Offset         int
+	MaxConnections int
+	AllowedUpdates bool
+	DropPendingUpdates bool
+	IP string // if you need u can use it ;)
+}
+
+func (wc *SetWebhookConfig) Values() (*url.Values, error) {
+	result := &url.Values{}
+	// omg, why it s so bore ;(
+	result.Add("url", wc.URL.String())
+	result.Add("certificate", wc.Certificate.URL())
+	result.Add("ip_address", wc.IP)
+	result.Add("max_connections", strconv.Itoa(wc.MaxConnections))
+	result.Add("allowed_updates", strconv.FormatBool(wc.AllowedUpdates))
+	result.Add("drop_pending_updates", strconv.FormatBool(wc.DropPendingUpdates))
+
+	return result, nil
 }
 
 // SendPhotoConfig ...
@@ -134,6 +154,9 @@ func (guc *GetUpdatesConfig) Values() (*url.Values, error) {
 	return v, nil
 }
 
-func (guc *GetUpdatesConfig) Method() string {
-	return "getUpdates"
-}
+// Here methods name for various MethodConfigs
+// 
+func (cmc *CopyMessageConfig) Method() string { return "copyMessage" }
+func (wc *SetWebhookConfig) Method() string { return "setWebhook" }
+func (guc *GetUpdatesConfig) Method() string { return "getUpdates" }
+func (smc *SendMessageConfig) Method() string { return "sendMessage" }
