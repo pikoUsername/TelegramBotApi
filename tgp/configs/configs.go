@@ -20,10 +20,11 @@ type FileableConf interface {
 }
 
 // For CopyMessage method config
+// https://core.telegram.org/bots/api#copymessage
 type CopyMessageConfig struct {
-	ChatID                int64
-	FromChatID            int64
-	MessageID             int64
+	ChatID                int64 // required
+	FromChatID            int64 // required
+	MessageID             int64 // required
 	Caption               string
 	CaptionEntities       []*objects.MessageEntity
 	DisableNotifications  bool
@@ -33,6 +34,15 @@ type CopyMessageConfig struct {
 	// Note: Interface here is simple need
 	// type: Union[objects.InlineKeyboardMarkup, ReplyKeyboardMarkup]
 	ReplyMarkup interface{}
+}
+
+func (cmc *CopyMessageConfig) values() (*url.Values, error) {
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(cmc.ChatID, 10))
+	v.Add("from_chat_id", strconv.FormatInt(cmc.ChatID, 10))
+	v.Add("message_id", strconv.FormatInt(cmc.MessageID, 10))
+	// TODO: Make Optional methods too...
+	return v, nil
 }
 
 // SendMessageConfig respresnests method,
@@ -63,7 +73,7 @@ func (smc *SendMessageConfig) values() (*url.Values, error) {
 
 // method ...
 func (smc *SendMessageConfig) method() string {
-	return "SendMessage"
+	return "sendMessage"
 }
 
 // SendPhotoConfig ...
@@ -99,4 +109,26 @@ type SendLocationConfig struct {
 }
 
 type LiveLocationConfig struct {
+}
+
+type GetUpdatesConfig struct {
+	Offset         int
+	Limit          int
+	Timeout        int
+	AllowedUpdates []string
+}
+
+func (guc *GetUpdatesConfig) values() (*url.Values, error) {
+	v := &url.Values{}
+	if guc.Offset != 0 {
+		v.Add("offset", strconv.Itoa(guc.Offset))
+	}
+	v.Add("limit", strconv.Itoa(guc.Limit))
+	v.Add("timeout", strconv.Itoa(guc.Timeout))
+
+	return v, nil
+}
+
+func (guc *GetUpdatesConfig) method() string {
+	return "getUpdates"
 }
