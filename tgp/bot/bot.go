@@ -86,7 +86,8 @@ func (bot *Bot) Send(config configs.Configurable) (*objects.Message, error) {
 // https://core.telegram.org/bots/api#copymessage
 func (bot *Bot) CopyMessage(config *configs.CopyMessageConfig) (*objects.MessageID, error) {
 	// Stub here, TODO: make for every config a values function/method
-	resp, err := MakeRequest("copyMessage", bot.Token, url.Values{})
+	v, err := config.values()
+	resp, err := MakeRequest(config.method(), bot.Token, v)
 	if err != nil {
 		return &objects.MessageID{}, err
 	}
@@ -152,8 +153,12 @@ func (bot *Bot) EditMessageLiveLocation(config *configs.LiveLocationConfig) (*ob
 
 // GetUpdates uses for long polling
 // https://core.telegram.org/bots/api#getupdates
-func (bot *Bot) GetUpdates() (*objects.Update, error) {
-	resp, err := MakeRequest(getUpdate, bot.Token, url.Values{})
+func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) (*objects.Update, error) {
+	v, err := c.values()
+	if err != nil {
+		return &objects.Update{}, err
+	}
+	resp, err := MakeRequest(c.method(), bot.Token, v)
 	if err != nil {
 		return &objects.Update{}, &objects.TelegramApiError{
 			Code:               resp.ErrorCode,
@@ -169,9 +174,17 @@ func (bot *Bot) GetUpdates() (*objects.Update, error) {
 // SendMessage sends message using ChatID
 // see: https://core.telegram.org/bots/api#sendmessage
 func (bot *Bot) SendMessage(config *configs.SendMessageConfig) (*objects.Message, error) {
-	resp, err := MakeRequest("sendMessage", bot.Token, config.values())
+	v, err := config.values()
 	if err != nil {
 		return &objects.Message{}, err
+	}
+	resp, err := MakeRequest("sendMessage", bot.Token, v)
+	if err != nil {
+		return &objects.Message{}, &objects.TelegramApiError{
+			Code:               resp.ErrorCode,
+			Description:        resp.Description,
+			ResponseParameters: objects.ResponseParameters{},
+		}
 	}
 	var msg objects.Message
 	json.Unmarshal(resp.Result, &msg)
