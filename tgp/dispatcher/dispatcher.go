@@ -11,14 +11,15 @@ import (
 // Dispatcher uses as Bot starter
 // Middlewares uses function
 type Dispatcher struct {
-	Bot            *bot.Bot
-	MessageHandler *HandlerObj
+	Bot *bot.Bot
+
+	// Problem fixed ;)
+	MessageHandler []*func(*objects.Message)
 }
 
 // RegisterMessageHandler except func(*objects.Message) but strict typing
-// but Golang dont love that, so you PLEASE make your callback first arguemnt *objects.Message
-func (dp *Dispatcher) RegisterNessageHandler(callback func(interface{})) {
-	append(dp.MessageHandler.Callabacks, callback)
+func (dp *Dispatcher) RegisterNessageHandler(callback func(*objects.Message)) {
+	dp.MessageHandler = append(dp.MessageHandler, &callback)
 }
 
 // ProcessUpdates havenot got any efficient
