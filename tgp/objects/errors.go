@@ -13,7 +13,7 @@ type ResponseParameters struct {
 // see: https://github.com/TelegramBotAPI/errors
 // official docs: https://core.telegram.org/api/errors
 type TelegramApiError struct {
-	Code        int
+	Code        uint
 	Description string
 	ResponseParameters
 }

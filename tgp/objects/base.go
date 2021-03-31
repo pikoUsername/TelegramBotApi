@@ -11,7 +11,6 @@ import (
 type MessageAble interface {
 	// Sorry but its impossible, make that without
 	// circular imports, so i used this ;(
-	// Huh, it just interface
 	Send(interface{}) *Message
 }
 
@@ -19,7 +18,7 @@ type MessageAble interface {
 type TelegramResponse struct {
 	Ok          bool                `json:"ok"`
 	Result      json.RawMessage     `json:"result"`
-	ErrorCode   int                 `json:"error_code"`
+	ErrorCode   uint                `json:"error_code"`
 	Description string              `json:"description"`
 	Parametrs   *ResponseParameters `json:"parameters"`
 }
