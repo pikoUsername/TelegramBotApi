@@ -46,7 +46,7 @@ var DefaultTelegramServer *TelegramApiServer = NewTelegramApiServer("https://api
 
 // MakeRequest to telegram servers
 // and result parses to TelegramResponse
-func MakeRequest(Method string, Token string, params url.Values) (*objects.TelegramResponse, error) {
+func MakeRequest(Method string, Token string, params *url.Values) (*objects.TelegramResponse, error) {
 	// Bad Code, but working, huh
 	// Content Type is Application/json
 	// Telegram uses application/json content type

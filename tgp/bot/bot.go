@@ -42,7 +42,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 	if bot.Me != nil  {
 		return bot.Me, nil
 	}
-	resp, err := MakeRequest("getMe", bot.Token, nil)
+	resp, err := MakeRequest("getMe", bot.Token, &url.Values{})
 	if err != nil {
 		return &objects.User{}, err
 	}
@@ -59,7 +59,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 // Logout your bot from telegram
 // https://core.telegram.org/bots/api#logout
 func (bot *Bot) Logout() (bool, error) {
-	_, err := MakeRequest(logout, bot.Token, url.Values{})
+	_, err := MakeRequest("logout", bot.Token, &url.Values{})
 	if err != nil {
 		return false, err
 	}
@@ -67,12 +67,12 @@ func (bot *Bot) Logout() (bool, error) {
 } // Indeed
 
 // Send uses as sender for almost all stuff
-func (bot *Bot) SendMessageable(c *configs.Configurable) (*objects.Message, error) {
-	v, err := c.values()
+func (bot *Bot) SendMessageable(c configs.Configurable) (*objects.Message, error) {
+	v, err := c.Values()
 	if err != nil {
 		return &objects.Message{}, err
 	}
-	resp, err := MakeRequest(c.method(), bot.Token, v)
+	resp, err := MakeRequest(c.Method(), bot.Token, v)
 	if err != nil {
 		return &objects.Message{}, err
 	}
@@ -90,7 +90,7 @@ func (bot *Bot) Send(config configs.Configurable) (*objects.Message, error) {
 	case configs.FileableConf:
 		return nil, nil
 	default:
-		return bot.SendMessageable(&config)
+		return bot.SendMessageable(config)
 	}
 }
 
@@ -98,8 +98,8 @@ func (bot *Bot) Send(config configs.Configurable) (*objects.Message, error) {
 // https://core.telegram.org/bots/api#copymessage
 func (bot *Bot) CopyMessage(config *configs.CopyMessageConfig) (*objects.MessageID, error) {
 	// Stub here, TODO: make for every config a values function/method
-	v, err := config.values()
-	resp, err := MakeRequest(config.method(), bot.Token, v)
+	v, err := config.Values()
+	resp, err := MakeRequest(config.Method(), bot.Token, v)
 	if err != nil {
 		return &objects.MessageID{}, err
 	}
@@ -167,11 +167,11 @@ func (bot *Bot) EditMessageLiveLocation(config *configs.LiveLocationConfig) (*ob
 // GetUpdates uses for long polling
 // https://core.telegram.org/bots/api#getupdates
 func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) (*objects.Update, error) {
-	v, err := c.values()
+	v, err := c.Values()
 	if err != nil {
 		return &objects.Update{}, err
 	}
-	resp, err := MakeRequest(c.method(), bot.Token, v)
+	resp, err := MakeRequest(c.Method(), bot.Token, v)
 	if err != nil {
 		return &objects.Update{}, &objects.TelegramApiError{
 			Code:               resp.ErrorCode,
@@ -190,7 +190,7 @@ func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) (*objects.Update, error)
 // SendMessage sends message using ChatID
 // see: https://core.telegram.org/bots/api#sendmessage
 func (bot *Bot) SendMessage(config *configs.SendMessageConfig) (*objects.Message, error) {
-	v, err := config.values()
+	v, err := config.Values()
 	if err != nil {
 		return &objects.Message{}, err
 	}

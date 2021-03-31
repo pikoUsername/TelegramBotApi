@@ -11,8 +11,8 @@ import (
 
 // Configurable is interface for using by method
 type Configurable interface {
-	values() (*url.Values, error)
-	method() string
+	Values() (*url.Values, error)
+	Method() string
 }
 
 type FileableConf interface {
@@ -37,13 +37,17 @@ type CopyMessageConfig struct {
 	ReplyMarkup interface{}
 }
 
-func (cmc *CopyMessageConfig) values() (*url.Values, error) {
+func (cmc *CopyMessageConfig) Values() (*url.Values, error) {
 	v := &url.Values{}
 	v.Add("chat_id", strconv.FormatInt(cmc.ChatID, 10))
 	v.Add("from_chat_id", strconv.FormatInt(cmc.ChatID, 10))
 	v.Add("message_id", strconv.FormatInt(cmc.MessageID, 10))
 	// TODO: Make Optional fields too...
 	return v, nil
+}
+
+func (cmc *CopyMessageConfig) Method() string {
+	return "copyMessage"
 }
 
 // SendMessageConfig respresnests method,
@@ -61,7 +65,7 @@ type SendMessageConfig struct {
 }
 
 // values ...
-func (smc *SendMessageConfig) values() (*url.Values, error) {
+func (smc *SendMessageConfig) Values() (*url.Values, error) {
 	result := &url.Values{}
 	result.Add("chat_id", strconv.Itoa(smc.ChatID))
 	result.Add("text", smc.Text)
@@ -73,7 +77,7 @@ func (smc *SendMessageConfig) values() (*url.Values, error) {
 }
 
 // method ...
-func (smc *SendMessageConfig) method() string {
+func (smc *SendMessageConfig) Method() string {
 	return "sendMessage"
 }
 
@@ -119,7 +123,7 @@ type GetUpdatesConfig struct {
 	AllowedUpdates []string
 }
 
-func (guc *GetUpdatesConfig) values() (*url.Values, error) {
+func (guc *GetUpdatesConfig) Values() (*url.Values, error) {
 	v := &url.Values{}
 	if guc.Offset != 0 {
 		v.Add("offset", strconv.Itoa(guc.Offset))
@@ -130,6 +134,6 @@ func (guc *GetUpdatesConfig) values() (*url.Values, error) {
 	return v, nil
 }
 
-func (guc *GetUpdatesConfig) method() string {
+func (guc *GetUpdatesConfig) Method() string {
 	return "getUpdates"
 }
