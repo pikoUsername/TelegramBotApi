@@ -42,7 +42,7 @@ func (cmc *CopyMessageConfig) values() (*url.Values, error) {
 	v.Add("chat_id", strconv.FormatInt(cmc.ChatID, 10))
 	v.Add("from_chat_id", strconv.FormatInt(cmc.ChatID, 10))
 	v.Add("message_id", strconv.FormatInt(cmc.MessageID, 10))
-	// TODO: Make Optional methods too...
+	// TODO: Make Optional fields too...
 	return v, nil
 }
 

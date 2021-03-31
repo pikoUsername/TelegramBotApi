@@ -12,6 +12,13 @@ func CheckToken(token string) error {
 	if strings.Contains(token, " ") {
 		return InvalidToken
 	}
+	a := strings.Split(token, ":")
+	if len(a) <= 3 {
+		return InvalidToken
+	}
+	if a[0] == "" || a[1] == "" || a[2] == "" {
+		return InvalidToken
+	}
 	return nil
 }
 
