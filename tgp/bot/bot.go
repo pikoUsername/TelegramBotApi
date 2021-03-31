@@ -209,3 +209,21 @@ func (bot *Bot) SendMessage(config *configs.SendMessageConfig) (*objects.Message
 	}
 	return &msg, nil
 }
+
+// SetWebhook make subscribe to telegram events
+// or sends to telegram a request for make
+// Subscribe to specific IP, and when user
+// sends a message to your bot, Telegram know
+// Your bot IP and sends to your bot a Update
+// https://core.telegram.org/bots/api#setwebhook
+func (bot *Bot) SetWebhook(config *configs.SetWebhookConfig) error {
+	v, err := config.Values()
+	if err != nil {
+		return err
+	}
+	_, err = MakeRequest(config.Method(), bot.Token, v)
+	if err != nil {
+		return err
+	}
+	return nil
+}
