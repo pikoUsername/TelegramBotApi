@@ -92,7 +92,7 @@ func (wc *SetWebhookConfig) Values() (*url.Values, error) {
 	result := &url.Values{}
 	// omg, why it s so bore ;(
 	result.Add("url", wc.URL.String())
-	result.Add("certificate", wc.Certificate.URL())
+	// result.Add("certificate", wc.Certificate.URL())
 	result.Add("ip_address", wc.IP)
 	result.Add("max_connections", strconv.Itoa(wc.MaxConnections))
 	result.Add("allowed_updates", strconv.FormatBool(wc.AllowedUpdates))
