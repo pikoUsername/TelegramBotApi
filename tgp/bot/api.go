@@ -2,12 +2,6 @@ package bot
 
 import (
 	"fmt"
-	"net/http"
-	"net/url"
-	"strings"
-
-	"github.com/pikoUsername/tgp/tgp/objects"
-	"github.com/pikoUsername/tgp/tgp/utils"
 )
 
 // TelegramApiServer need in
@@ -42,28 +36,6 @@ func (tas *TelegramApiServer) FileUrl(Token string, File string) string {
 }
 
 // Default telegram api server url
-var DefaultTelegramServer *TelegramApiServer = NewTelegramApiServer("https://api.telegram.org")
-
-// MakeRequest to telegram servers
-// and result parses to TelegramResponse
-func MakeRequest(Method string, Token string, params *url.Values) (*objects.TelegramResponse, error) {
-	// Bad Code, but working, huh
-	// Content Type is Application/json
-	// Telegram uses application/json content type
-	cntype := "application/json"
-	// Creating URL
-	tgurl := DefaultTelegramServer.ApiUrl(Token, Method)
-
-	resp, err := http.Post(tgurl, cntype, strings.NewReader(params.Encode()))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	// make eatable
-	tgresp, err := utils.ResponseDecode(resp.Body)
-	if err != nil {
-		return tgresp, err
-	}
-	return tgresp, nil
-}
+var (
+	DefaultTelegramServer = NewTelegramApiServer("https://api.telegram.org")
+)

@@ -2,22 +2,38 @@ package bot
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/pikoUsername/tgp/tgp/configs"
 	"github.com/pikoUsername/tgp/tgp/objects"
 	"github.com/pikoUsername/tgp/tgp/utils"
 )
 
-// Bot ...
+// Bot can be created using Json config,
+// Copy paste from go-telegram-bot-api ;D
 type Bot struct {
-	Token string
-	ParseMode string
+	Token     string `json:"token"`
+	ParseMode string `json:"parse_mode"`
 
 	// Using prefix Bot, for avoid names conflict
 	// and golang dont love name conflicts
-	BotParseMode string
-	Me           *objects.User `json:"-"`
+	// by default this values is nil,
+	// when you make get_me request, result
+	// caches there, and you can take that
+	// value in any moment.
+	// Using Lazy method, instead of one moment
+	Me *objects.User `json:"-"`
+
+	// client if you need this, here
+	// Client uses only for Post requests
+	Client HttpClient `json:"-"`
+
+	// default server must be here
+	// if you wanna create own, just create
+	// using this structure instead of NewBot function
+	server *TelegramApiServer `json:"-"`
 }
 
 // NewBot get a new Bot
@@ -25,24 +41,51 @@ type Bot struct {
 // for spaces and etc.
 func NewBot(token string, checkToken bool, parseMode string) (*Bot, error) {
 	if checkToken {
+		// Check out token
 		err := utils.CheckToken(token)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return &Bot{
-		Token: token,
+		Token:     token,
 		ParseMode: parseMode,
+		server:    DefaultTelegramServer,
+		Client:    &http.Client{},
 	}, nil
+}
+
+// MakeRequest to telegram servers
+// and result parses to TelegramResponse
+func MakeRequest(Method string, Token string, params *url.Values, server *TelegramApiServer) (*objects.TelegramResponse, error) {
+	// Bad Code, but working, huh
+
+	// Creating URL
+	tgurl := DefaultTelegramServer.ApiUrl(Token, Method)
+
+	// Content Type is Application/json
+	// Telegram uses application/json content type
+	resp, err := http.Post(tgurl, "application/json", strings.NewReader(params.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// make eatable
+	tgresp, err := utils.ResponseDecode(resp.Body)
+	if err != nil {
+		return tgresp, err
+	}
+	return tgresp, nil
 }
 
 // GetMe reporesents telegram method
 // https://core.telegram.org/bots/api#getme
 func (bot *Bot) GetMe() (*objects.User, error) {
-	if bot.Me != nil  {
+	if bot.Me != nil {
 		return bot.Me, nil
 	}
-	resp, err := MakeRequest("getMe", bot.Token, &url.Values{})
+	resp, err := MakeRequest("getMe", bot.Token, &url.Values{}, bot.server)
 	if err != nil {
 		return &objects.User{}, err
 	}
@@ -59,7 +102,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 // Logout your bot from telegram
 // https://core.telegram.org/bots/api#logout
 func (bot *Bot) Logout() (bool, error) {
-	_, err := MakeRequest("logout", bot.Token, &url.Values{})
+	_, err := MakeRequest("logout", bot.Token, &url.Values{}, bot.server)
 	if err != nil {
 		return false, err
 	}
@@ -72,7 +115,7 @@ func (bot *Bot) SendMessageable(c configs.Configurable) (*objects.Message, error
 	if err != nil {
 		return &objects.Message{}, err
 	}
-	resp, err := MakeRequest(c.Method(), bot.Token, v)
+	resp, err := MakeRequest(c.Method(), bot.Token, v, bot.server)
 	if err != nil {
 		return &objects.Message{}, err
 	}
@@ -88,7 +131,7 @@ func (bot *Bot) SendMessageable(c configs.Configurable) (*objects.Message, error
 func (bot *Bot) Send(config configs.Configurable) (*objects.Message, error) {
 	switch config.(type) {
 	case configs.FileableConf:
-		return nil, nil
+		return &objects.Message{}, nil
 	default:
 		return bot.SendMessageable(config)
 	}
@@ -99,14 +142,16 @@ func (bot *Bot) Send(config configs.Configurable) (*objects.Message, error) {
 func (bot *Bot) CopyMessage(config *configs.CopyMessageConfig) (*objects.MessageID, error) {
 	// Stub here, TODO: make for every config a values function/method
 	v, err := config.Values()
-	resp, err := MakeRequest(config.Method(), bot.Token, v)
+	resp, err := MakeRequest(config.Method(), bot.Token, v, bot.server)
 	if err != nil {
 		return &objects.MessageID{}, err
 	}
 	var msg objects.MessageID
 
 	err = json.Unmarshal(resp.Result, &msg)
-	if err != nil { return &msg, err }
+	if err != nil {
+		return &msg, err
+	}
 	return &msg, nil
 }
 
@@ -171,7 +216,7 @@ func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) (*objects.Update, error)
 	if err != nil {
 		return &objects.Update{}, err
 	}
-	resp, err := MakeRequest(c.Method(), bot.Token, v)
+	resp, err := MakeRequest(c.Method(), bot.Token, v, bot.server)
 	if err != nil {
 		return &objects.Update{}, &objects.TelegramApiError{
 			Code:               resp.ErrorCode,
@@ -190,24 +235,7 @@ func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) (*objects.Update, error)
 // SendMessage sends message using ChatID
 // see: https://core.telegram.org/bots/api#sendmessage
 func (bot *Bot) SendMessage(config *configs.SendMessageConfig) (*objects.Message, error) {
-	v, err := config.Values()
-	if err != nil {
-		return &objects.Message{}, err
-	}
-	resp, err := MakeRequest("sendMessage", bot.Token, v)
-	if err != nil {
-		return &objects.Message{}, &objects.TelegramApiError{
-			Code:               resp.ErrorCode,
-			Description:        resp.Description,
-			ResponseParameters: objects.ResponseParameters{},
-		}
-	}
-	var msg objects.Message
-	err = json.Unmarshal(resp.Result, &msg)
-	if err != nil {
-		return &msg, nil
-	}
-	return &msg, nil
+	return bot.Send(config)
 }
 
 // SetWebhook make subscribe to telegram events
@@ -221,7 +249,7 @@ func (bot *Bot) SetWebhook(config *configs.SetWebhookConfig) error {
 	if err != nil {
 		return err
 	}
-	_, err = MakeRequest(config.Method(), bot.Token, v)
+	_, err = MakeRequest(config.Method(), bot.Token, v, bot.server)
 	if err != nil {
 		return err
 	}
