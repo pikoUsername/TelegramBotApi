@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/pikoUsername/tgp/tgp/objects"
+	"github.com/pikoUsername/tgp/objects"
 )
 
 // ResponseDecode ...

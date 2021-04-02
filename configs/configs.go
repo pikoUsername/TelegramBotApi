@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/pikoUsername/tgp/tgp/objects"
+	"github.com/pikoUsername/tgp/objects"
 )
 
 // This file stores ALL method configs

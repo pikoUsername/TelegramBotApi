@@ -3,7 +3,7 @@ package utils
 import (
 	"strings"
 
-	"github.com/pikoUsername/tgp/tgp/objects"
+	"github.com/pikoUsername/tgp/objects"
 )
 
 // CheckToken Check out for a Space containing

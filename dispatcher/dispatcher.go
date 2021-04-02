@@ -1,8 +1,8 @@
 package dispatcher
 
 import (
-	"github.com/pikoUsername/tgp/tgp/bot"
-	"github.com/pikoUsername/tgp/tgp/objects"
+	"github.com/pikoUsername/tgp/bot"
+	"github.com/pikoUsername/tgp/objects"
 )
 
 // Dispatcher need for Polling, and webhook

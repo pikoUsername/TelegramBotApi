@@ -6,9 +6,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/pikoUsername/tgp/tgp/configs"
-	"github.com/pikoUsername/tgp/tgp/objects"
-	"github.com/pikoUsername/tgp/tgp/utils"
+	"github.com/pikoUsername/tgp/configs"
+	"github.com/pikoUsername/tgp/objects"
+	"github.com/pikoUsername/tgp/utils"
 )
 
 type HttpClient interface {
