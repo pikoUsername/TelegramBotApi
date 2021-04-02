@@ -47,6 +47,10 @@ func (cmc *CopyMessageConfig) Values() (*url.Values, error) {
 	return v, nil
 }
 
+func (cmc *CopyMessageConfig) Method() string {
+	return "copyMessage"
+}
+
 // SendMessageConfig respresnests method,
 // and fields of sendMessage method of telegram
 // https://core.telegram.org/bots/api#sendmessage
@@ -73,19 +77,21 @@ func (smc *SendMessageConfig) Values() (*url.Values, error) {
 	return result, nil
 }
 
-
+func (smc *SendMessageConfig) Method() string {
+	return "sendMessage"
+}
 
 // WebhookConfig uses for Using as arguemnt
 // You may not fill all fields in struct
 // https://core.telegram.org/bots/api#setwebhook
 type SetWebhookConfig struct {
-	URL            *url.URL // required
-	Certificate    interface{}
-	Offset         int
-	MaxConnections int
-	AllowedUpdates bool
+	URL                *url.URL // required
+	Certificate        interface{}
+	Offset             int
+	MaxConnections     int
+	AllowedUpdates     bool
 	DropPendingUpdates bool
-	IP string // if you need u can use it ;)
+	IP                 string // if you need u can use it ;)
 }
 
 func (wc *SetWebhookConfig) Values() (*url.Values, error) {
@@ -101,39 +107,130 @@ func (wc *SetWebhookConfig) Values() (*url.Values, error) {
 	return result, nil
 }
 
+func (wc *SetWebhookConfig) Method() string {
+	return "setWebhook"
+}
+
+// Here starts a stubs
 // SendPhotoConfig ...
 type SendPhotoConfig struct {
 }
 
-func (spc *SendPhotoConfig) values() (*url.Values, error) {
-	return nil, nil
+func (spc *SendPhotoConfig) Values() (*url.Values, error) {
+	return &url.Values{}, nil
 }
 
+func (spc *SendPhotoConfig) Method() string {
+	return "sendPhoto"
+}
+
+// represents a sendAudio fields
 type SendAudioConfig struct {
 }
 
+func (sac *SendAudioConfig) Values() (*url.Values, error) {
+	return &url.Values{}, nil
+}
+
+func (sac *SendAudioConfig) Method() string {
+	return "sendAudio"
+}
+
+// SendDocumentConfig represents sendDoucument method fields
 type SendDocumentConfig struct {
+}
+
+func (sdc *SendDocumentConfig) Values() (*url.Values, error) {
+	return &url.Values{}, nil
+}
+
+func (sdc *SendDocumentConfig) Method() string {
+	return "sendDocument"
 }
 
 type SendVideoConfig struct {
 }
 
-type SendAnimation struct {
+func (svc *SendVideoConfig) Values() (*url.Values, error) {
+	return &url.Values{}, nil
+}
+
+func (svc *SendVideoConfig) Method() string {
+	return "sendVideo"
+}
+
+type SendAnimationConfig struct {
+}
+
+func (sac *SendAnimationConfig) Values() (*url.Values, error) {
+	return &url.Values{}, nil
+}
+
+func (sac *SendAnimationConfig) Method() string {
+	return "sendAnimation"
 }
 
 type SendVoiceConfig struct {
 }
 
+func (svc *SendVoiceConfig) Values() (*url.Values, error) {
+	return &url.Values{}, nil
+}
+
+func (svc *SendVoiceConfig) Method() string {
+	return "sendVoice"
+}
+
 type SendVideoNameConfig struct {
+}
+
+func (svnc *SendVideoNameConfig) Values() (*url.Values, error) {
+	return &url.Values{}, nil
+}
+
+func (svnc *SendVideoNameConfig) Method() string {
+	return "sendVideoName"
 }
 
 type SendMediaGroupConfig struct {
 }
 
+func (smgc *SendMediaGroupConfig) Values() (*url.Values, error) {
+	return &url.Values{}, nil
+}
+
+func (smgc *SendMediaGroupConfig) Method() string {
+	return "sendMediaGroup"
+}
+
 type SendLocationConfig struct {
 }
 
+func (slc *SendLocationConfig) Values() (*url.Values, error) {
+	return &url.Values{}, nil
+}
+
+func (slc *SendLocationConfig) Method() string {
+	return "sendLocation"
+}
+
+// LiveLocationConfig represents Telegram method fields of liveLocation
+// https://core.telegram.org/bots/api#editmessagelivelocation
 type LiveLocationConfig struct {
+	Longitude float32
+	Latitude  float32
+	ChatID    int64
+	MessageID int64
+}
+
+// Values is stub!!
+func (llc *LiveLocationConfig) Values() (*url.Values, error) {
+	v := &url.Values{}
+	return v, nil // stub
+}
+
+func (llc *LiveLocationConfig) Method() string {
+	return "editMessageLiveLocation"
 }
 
 type GetUpdatesConfig struct {
@@ -154,9 +251,8 @@ func (guc *GetUpdatesConfig) Values() (*url.Values, error) {
 	return v, nil
 }
 
-// Here methods name for various MethodConfigs
-// 
-func (cmc *CopyMessageConfig) Method() string { return "copyMessage" }
-func (wc *SetWebhookConfig) Method() string { return "setWebhook" }
-func (guc *GetUpdatesConfig) Method() string { return "getUpdates" }
-func (smc *SendMessageConfig) Method() string { return "sendMessage" }
+func (guc *GetUpdatesConfig) Method() string {
+	return "getUpdates"
+}
+
+// Here methods name for various Metho Configs
