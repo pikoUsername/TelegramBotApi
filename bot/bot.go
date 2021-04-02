@@ -80,6 +80,10 @@ func (bot *Bot) MakeRequest(Method string, Token string, params *url.Values) (*o
 	if err != nil {
 		return tgresp, err
 	}
+	err = utils.CheckResult(tgresp)
+	if err != nil {
+		return tgresp, err
+	}
 	return tgresp, nil
 }
 
