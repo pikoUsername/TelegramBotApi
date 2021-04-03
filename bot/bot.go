@@ -61,15 +61,20 @@ func NewBot(token string, checkToken bool, parseMode string) (*Bot, error) {
 
 // MakeRequest to telegram servers
 // and result parses to TelegramResponse
-func (bot *Bot) MakeRequest(Method string, Token string, params *url.Values) (*objects.TelegramResponse, error) {
+func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.TelegramResponse, error) {
 	// Bad Code, but working, huh
 
 	// Creating URL
-	tgurl := bot.server.ApiUrl(Token, Method)
+	tgurl := bot.server.ApiUrl(bot.Token, Method)
 
 	// Content Type is Application/json
 	// Telegram uses application/json content type
-	resp, err := http.Post(tgurl, "application/json", strings.NewReader(params.Encode()))
+	request, err := http.NewRequest("POST", tgurl, strings.NewReader(params.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	resp, err := bot.Client.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +98,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 	if bot.Me != nil {
 		return bot.Me, nil
 	}
-	resp, err := bot.MakeRequest("getMe", bot.Token, &url.Values{})
+	resp, err := bot.MakeRequest("getMe", &url.Values{})
 	if err != nil {
 		return &objects.User{}, err
 	}
@@ -110,7 +115,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 // Logout your bot from telegram
 // https://core.telegram.org/bots/api#logout
 func (bot *Bot) Logout() (bool, error) {
-	_, err := bot.MakeRequest("logout", bot.Token, &url.Values{})
+	_, err := bot.MakeRequest("logout", &url.Values{})
 	if err != nil {
 		return false, err
 	}
@@ -123,7 +128,7 @@ func (bot *Bot) SendMessageable(c configs.Configurable) (*objects.Message, error
 	if err != nil {
 		return &objects.Message{}, err
 	}
-	resp, err := bot.MakeRequest(c.Method(), bot.Token, v)
+	resp, err := bot.MakeRequest(c.Method(), v)
 	if err != nil {
 		return &objects.Message{}, err
 	}
@@ -150,7 +155,7 @@ func (bot *Bot) Send(config configs.Configurable) (*objects.Message, error) {
 func (bot *Bot) CopyMessage(config *configs.CopyMessageConfig) (*objects.MessageID, error) {
 	// Stub here, TODO: make for every config a values function/method
 	v, err := config.Values()
-	resp, err := bot.MakeRequest(config.Method(), bot.Token, v)
+	resp, err := bot.MakeRequest(config.Method(), v)
 	if err != nil {
 		return &objects.MessageID{}, err
 	}
@@ -224,7 +229,7 @@ func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) (*objects.Update, error)
 	if err != nil {
 		return &objects.Update{}, err
 	}
-	resp, err := bot.MakeRequest(c.Method(), bot.Token, v)
+	resp, err := bot.MakeRequest(c.Method(), v)
 	if err != nil {
 		return &objects.Update{}, &objects.TelegramApiError{
 			Code:               resp.ErrorCode,
@@ -257,7 +262,7 @@ func (bot *Bot) SetWebhook(config *configs.SetWebhookConfig) error {
 	if err != nil {
 		return err
 	}
-	_, err = bot.MakeRequest(config.Method(), bot.Token, v)
+	_, err = bot.MakeRequest(config.Method(), v)
 	if err != nil {
 		return err
 	}
