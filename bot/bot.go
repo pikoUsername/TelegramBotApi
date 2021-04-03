@@ -45,7 +45,7 @@ type Bot struct {
 // for spaces and etc.
 func NewBot(token string, checkToken bool, parseMode string) (*Bot, error) {
 	if checkToken {
-		// Check out token
+		// Check out for correct token
 		err := utils.CheckToken(token)
 		if err != nil {
 			return nil, err
@@ -74,7 +74,10 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 		return nil, err
 	}
 	request.Header.Set("Content-Type", "application/json")
+	// Most important staff doing here
+	// Sending Request to Telegram servers
 	resp, err := bot.Client.Do(request)
+	// check for error
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +171,7 @@ func (bot *Bot) CopyMessage(config *configs.CopyMessageConfig) (*objects.Message
 	return &msg, nil
 }
 
-// ----------------HardCoded for now Dont watch this place pls-----------------
+// Here same functions
 
 // SendPhoto ...
 func (bot *Bot) SendPhoto(config *configs.SendPhotoConfig) (*objects.Message, error) {
@@ -219,8 +222,6 @@ func (bot *Bot) SendLocation(config *configs.SendLocationConfig) (*objects.Messa
 func (bot *Bot) EditMessageLiveLocation(config *configs.LiveLocationConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
-
-// ------------------EndHardCode, Phew----------------------
 
 // GetUpdates uses for long polling
 // https://core.telegram.org/bots/api#getupdates
