@@ -59,7 +59,7 @@ type SendMessageConfig struct {
 	ChatID int
 
 	// It s too, Telegram excepts
-	Text                  string
+	Text                  string // required
 	ParseMode             string
 	Entities              []*objects.MessageEntity
 	DisableWebPagePreview bool

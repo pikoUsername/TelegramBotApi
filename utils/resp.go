@@ -15,5 +15,9 @@ func ResponseDecode(respBody io.ReadCloser) (*objects.TelegramResponse, error) {
 	if err != nil {
 		return &tgresp, err
 	}
+	err = CheckResult(&tgresp)
+	if err != nil {
+		return &tgresp, err
+	}
 	return &tgresp, nil
 }
