@@ -18,7 +18,7 @@ type Dispatcher struct {
 }
 
 // RegisterMessageHandler except func(*objects.Message) but strict typing
-func (dp *Dispatcher) RegisterNessageHandler(callback func(*objects.Message)) {
+func (dp *Dispatcher) RegisterMessageHandler(callback func(*objects.Message)) {
 	dp.MessageHandler = append(dp.MessageHandler, &callback)
 }
 
