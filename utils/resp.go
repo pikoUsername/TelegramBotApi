@@ -7,15 +7,13 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
-// ResponseDecode ...
+// ResponseDecode decodes to objects.TelegramResponse
+// For next step parsing, in other function
+// Result of Reponse saves in TelegramResponse.Result
 func ResponseDecode(respBody io.ReadCloser) (*objects.TelegramResponse, error) {
 	var tgresp objects.TelegramResponse
 	dec := json.NewDecoder(respBody)
 	err := dec.Decode(&tgresp)
-	if err != nil {
-		return &tgresp, err
-	}
-	err = CheckResult(&tgresp)
 	if err != nil {
 		return &tgresp, err
 	}

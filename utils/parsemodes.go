@@ -2,6 +2,6 @@ package utils
 
 // ParseModes
 var (
-	HTML   string = "HTML"
-	Italic string = "italic"
+	HTML   = "HTML"
+	Italic = "italic"
 )
