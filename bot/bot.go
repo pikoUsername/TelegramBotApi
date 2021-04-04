@@ -269,3 +269,32 @@ func (bot *Bot) SetWebhook(config *configs.SetWebhookConfig) error {
 	}
 	return nil
 }
+
+// SetMyCommands Setup command to Telegram bot
+// https://core.telegram.org/bots/api#setmycommands
+func (bot *Bot) SetMyCommands(conf *configs.SetMyCommandsConfig) (bool, error) {
+	v, err := conf.Values() // Stub...
+	if err != nil {
+		return false, err
+	}
+	_, err = bot.MakeRequest(conf.Method(), v)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// GetMyCommands get from bot commands command
+// https://core.telegram.org/bots/api#getmycommands
+func (bot *Bot) GetMyCommands() ([]*objects.BotCommand, error) {
+	resp, err := bot.MakeRequest("getMyCommands", &url.Values{})
+	if err != nil {
+		return nil, err
+	}
+	var cmds []*objects.BotCommand
+	err = json.Unmarshal(resp.Result, &cmds)
+	if err != nil {
+		return cmds, err
+	}
+	return cmds, nil
+}
