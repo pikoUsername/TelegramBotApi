@@ -18,5 +18,7 @@ func (ho *HandlerObj) RegisterMiddleware(f *func(interface{})) {
 
 // Trigger is from aiogram framework
 func (ho *HandlerObj) Trigger(obj interface{}) {
-	return
+	if ho.Middlewares != nil {
+
+	}
 }
