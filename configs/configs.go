@@ -21,6 +21,13 @@ type FileableConf interface {
 	Url() string
 }
 
+// InputFile interaced by FileableConf
+// Uses as Abstract level for real file
+type InputFile struct {
+	url  string
+	File interface{}
+}
+
 // For CopyMessage method config
 // https://core.telegram.org/bots/api#copymessage
 type CopyMessageConfig struct {
@@ -99,8 +106,10 @@ func (wc *SetWebhookConfig) Values() (*url.Values, error) {
 	// omg, why it s so bore ;(
 	result.Add("url", wc.URL.String())
 	// result.Add("certificate", wc.Certificate.URL())
-	result.Add("ip_address", wc.IP)
-	result.Add("max_connections", strconv.Itoa(wc.MaxConnections))
+	result.Add("ip_address", wc.IP) // required field
+	if wc.MaxConnections != 0 {
+		result.Add("max_connections", strconv.Itoa(wc.MaxConnections))
+	}
 	result.Add("allowed_updates", strconv.FormatBool(wc.AllowedUpdates))
 	result.Add("drop_pending_updates", strconv.FormatBool(wc.DropPendingUpdates))
 
@@ -148,7 +157,15 @@ func (sdc *SendDocumentConfig) Method() string {
 	return "sendDocument"
 }
 
+// SendVideoConfig Represents sendVideo fields
+// https://core.telegram.org/bots/api#sendvideo
 type SendVideoConfig struct {
+	ChatId   int64
+	Video    *InputFile
+	Duration uint32
+	Width    uint16
+	Height   uint16
+	Thumb    *InputFile
 }
 
 func (svc *SendVideoConfig) Values() (*url.Values, error) {
@@ -159,11 +176,37 @@ func (svc *SendVideoConfig) Method() string {
 	return "sendVideo"
 }
 
+// Represents Method SendAnimation Fields
+// https://core.telegram.org/bots/api#sendanimation
 type SendAnimationConfig struct {
+	ChatId    int64      // ChatId might be a minus, or something like this
+	Animation *InputFile // type: InputFile or string
+
+	// Using unsigned, bc Duration width,
+	// and height could be ONLY positive number
+	Duration uint32
+	Width    uint32 // Animation Width, what?
+	Height   uint32
+
+	Thumb     *InputFile
+	Caption   string
+	ParseMode string
 }
 
 func (sac *SendAnimationConfig) Values() (*url.Values, error) {
-	return &url.Values{}, nil
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(sac.ChatId, 10))
+	v.Add("duration", strconv.FormatUint(uint64(sac.Duration), 10))
+	v.Add("width", strconv.FormatUint(uint64(sac.Width), 10))
+	v.Add("height", strconv.FormatUint(uint64(sac.Height), 10))
+	if sac.Caption != "" {
+		v.Add("caption", sac.Caption)
+	}
+	if sac.ParseMode != "" {
+		v.Add("parse_mode", sac.ParseMode)
+	}
+
+	return v, nil
 }
 
 func (sac *SendAnimationConfig) Method() string {
@@ -171,10 +214,31 @@ func (sac *SendAnimationConfig) Method() string {
 }
 
 type SendVoiceConfig struct {
+	ChatId               int64
+	Voice                interface{} // type: InputFile or String
+	Caption              string
+	ParseMode            string
+	CaptionEntities      []*objects.MessageEntity
+	Duration             int
+	DisableNotifications bool
+	ReplyToMessageID     int64
+	ReplyMarkup          *objects.InlineKeyboard
 }
 
 func (svc *SendVoiceConfig) Values() (*url.Values, error) {
-	return &url.Values{}, nil
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(svc.ChatId, 10))
+	v.Add("caption", svc.Caption)
+	if svc.Caption != "" {
+		v.Add("parse_mode", svc.Caption)
+	}
+	v.Add("disable_notifications", strconv.FormatBool(svc.DisableNotifications))
+	if svc.ReplyToMessageID != 0 {
+		v.Add("reply_to_message_id", strconv.FormatInt(svc.ReplyToMessageID, 10))
+	}
+	// TODO: reply Markup parsing function
+
+	return v, nil
 }
 
 func (svc *SendVoiceConfig) Method() string {
@@ -255,4 +319,16 @@ func (guc *GetUpdatesConfig) Method() string {
 	return "getUpdates"
 }
 
-// Here methods name for various Metho Configs
+type SetMyCommandsConfig struct {
+	commands []*objects.BotCommand
+}
+
+func (smcc *SetMyCommandsConfig) Values() (*url.Values, error) {
+	v := &url.Values{}
+	v.Add("commands", "null") // Stub
+	return v, nil
+}
+
+func (smcc *SetMyCommandsConfig) Method() string {
+	return "setMyCommands"
+}
