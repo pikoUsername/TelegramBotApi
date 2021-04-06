@@ -125,6 +125,10 @@ func (bot *Bot) Logout() (bool, error) {
 	return true, nil
 } // Indeed
 
+// =============================
+// Message sending
+// =============================
+
 // Send uses as sender for almost all stuff
 func (bot *Bot) SendMessageable(c configs.Configurable) (*objects.Message, error) {
 	v, err := c.Values()
@@ -170,8 +174,6 @@ func (bot *Bot) CopyMessage(config *configs.CopyMessageConfig) (*objects.Message
 	}
 	return &msg, nil
 }
-
-// Here same functions
 
 // SendPhoto ...
 func (bot *Bot) SendPhoto(config *configs.SendPhotoConfig) (*objects.Message, error) {
@@ -223,52 +225,15 @@ func (bot *Bot) EditMessageLiveLocation(config *configs.LiveLocationConfig) (*ob
 	return bot.Send(config)
 }
 
-// GetUpdates uses for long polling
-// https://core.telegram.org/bots/api#getupdates
-func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) (*objects.Update, error) {
-	v, err := c.Values()
-	if err != nil {
-		return &objects.Update{}, err
-	}
-	resp, err := bot.MakeRequest(c.Method(), v)
-	if err != nil {
-		return &objects.Update{}, &objects.TelegramApiError{
-			Code:               resp.ErrorCode,
-			Description:        resp.Description,
-			ResponseParameters: objects.ResponseParameters{},
-		}
-	}
-	var upd objects.Update
-	err = json.Unmarshal(resp.Result, &upd)
-	if err != nil {
-		return &upd, err
-	}
-	return &upd, nil
-}
-
 // SendMessage sends message using ChatID
 // see: https://core.telegram.org/bots/api#sendmessage
 func (bot *Bot) SendMessage(config *configs.SendMessageConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
-// SetWebhook make subscribe to telegram events
-// or sends to telegram a request for make
-// Subscribe to specific IP, and when user
-// sends a message to your bot, Telegram know
-// Your bot IP and sends to your bot a Update
-// https://core.telegram.org/bots/api#setwebhook
-func (bot *Bot) SetWebhook(config *configs.SetWebhookConfig) error {
-	v, err := config.Values()
-	if err != nil {
-		return err
-	}
-	_, err = bot.MakeRequest(config.Method(), v)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+// =========================
+// Commands Methods
+// =========================
 
 // SetMyCommands Setup command to Telegram bot
 // https://core.telegram.org/bots/api#setmycommands
@@ -297,4 +262,78 @@ func (bot *Bot) GetMyCommands() ([]*objects.BotCommand, error) {
 		return cmds, err
 	}
 	return cmds, nil
+}
+
+// ======================
+// Getting Updates
+// ======================
+
+// DeleteWebhook if result is True, will be nil, if not so err
+// https://core.telegram.org/bots/api#deletewebhook
+func (bot *Bot) DeleteWebhook(c *configs.DeleteWebhookConfig) error {
+	v, err := c.Values()
+	if err != nil {
+		return err
+	}
+	_, err = bot.MakeRequest(c.Method(), v)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetUpdates uses for long polling
+// https://core.telegram.org/bots/api#getupdates
+func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) ([]objects.Update, error) {
+	v, err := c.Values()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := bot.MakeRequest(c.Method(), v)
+	if err != nil {
+		return nil, &objects.TelegramApiError{
+			Code:               resp.ErrorCode,
+			Description:        resp.Description,
+			ResponseParameters: objects.ResponseParameters{},
+		}
+	}
+	var upd []objects.Update
+	err = json.Unmarshal(resp.Result, &upd)
+	if err != nil {
+		return upd, err
+	}
+	return upd, nil
+}
+
+// SetWebhook make subscribe to telegram events
+// or sends to telegram a request for make
+// Subscribe to specific IP, and when user
+// sends a message to your bot, Telegram know
+// Your bot IP and sends to your bot a Update
+// https://core.telegram.org/bots/api#setwebhook
+func (bot *Bot) SetWebhook(config *configs.SetWebhookConfig) error {
+	v, err := config.Values()
+	if err != nil {
+		return err
+	}
+	_, err = bot.MakeRequest(config.Method(), v)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetWebhookInfo not require parametrs
+// https://core.telegram.org/bots/api#getwebhookinfo
+func (bot *Bot) GetWebhookInfo() (*objects.WebhookInfo, error) {
+	resp, err := bot.MakeRequest("getWebhookInfo", &url.Values{})
+	if err != nil {
+		return &objects.WebhookInfo{}, err
+	}
+	var wi objects.WebhookInfo
+	err = json.Unmarshal(resp.Result, &wi)
+	if err != nil {
+		return &wi, err
+	}
+	return &wi, nil
 }
