@@ -332,3 +332,17 @@ func (smcc *SetMyCommandsConfig) Values() (*url.Values, error) {
 func (smcc *SetMyCommandsConfig) Method() string {
 	return "setMyCommands"
 }
+
+type DeleteWebhookConfig struct {
+	DropPendingUpdates bool
+}
+
+func (dwc *DeleteWebhookConfig) Values() (*url.Values, error) {
+	v := &url.Values{}
+	v.Add("drop_pending_updates", strconv.FormatBool(dwc.DropPendingUpdates))
+	return v, nil
+}
+
+func (dwc *DeleteWebhookConfig) Method() string {
+	return "deleteWebhook"
+}
