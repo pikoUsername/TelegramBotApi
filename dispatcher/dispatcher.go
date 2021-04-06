@@ -65,7 +65,7 @@ func (dp *Dispatcher) RegisterHandler(callback *func(interface{}, bot.Bot)) {
 
 // ProcessUpdates havenot got any efficient
 // if you use webhook and long polling
-func (dp *Dispatcher) ProcessPollingUpdates(updates []objects.Update) error {
+func (dp *Dispatcher) ProcessPollingUpdates(updates []*objects.Update) error {
 	return nil // TODO
 }
 
@@ -87,7 +87,8 @@ func (dp *Dispatcher) StartPolling(c *configs.GetUpdatesConfig) error {
 			return err
 		}
 		if updates != nil {
-			dp.ProcessPollingUpdates(updates)
+			// I cant understand how it s works, and where need to use goroutines
+			go dp.ProcessPollingUpdates(updates)
 		}
 	}
 	return nil
