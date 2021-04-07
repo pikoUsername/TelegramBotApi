@@ -30,4 +30,5 @@ func (ho *HandlerObj) Trigger(obj interface{}, bot bot.Bot) {
 			f(obj, nil) // stub
 		}
 	}
+
 }
