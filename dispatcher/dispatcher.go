@@ -65,12 +65,12 @@ func (dp *Dispatcher) RegisterHandler(callback *func(interface{}, bot.Bot)) {
 
 // ProcessUpdates havenot got any efficient
 // if you use webhook and long polling
-func (dp *Dispatcher) ProcessPollingUpdates(updates []*objects.Update) error {
+func (dp *Dispatcher) ProcessPollingUpdates(updates []objects.Update) error {
 	return nil // TODO
 }
 
 // ProcessUpdates using for process updates from any way
-func (dp *Dispatcher) ProcessUpdates(updates []*objects.Update) error {
+func (dp *Dispatcher) ProcessUpdates(updates []objects.Update) error {
 	return nil // TODO
 }
 
