@@ -2,6 +2,7 @@ package bot
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -38,6 +39,9 @@ type Bot struct {
 	// if you wanna create own, just create
 	// using this structure instead of NewBot function
 	server *TelegramApiServer `json:"-"`
+
+	// For DebugLog in console
+	Debug bool
 }
 
 // NewBot get a new Bot
@@ -65,7 +69,7 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	// Bad Code, but working, huh
 
 	// Creating URL
-	tgurl := bot.server.ApiUrl(bot.Token, Method)
+	tgurl := bot.server.ApiURL(bot.Token, Method)
 
 	// Content Type is Application/json
 	// Telegram uses application/json content type
@@ -134,6 +138,10 @@ func (bot *Bot) SendMessageable(c configs.Configurable) (*objects.Message, error
 	v, err := c.Values()
 	if err != nil {
 		return &objects.Message{}, err
+	}
+	// Check out for parse_mode and set bot.ParseMode if config parse_mode is empty
+	if v.Get("parse_mode") == "" {
+		v.Set("parse_mode", bot.ParseMode)
 	}
 	resp, err := bot.MakeRequest(c.Method(), v)
 	if err != nil {
@@ -298,6 +306,7 @@ func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) ([]objects.Update, error
 		}
 	}
 	var upd []objects.Update
+	log.Print(resp.Result)
 	err = json.Unmarshal(resp.Result, &upd)
 	if err != nil {
 		return upd, err
