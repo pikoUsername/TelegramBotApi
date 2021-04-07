@@ -29,7 +29,7 @@ func CheckToken(token string) error {
 }
 
 // Checks Statuscode and if Error then creates new Error with Error Description
-func CheckResult(resp *objects.TelegramResponse) error {
+func CheckResult(resp *objects.TelegramResponse) (*objects.TelegramResponse, error) {
 	// Check for Status, When StatusCode is 0 is default value
 	// and Check is complete, and why so?
 	// Telegram sends OK instead StatusCode 200
@@ -38,12 +38,12 @@ func CheckResult(resp *objects.TelegramResponse) error {
 		if resp.Parametrs != nil {
 			parameters = *resp.Parametrs
 		}
-		return &objects.TelegramApiError{
+		return resp, &objects.TelegramApiError{
 			Code:               resp.ErrorCode,
 			Description:        resp.Description,
 			ResponseParameters: parameters,
 		}
 	}
 
-	return nil
+	return resp, nil
 }
