@@ -12,6 +12,7 @@ import (
 	"github.com/pikoUsername/tgp/utils"
 )
 
+// HttpClient ...
 type HttpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -63,6 +64,13 @@ func NewBot(token string, checkToken bool, parseMode string) (*Bot, error) {
 	}, nil
 }
 
+func (bot *Bot) Log(text string, v *url.Values, message interface{}) {
+	if bot.Debug {
+		log.Printf("%s req : %+v\n", text, v)
+		log.Printf("%s resp: %+v\n", text, message)
+	}
+}
+
 // MakeRequest to telegram servers
 // and result parses to TelegramResponse
 func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.TelegramResponse, error) {
@@ -92,11 +100,7 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	if err != nil {
 		return tgresp, err
 	}
-	err = utils.CheckResult(tgresp)
-	if err != nil {
-		return tgresp, err
-	}
-	return tgresp, nil
+	return utils.CheckResult(tgresp)
 }
 
 // GetMe reporesents telegram method
@@ -149,6 +153,7 @@ func (bot *Bot) SendMessageable(c configs.Configurable) (*objects.Message, error
 	}
 	var msg objects.Message
 	err = json.Unmarshal(resp.Result, &msg)
+	bot.Log("SendMessageable function activated:", v, &msg)
 	if err != nil {
 		return &msg, err
 	}
@@ -259,12 +264,12 @@ func (bot *Bot) SetMyCommands(conf *configs.SetMyCommandsConfig) (bool, error) {
 
 // GetMyCommands get from bot commands command
 // https://core.telegram.org/bots/api#getmycommands
-func (bot *Bot) GetMyCommands() ([]*objects.BotCommand, error) {
+func (bot *Bot) GetMyCommands() ([]objects.BotCommand, error) {
 	resp, err := bot.MakeRequest("getMyCommands", &url.Values{})
 	if err != nil {
 		return nil, err
 	}
-	var cmds []*objects.BotCommand
+	var cmds []objects.BotCommand
 	err = json.Unmarshal(resp.Result, &cmds)
 	if err != nil {
 		return cmds, err

@@ -19,6 +19,7 @@ func getBot(t *testing.T) (*bot.Bot, error) {
 	if err != nil {
 		return b, err
 	}
+	b.Debug = true
 	return b, nil
 }
 
@@ -26,25 +27,28 @@ func TestCheckToken(t *testing.T) {
 	b, err := bot.NewBot("bla:bla:bla", true, "HTML")
 	if err != nil && b == nil {
 		t.Error(err)
-		t.Fail()
 	}
 }
 
 func TestGetUpdates(t *testing.T) {
-	b, _ := bot.NewBot(TestToken, false, "HTML")
-	_, err := b.GetUpdates(&configs.GetUpdatesConfig{})
+	b, err := bot.NewBot(TestToken, false, "HTML")
 	if err != nil {
 		t.Error(err)
-		t.Fail()
+	}
+	_, err = b.GetUpdates(&configs.GetUpdatesConfig{})
+	if err != nil {
+		t.Error(err)
 	}
 }
 
 func TestParseMode(t *testing.T) {
-	b, _ := getBot(t)
-	_, err := utils.Link("https://www.google.com", "lol")
+	b, err := getBot(t)
 	if err != nil {
 		t.Error(err)
-		t.Fail()
+	}
+	_, err = utils.Link("https://www.google.com", "lol")
+	if err != nil {
+		t.Error(err)
 	}
 	m := &configs.SendMessageConfig{
 		ChatID: TestChatID,
@@ -53,6 +57,5 @@ func TestParseMode(t *testing.T) {
 	_, err = b.SendMessageable(m)
 	if err != nil {
 		t.Error(err)
-		t.Fail()
 	}
 }
