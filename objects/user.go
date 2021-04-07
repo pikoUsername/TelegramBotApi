@@ -16,3 +16,6 @@ type User struct {
 
 	Location *ChatLocation `json:"location"`
 }
+
+type MyChatMember struct {
+}

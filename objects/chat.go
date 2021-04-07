@@ -7,3 +7,9 @@ type Chat struct {
 	Username  string `json:"username"`
 	Type      string `json:"type"`
 }
+
+type ChatMember struct {
+}
+
+type MyChatMember struct {
+}
