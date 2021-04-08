@@ -46,13 +46,13 @@ func TestParseMode(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	_, err = utils.Link("https://www.google.com", "lol")
+	line, err := utils.Link("https://www.google.com", "lol")
 	if err != nil {
 		t.Error(err)
 	}
 	m := &configs.SendMessageConfig{
 		ChatID: TestChatID,
-		Text:   "aaaa",
+		Text:   line,
 	}
 	_, err = b.SendMessageable(m)
 	if err != nil {
