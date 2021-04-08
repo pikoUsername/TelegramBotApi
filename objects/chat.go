@@ -49,3 +49,14 @@ type ChatInviteLink struct {
 	ExpireDate  int64  `json:"expire_date"`
 	MemberLimit uint   `json:"member_limit"`
 }
+
+// ChatMemberUpdated object represents changes in the status of a chat member.
+// https://core.telegram.org/bots/api#chatmemberupdated
+type ChatMemberUpdated struct {
+	Chat          *Chat           `json:"chat"`
+	From          *User           `json:"user"`
+	Date          uint64          `json:"date"`
+	OldChatMember *ChatMember     `json:"old_chat_member"`
+	NewChatMember *ChatMember     `json:"new_chat_member"`
+	InviteLink    *ChatInviteLink `json:"invite_link"`
+}
