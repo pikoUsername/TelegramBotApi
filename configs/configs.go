@@ -300,8 +300,8 @@ func (llc *LiveLocationConfig) Method() string {
 
 type GetUpdatesConfig struct {
 	Offset         int
-	Limit          int
-	Timeout        int
+	Limit          uint
+	Timeout        uint
 	AllowedUpdates []string
 }
 
@@ -310,8 +310,8 @@ func (guc *GetUpdatesConfig) Values() (*url.Values, error) {
 	if guc.Offset != 0 {
 		v.Add("offset", strconv.Itoa(guc.Offset))
 	}
-	v.Add("limit", strconv.Itoa(guc.Limit))
-	v.Add("timeout", strconv.Itoa(guc.Timeout))
+	v.Add("limit", strconv.FormatUint(uint64(guc.Limit), 10))
+	v.Add("timeout", strconv.FormatUint(uint64(guc.Timeout), 10))
 
 	return v, nil
 }
