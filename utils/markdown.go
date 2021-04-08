@@ -7,61 +7,43 @@ import (
 )
 
 var (
-	httpRegex, _ = regexp.Compile("^(http|https)://")
+	// cant make constant
+	httpRegex, _    = regexp.Compile("^(http|https)://")
+	HTML_QUOTES_MAP = map[interface{}]string{"<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;"}
 )
 
-// You will use is most cases HTML formatting
-// So, not need to make MarkDown too? yes?
-type HTMLTagarguments map[string]string
-
-func (hargs *HTMLTagarguments) Add(key string, value interface{}) {
-	return
-}
-
-func (hargs *HTMLTagarguments) Encode() string {
-	return ""
-}
-
-// wrapHtml wrapps into HTML tag, and tag arguments
-// Provate method, not for using outside
-func wrapHtml(tag string, text string, hargs *HTMLTagarguments) string {
-	if hargs == nil {
-		// wrapps into html tag
-		return fmt.Sprintf("<%s>%s</%s>", tag, text, tag)
-	} else {
-		return fmt.Sprintf("<%s %s>%s</%s>", tag, hargs.Encode(), text, tag)
-	}
-}
-
+// Link check out the link for http and https starting with
 func Link(link string, text string) (string, error) {
 	if !httpRegex.MatchString(link) {
-		return text, errors.New("Link is not valid.")
+		return "", errors.New("Link is not valid.")
 	}
-	return wrapHtml("a", text, nil), nil
+	return fmt.Sprintf("<%s href='%s'>%s</%s>", "a", link, text, "a"), nil
 }
 
-func Strong(text string) string {
-	return wrapHtml("strong", text, nil)
+// Strong make stronger any text
+func Strong(text ...string) string {
+	return "<strong>" + fmt.Sprintln(text) + "</strong>"
 }
 
-func HItalic(text string) string {
-	return wrapHtml("i", text, nil)
+// Italic, spahetti
+func HItalic(text ...string) string {
+	return "<i>" + fmt.Sprintln(text) + "</i>"
 }
 
+// Code is Code, telegram only lanuage- startswith classes for code
 func Code(code string, language string) string {
-	v := &HTMLTagarguments{}
-	v.Add("class", "language-"+language)
-	return wrapHtml("code", code, v)
+	return fmt.Sprintf("<%s class='language-%s'>%s</%s>", "code", language, code, "code")
+}
+
+// Pre pre pre pre pre
+func Pre(text ...string) string {
+	return "<pre>" + fmt.Sprintln(text) + "</pre>"
 }
 
 func PreCode(code string, language string) string {
-	return wrapHtml("pre", Code(code, language), nil)
+	return Pre(Code(code, language))
 }
 
-func Pre(text string) string {
-	return wrapHtml("pre", text, nil)
-}
-
-func Bold(text string) string {
-	return wrapHtml("b", text, nil)
+func Bold(text ...string) string {
+	return "<b>" + fmt.Sprintln(text) + "</b>"
 }
