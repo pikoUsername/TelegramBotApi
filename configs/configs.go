@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 
@@ -345,4 +346,96 @@ func (dwc *DeleteWebhookConfig) Values() (*url.Values, error) {
 
 func (dwc *DeleteWebhookConfig) Method() string {
 	return "deleteWebhook"
+}
+
+// SendDiceConfig https://core.telegram.org/bots/api#senddice
+type SendDiceConfig struct {
+	ChatID                   int64
+	Emoji                    string
+	DisableNotifications     bool
+	ReplyToMessageId         int64
+	AllowSendingWithoutReply bool
+	// ReplyMarkup will be type of objects.KeynoardMarkup not inline, and reply and etc.
+	// ReplyMarkup              *objects.KeyboardMarkup
+}
+
+func (sdc *SendDiceConfig) Values() (*url.Values, error) {
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(sdc.ChatID, 10))
+	if sdc.Emoji != "" {
+		v.Add("emoji", sdc.Emoji)
+	}
+	v.Add("disable_notification", strconv.FormatBool(sdc.DisableNotifications))
+	if sdc.ReplyToMessageId != 0 {
+		v.Add("reply_to_message_id", strconv.FormatInt(sdc.ReplyToMessageId, 10))
+	}
+	v.Add("allow_sending_without_reply", strconv.FormatBool(sdc.AllowSendingWithoutReply))
+	return v, nil
+}
+
+func (sdc *SendDiceConfig) Method() string {
+	return "sendDice"
+}
+
+// SendPollConfig Use this method to send a native poll
+// https://core.telegram.org/bots/api#sendpoll
+type SendPollConfig struct {
+	ChatID   int64
+	Question string   // VarChar(300) limit 300 chars
+	Options  []string // starts with 2->10 limit, 1-100 char limit
+
+	// Vezet, Vezet
+	IsAnonymous bool
+	Type        string
+
+	AllowsMultipleAnswers bool
+	CorrectOptionId       int64
+	Explanation           string
+	ExpalnationParseMode  string
+	ExplnationEntites     []*objects.MessageEntity
+
+	// Using int time, here can be used time.Time
+	OpenPeriod int64
+	CloseDate  int64
+	IsClosed   bool
+
+	// Please, always turn off this
+	DisableNotifications     bool
+	ReplyToMessageID         int64
+	AllowSendingWithoutReply bool
+	// ReplyMarkup              *objects.KeyboardMarkup
+}
+
+func (spc *SendPollConfig) Values() (*url.Values, error) {
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(spc.ChatID, 10))
+	v.Add("question", spc.Question)
+	// lucky, lucky
+	v.Add("is_anonymous", strconv.FormatBool(spc.IsAnonymous))
+	if spc.Type != "" {
+		v.Add("type", spc.Type)
+	}
+	v.Add("allows_multiple_answers", strconv.FormatBool(spc.AllowsMultipleAnswers))
+	v.Add("correct_option_id", strconv.FormatInt(spc.CorrectOptionId, 10))
+	if spc.Explanation != "" {
+		v.Add("explanation", spc.Explanation)
+	}
+	if spc.ExpalnationParseMode != "" {
+		v.Add("explanation_parse_mode", spc.ExpalnationParseMode)
+	}
+	if spc.ExplnationEntites != nil {
+		v.Add("explanation_entities", fmt.Sprintln(spc.ExplnationEntites))
+	}
+	v.Add("open_period", strconv.FormatInt(spc.OpenPeriod, 10))
+	v.Add("close_date", strconv.FormatInt(spc.CloseDate, 10))
+	v.Add("is_closed", strconv.FormatBool(spc.IsClosed))
+	v.Add("disable_notifications", strconv.FormatBool(spc.DisableNotifications))
+	if spc.ReplyToMessageID != 0 {
+		v.Add("reply_to_message_id", strconv.FormatInt(spc.ReplyToMessageID, 10))
+	}
+	return v, nil
+}
+
+func (spc *SendPollConfig) Method() string {
+	return "sendPoll"
 }

@@ -244,6 +244,16 @@ func (bot *Bot) SendMessage(config *configs.SendMessageConfig) (*objects.Message
 	return bot.Send(config)
 }
 
+// SendPoll Use this method to send a native poll
+// https://core.telegram.org/bots/api#sendpoll
+func (bot *Bot) SendPoll(config *configs.SendPollConfig) (*objects.Message, error) {
+	return bot.Send(config)
+}
+
+func (bot *Bot) SendDice(config *configs.SendDiceConfig) (*objects.Message, error) {
+	return bot.Send(config)
+}
+
 // =========================
 // Commands Methods
 // =========================
