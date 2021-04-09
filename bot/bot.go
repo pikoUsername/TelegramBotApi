@@ -77,7 +77,9 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	// Bad Code, but working, huh
 
 	// Creating URL
-	tgurl := bot.server.ApiURL(bot.Token, Method)
+	// fix bug with sending request,
+	// when url creates here or NewRequest not creates a correct url with url params
+	tgurl := bot.server.ApiURL(bot.Token, Method+"?"+params.Encode())
 
 	// Content Type is Application/json
 	// Telegram uses application/json content type
