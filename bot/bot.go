@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/pikoUsername/tgp/configs"
@@ -134,6 +135,76 @@ func (bot *Bot) Logout() (bool, error) {
 	}
 	return true, nil
 } // Indeed
+
+// ===============================
+// No returning value Telegram api methods
+// ===============================
+
+// DeleteChatPhoto represents deleteChatPhoto method
+// https://core.telegram.org/bots/api#deletechatphoto
+func (bot *Bot) DeleteChatPhoto(ChatId int64) error {
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
+	_, err := bot.MakeRequest("deleteChatPhoto", v)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// SetchatTitle respresents setChatTitle method
+// https://core.telegram.org/bots/api#setChatTitle
+func (bot *Bot) SetChatTitle(ChatId int64, Title string) error {
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
+	v.Add("title", Title)
+	_, err := bot.MakeRequest("setChatTitle", v)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// SetChatDescription respresents setChatDescription method
+// https://core.telegram.org/bots/api#setChatDescription
+func (bot *Bot) SetChatDescription(ChatId int64, Description string) error {
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
+	v.Add("description", Description)
+	_, err := bot.MakeRequest("setChatDescription", v)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// PinChatMessage respresents pinChatMessage method
+// https://core.telegram.org/bots/api#pinchatmessage
+func (bot *Bot) PinChatMessage(ChatId int64, MessageId int64, DisableNotifiaction bool) error {
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
+	v.Add("message_id", strconv.FormatInt(MessageId, 10))
+	v.Add("disable_notifications", strconv.FormatBool(DisableNotifiaction))
+	_, err := bot.MakeRequest("pinChatMessage", v)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UnpinAllChatMessage respresents unpinAllChatMessages method
+// https://core.telegram.org/bots/api#unpinAllChatMessages
+func (bot *Bot) UnpinAllChatMessages(ChatId int64) error {
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
+	_, err := bot.MakeRequest("unpinAllChatMessages", v)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // =============================
 // Message sending
