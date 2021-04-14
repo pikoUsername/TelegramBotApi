@@ -5,4 +5,4 @@ simple Telegram Bot Api wrapper, maybe will grow to framework
 
 ###### docs: 
 <br>
- read the code!
+ (WIP) for first time, you can read the code 
