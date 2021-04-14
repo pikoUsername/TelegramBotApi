@@ -12,6 +12,7 @@ import (
 // Result of Reponse saves in TelegramResponse.Result
 func ResponseDecode(respBody io.ReadCloser) (*objects.TelegramResponse, error) {
 	var tgresp objects.TelegramResponse
+	// Maybe use the Unmarshal ...
 	dec := json.NewDecoder(respBody)
 	err := dec.Decode(&tgresp)
 	if err != nil {
