@@ -62,9 +62,8 @@ func (dp *Dispatcher) ResetWebhook(check bool) error {
 	return dp.Bot.DeleteWebhook(&configs.DeleteWebhookConfig{})
 }
 
-// RegisterHandler excepts you pass to parametrs a your function
-// which have no returns
-func (dp *Dispatcher) RegisterHandler(callback *func(interface{}, bot.Bot)) {
+// RegisterMessageHandler excepts you pass to parametrs a your function
+func (dp *Dispatcher) RegisterMessageHandler(callback *func(interface{}, bot.Bot)) {
 	dp.MessageHandler.Register(callback)
 }
 
