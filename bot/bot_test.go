@@ -24,7 +24,7 @@ func getBot(t *testing.T) (*bot.Bot, error) {
 }
 
 func TestCheckToken(t *testing.T) {
-	b, err := bot.NewBot("bla:bla:bla", true, "HTML")
+	b, err := bot.NewBot("bla:bla", true, "HTML")
 	if err != nil && b == nil {
 		t.Error(err)
 	}
