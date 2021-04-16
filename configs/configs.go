@@ -10,6 +10,9 @@ import (
 
 // This file stores ALL method configs
 
+// functions which startswith New and method name
+// uses for creating configs which stores ONLY required paramters
+
 // Configurable is interface for using by method
 type Configurable interface {
 	Values() (*url.Values, error)
@@ -64,7 +67,7 @@ func (cmc *CopyMessageConfig) Method() string {
 // https://core.telegram.org/bots/api#sendmessage
 type SendMessageConfig struct {
 	// Required Field
-	ChatID int
+	ChatID int64
 
 	// It s too, Telegram excepts
 	Text                  string // required
@@ -76,17 +79,27 @@ type SendMessageConfig struct {
 // values ...
 func (smc *SendMessageConfig) Values() (*url.Values, error) {
 	result := &url.Values{}
-	result.Add("chat_id", strconv.Itoa(smc.ChatID))
+	result.Add("chat_id", strconv.FormatInt(smc.ChatID, 10))
+
 	result.Add("text", smc.Text)
+
 	if smc.ParseMode != "" {
 		result.Add("parse_mode", smc.ParseMode)
 	}
+
 	result.Add("disable_web_page_preview", strconv.FormatBool(smc.DisableWebPagePreview))
 	return result, nil
 }
 
 func (smc *SendMessageConfig) Method() string {
 	return "sendMessage"
+}
+
+func NewSendMessage(chat_id int64, text string) *SendMessageConfig {
+	return &SendMessageConfig{
+		ChatID: chat_id,
+		Text:   text,
+	}
 }
 
 // WebhookConfig uses for Using as arguemnt
@@ -119,6 +132,12 @@ func (wc *SetWebhookConfig) Values() (*url.Values, error) {
 
 func (wc *SetWebhookConfig) Method() string {
 	return "setWebhook"
+}
+
+func NewSetWebhook(url *url.URL) *SetWebhookConfig {
+	return &SetWebhookConfig{
+		URL: url,
+	}
 }
 
 // Here starts a stubs
@@ -279,9 +298,9 @@ func (slc *SendLocationConfig) Method() string {
 	return "sendLocation"
 }
 
-// LiveLocationConfig represents Telegram method fields of liveLocation
+// LiveLocationConfig represents Telegram method fields of editmessageliveLocation
 // https://core.telegram.org/bots/api#editmessagelivelocation
-type LiveLocationConfig struct {
+type EditMessageLLConf struct { // too long name anyway
 	Longitude float32
 	Latitude  float32
 	ChatID    int64
@@ -289,13 +308,23 @@ type LiveLocationConfig struct {
 }
 
 // Values is stub!!
-func (llc *LiveLocationConfig) Values() (*url.Values, error) {
+func (llc *EditMessageLLConf) Values() (*url.Values, error) {
 	v := &url.Values{}
 	return v, nil // stub
 }
 
-func (llc *LiveLocationConfig) Method() string {
+func (llc *EditMessageLLConf) Method() string {
 	return "editMessageLiveLocation"
+}
+
+// all fields are required
+func NewEditMessageLL(longitude float32, latit float32, chat_id int64, message_id int64) *EditMessageLLConf {
+	return &EditMessageLLConf{
+		Longitude: longitude,
+		Latitude:  latit,
+		ChatID:    chat_id,
+		MessageID: message_id,
+	}
 }
 
 type GetUpdatesConfig struct {
@@ -320,6 +349,15 @@ func (guc *GetUpdatesConfig) Method() string {
 	return "getUpdates"
 }
 
+// Uses for default values for Sending updates
+func NewGetUpdateConfig(Offset int) *GetUpdatesConfig {
+	return &GetUpdatesConfig{
+		Offset:  Offset,
+		Limit:   20,
+		Timeout: 5,
+	}
+}
+
 type SetMyCommandsConfig struct {
 	commands []*objects.BotCommand
 }
@@ -334,6 +372,12 @@ func (smcc *SetMyCommandsConfig) Method() string {
 	return "setMyCommands"
 }
 
+func NewSetMyCommands(commands []*objects.BotCommand) *SetMyCommandsConfig {
+	return &SetMyCommandsConfig{
+		commands: commands,
+	}
+}
+
 type DeleteWebhookConfig struct {
 	DropPendingUpdates bool
 }
@@ -346,6 +390,12 @@ func (dwc *DeleteWebhookConfig) Values() (*url.Values, error) {
 
 func (dwc *DeleteWebhookConfig) Method() string {
 	return "deleteWebhook"
+}
+
+func NewDeleteWebHook(drop_pending_updates bool) *DeleteWebhookConfig {
+	return &DeleteWebhookConfig{
+		DropPendingUpdates: drop_pending_updates,
+	}
 }
 
 // SendDiceConfig https://core.telegram.org/bots/api#senddice
@@ -375,6 +425,13 @@ func (sdc *SendDiceConfig) Values() (*url.Values, error) {
 
 func (sdc *SendDiceConfig) Method() string {
 	return "sendDice"
+}
+
+func NewSendDice(chatid int64, emoji string) *SendDiceConfig {
+	return &SendDiceConfig{
+		ChatID: chatid,
+		Emoji:  emoji,
+	}
 }
 
 // SendPollConfig Use this method to send a native poll
@@ -438,4 +495,12 @@ func (spc *SendPollConfig) Values() (*url.Values, error) {
 
 func (spc *SendPollConfig) Method() string {
 	return "sendPoll"
+}
+
+func NewSendPoll(chatid int64, question string, options []string) *SendPollConfig {
+	return &SendPollConfig{
+		ChatID:   chatid,
+		Question: question,
+		Options:  options,
+	}
 }

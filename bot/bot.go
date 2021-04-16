@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
@@ -13,7 +14,13 @@ import (
 	"github.com/pikoUsername/tgp/utils"
 )
 
-// HttpClient ...
+// using for avoid hardcoding using hardcoded env keys
+const (
+	botTokenEnvKey = "BOT_TOKEN"
+	botDebugKey    = "BOT_DEBUG"
+)
+
+// HttpClient default interface for using by bot
 type HttpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -21,7 +28,12 @@ type HttpClient interface {
 // Bot can be created using Json config,
 // Copy paste from go-telegram-bot-api ;D
 type Bot struct {
-	Token     string `json:"token"`
+	// Token uses for authonificate using URL
+	// Url template {api_url}/bot{bot_token}/{method}?{args}
+	Token string `json:"token"`
+
+	// i will recomend to use HTML parse_mode
+	// bc, HTML easy to use, and more conforatble
 	ParseMode string `json:"parse_mode"`
 
 	// Using prefix Bot, for avoid names conflict
@@ -43,13 +55,38 @@ type Bot struct {
 	server *TelegramApiServer `json:"-"`
 
 	// For DebugLog in console
-	Debug bool
+	Debug bool `json:"debug"`
+}
+
+// SetOrGetEnv, you guess for what this function
+// checkout for env existsing, or return value which passed before
+func SetOrGetEnv(value string, key string) string {
+	env_value, ok := os.LookupEnv(key)
+	if ok != true {
+		return value
+	} else {
+		return env_value
+	}
+}
+
+// ToBool uses for convert from string to bool
+// ehh, i want generics too...
+func ToBool(value string) bool {
+	value = strings.ToLower(value)
+	if value != "1" && value != "true" {
+		return false
+	} else {
+		return true
+	}
 }
 
 // NewBot get a new Bot
 // This Fucntion checks a token
 // for spaces and etc.
 func NewBot(token string, checkToken bool, parseMode string) (*Bot, error) {
+	debug := ToBool(SetOrGetEnv("false", botDebugKey))
+	token = SetOrGetEnv(token, botTokenEnvKey)
+
 	if checkToken {
 		// Check out for correct token
 		err := utils.CheckToken(token)
@@ -62,6 +99,7 @@ func NewBot(token string, checkToken bool, parseMode string) (*Bot, error) {
 		ParseMode: parseMode,
 		server:    DefaultTelegramServer,
 		Client:    &http.Client{},
+		Debug:     debug,
 	}, nil
 }
 
@@ -122,7 +160,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 		return &user, err
 	}
 
-	bot.Me = &user
+	bot.Me = &user // caching result
 	return &user, nil
 }
 
@@ -130,9 +168,11 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 // https://core.telegram.org/bots/api#logout
 func (bot *Bot) Logout() (bool, error) {
 	_, err := bot.MakeRequest("logout", &url.Values{})
+
 	if err != nil {
 		return false, err
 	}
+
 	return true, nil
 } // Indeed
 
@@ -144,11 +184,15 @@ func (bot *Bot) Logout() (bool, error) {
 // https://core.telegram.org/bots/api#deletechatphoto
 func (bot *Bot) DeleteChatPhoto(ChatId int64) error {
 	v := &url.Values{}
+
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
+
 	_, err := bot.MakeRequest("deleteChatPhoto", v)
+
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -156,12 +200,16 @@ func (bot *Bot) DeleteChatPhoto(ChatId int64) error {
 // https://core.telegram.org/bots/api#setChatTitle
 func (bot *Bot) SetChatTitle(ChatId int64, Title string) error {
 	v := &url.Values{}
+
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("title", Title)
+
 	_, err := bot.MakeRequest("setChatTitle", v)
+
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -307,7 +355,7 @@ func (bot *Bot) SendLocation(config *configs.SendLocationConfig) (*objects.Messa
 }
 
 // editMessageLiveLocation ...
-func (bot *Bot) EditMessageLiveLocation(config *configs.LiveLocationConfig) (*objects.Message, error) {
+func (bot *Bot) EditMessageLiveLocation(config *configs.EditMessageLLConf) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
