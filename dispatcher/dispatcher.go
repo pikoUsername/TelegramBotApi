@@ -113,7 +113,10 @@ func (dp *Dispatcher) StartPolling(c *configs.GetUpdatesConfig) error {
 		}
 		if updates != nil {
 			// I cant understand how it s works, and where need to use goroutines
-			go dp.ProcessPollingUpdates(updates)
+			err := dp.ProcessPollingUpdates(updates)
+			if err != nil { 
+				return err 
+			}
 		}
 	}
 	return nil

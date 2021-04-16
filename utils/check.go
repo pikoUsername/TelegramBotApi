@@ -13,16 +13,12 @@ func CheckToken(token string) error {
 	if strings.Contains(token, " ") {
 		return errors.New("Token is Invalid! Token contains Space")
 	}
-	// Splits Token to 3 part as i know
-	// Token contains 3 parts, first part is time creation
-	// Second is i forget, 3 part is randomly generated part of token
-	// Most inportant part of token
 	token_parts := strings.Split(token, ":")
-	if len(token_parts) > 3 {
-		return errors.New("Token contains more than 3 parts")
+	if len(token_parts) != 2 {
+		return errors.New("Token contains more than 2 parts")
 	}
 	// Checks for empty token
-	if token_parts[0] == "" || token_parts[1] == "" || token_parts[2] == "" {
+	if token_parts[0] == "" || token_parts[1] == "" {
 		return errors.New("Token is empty")
 	}
 	return nil
