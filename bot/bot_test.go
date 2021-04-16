@@ -15,7 +15,7 @@ const (
 )
 
 func getBot(t *testing.T) (*bot.Bot, error) {
-	b, err := bot.NewBot(TestToken, false, ParseMode)
+	b, err := bot.NewBot(TestToken, true, ParseMode)
 	if err != nil {
 		return b, err
 	}
