@@ -104,9 +104,8 @@ func (dp *Dispatcher) ProcessOneUpdate(update objects.Update) error {
 // Using GetUpdates method in Bot structure
 // GetUpdates config using for getUpdates method
 func (dp *Dispatcher) StartPolling(c *configs.GetUpdatesConfig) error {
-	dp.Polling = true
-	for dp.Polling {
-		// TODO{ timeout
+	for {
+		// TODO: timeout
 		updates, err := dp.Bot.GetUpdates(c)
 		if err != nil {
 			return err
@@ -114,12 +113,11 @@ func (dp *Dispatcher) StartPolling(c *configs.GetUpdatesConfig) error {
 		if updates != nil {
 			// I cant understand how it s works, and where need to use goroutines
 			err := dp.ProcessPollingUpdates(updates)
-			if err != nil { 
-				return err 
+			if err != nil {
+				return err
 			}
 		}
 	}
-	return nil
 }
 
 // StartWebhook ...
