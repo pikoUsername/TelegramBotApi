@@ -504,3 +504,17 @@ func NewSendPoll(chatid int64, question string, options []string) *SendPollConfi
 		Options:  options,
 	}
 }
+
+type GetChat struct {
+	ChatID int64
+}
+
+func (gc *GetChat) Values() (*url.Values, error) {
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(gc.ChatID, 10))
+	return v, nil
+}
+
+func (gc *GetChat) Method() string {
+	return "NONE"
+}
