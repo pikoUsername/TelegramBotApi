@@ -482,3 +482,44 @@ func (bot *Bot) GetWebhookInfo() (*objects.WebhookInfo, error) {
 	}
 	return &wi, nil
 }
+
+// =====================
+// Chat methods
+// =====================
+
+// DeleteChatStickerSet represents deleteChatStickerSet method
+// https://core.telegram.org/bots/api#deletechatstickerset
+func (bot *Bot) DeleteChatStickerSet(chat_id int64) (bool, error) {
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+	resp, err := bot.MakeRequest("deleteChatStickerSet", v)
+	if err != nil {
+		return false, err
+	}
+	var ok bool
+	err = json.Unmarshal(resp.Result, &ok)
+	if err != nil {
+		return ok, err
+	}
+	return ok, nil
+}
+
+func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
+	v := &url.Values{}
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+
+	resp, err := bot.MakeRequest("getChat", v)
+
+	if err != nil {
+		return &objects.Chat{}, err
+	}
+
+	var chat objects.Chat
+	err = json.Unmarshal(resp.Result, &chat)
+
+	if err != nil {
+		return &chat, nil
+	}
+
+	return &chat, nil
+}
