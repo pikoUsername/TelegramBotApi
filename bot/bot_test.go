@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	TestToken  = "1780004238:AAGFsgj2pxzXWoUqn25YohCEb1ENKIQOr1Q" // PolshaStrong_test_bot, yeah
+	TestToken  = "1780004238:AAENHJU4i9PaSIkgNjw-P2OvcQrtrO96JB4" // PolshaStrong_test_bot, yeah
 	ParseMode  = "HTML"
 	TestChatID = -534916942
 )

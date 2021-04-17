@@ -7,8 +7,8 @@ import (
 	"github.com/pikoUsername/tgp/dispatcher"
 )
 
-var (
-	TestToken = "1780004238:AAGFsgj2pxzXWoUqn25YohCEb1ENKIQOr1Q"
+const (
+	TestToken = "1780004238:AAENHJU4i9PaSIkgNjw-P2OvcQrtrO96JB4"
 )
 
 func GetDispatcher(t *testing.T) (error, *dispatcher.Dispatcher) {
