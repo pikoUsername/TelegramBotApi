@@ -2,14 +2,21 @@ package dispatcher
 
 import "github.com/pikoUsername/tgp/bot"
 
+type HandlerObj interface {
+	Register(HandlerType)
+	Trigger(interface{}, bot.Bot)
+}
+
+type HandlerType func(interface{}, bot.Bot)
+
 // HandlerObj uses for save Callback
-type HandlerObj struct {
-	Callbacks   []*func(interface{}, bot.Bot)
-	Middlewares []func(interface{}, *func(interface{}, bot.Bot)) *func(interface{}, bot.Bot)
+type DefaultHandlerObj struct {
+	Callbacks  []HandlerType
+	Middleware Middleware
 }
 
 // Register, append to Callbacks, e.g handler functions
-func (ho *HandlerObj) Register(f *func(interface{}, bot.Bot)) {
+func (ho *DefaultHandlerObj) Register(f HandlerType) {
 	ho.Callbacks = append(ho.Callbacks, f)
 }
 
@@ -19,15 +26,18 @@ func (ho *HandlerObj) Register(f *func(interface{}, bot.Bot)) {
 // for example, you want to register every user which writed to you bot
 // You can registerMiddleware for MessageHandler, not for all handlers
 // Or maybe want to make throttling middleware, just Registers middleware
-func (ho *HandlerObj) RegisterMiddleware(f func(interface{}, *func(interface{}, bot.Bot)) *func(interface{}, bot.Bot)) {
-	ho.Middlewares = append(ho.Middlewares, f)
+func (ho *DefaultHandlerObj) RegisterMiddleware(f MiddlewareType) {
+	ho.Middleware.Register(f)
 }
 
 // Trigger is from aiogram framework
-func (ho *HandlerObj) Trigger(obj interface{}, bot bot.Bot) {
-	if ho.Middlewares != nil {
-		for _, f := range ho.Middlewares {
+func (ho *DefaultHandlerObj) Trigger(obj interface{}, bot bot.Bot) {
+	if ho.Middleware != nil {
+		for _, f := range ho.Middleware.GetCallbacks() {
 			f(obj, nil) // stub
 		}
+	}
+	for _, cb := range ho.Callbacks {
+		cb(obj, bot)
 	}
 }

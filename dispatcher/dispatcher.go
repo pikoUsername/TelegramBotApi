@@ -14,19 +14,15 @@ import (
 // Dispatcher uses as Bot starter
 // Middlewares uses function
 // Another level of abstraction
-// NOTE{
-//    Using NewDispatcher, Dispatcher confgures itself
-//    But} if you want use own realitzation of dispatcher
-//    Use Configure method of Dispatcher
 type Dispatcher struct {
 	Bot *bot.Bot
 
 	// Handlers
-	MessageHandler       *HandlerObj
-	CallbackQueryHandler *HandlerObj
+	MessageHandler       HandlerObj
+	CallbackQueryHandler HandlerObj
 
-	Polling bool
-	Webhook bool
+	polling bool
+	webhook bool
 }
 
 // NewDispathcer get a new Dispatcher
@@ -36,17 +32,10 @@ func NewDispatcher(bot *bot.Bot) (*Dispatcher, error) {
 		Bot: bot,
 	}
 
-	dp.Configure()
+	dp.MessageHandler = &DefaultHandlerObj{}
+	dp.CallbackQueryHandler = &DefaultHandlerObj{}
 
 	return dp, nil
-}
-
-// Configure method Recreadtes all Handlers
-// Be care ful about it, but lost registered handlers
-// is not scary
-func (dp *Dispatcher) Configure() {
-	dp.MessageHandler = &HandlerObj{}
-	dp.CallbackQueryHandler = &HandlerObj{}
 }
 
 func (dp *Dispatcher) ResetWebhook(check bool) error {
@@ -63,7 +52,7 @@ func (dp *Dispatcher) ResetWebhook(check bool) error {
 }
 
 // RegisterMessageHandler excepts you pass to parametrs a your function
-func (dp *Dispatcher) RegisterMessageHandler(callback *func(interface{}, bot.Bot)) {
+func (dp *Dispatcher) RegisterMessageHandler(callback HandlerType) {
 	dp.MessageHandler.Register(callback)
 }
 
