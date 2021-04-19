@@ -19,18 +19,22 @@ type Configurable interface {
 	Method() string
 }
 
+// FileableConf config using for Files storing
 type FileableConf interface {
 	Configurable
-	getFile() interface{}
-	Url() string
+	Params() (map[string]string, error)
+	Name() string
+	GetFile() interface{}
 }
 
 // InputFile interaced by FileableConf
 // Uses as Abstract level for real file
 type InputFile struct {
-	url  string
+	URL  string
 	File interface{}
 }
+
+func (f *InputFile) Params() (map[string]string, error)
 
 // For CopyMessage method config
 // https://core.telegram.org/bots/api#copymessage
