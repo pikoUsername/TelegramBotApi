@@ -7,10 +7,15 @@ import (
 )
 
 var (
-	// cant make constant
-	httpRegex, _    = regexp.Compile("^(http|https)://")
-	HTML_QUOTES_MAP = map[interface{}]string{"<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;"}
+	httpRegex = getHTTPRegex()
+
+// 	HTML_QUOTES_MAP = map[interface{}]string{"<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;"}
 )
+
+func getHTTPRegex() *regexp.Regexp {
+	regex, _ := regexp.Compile("^(http|https)://")
+	return regex
+}
 
 // Link check out the link for http and https starting with
 func Link(link string, text string) (string, error) {
