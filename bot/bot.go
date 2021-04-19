@@ -5,19 +5,12 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/pikoUsername/tgp/configs"
 	"github.com/pikoUsername/tgp/objects"
 	"github.com/pikoUsername/tgp/utils"
-)
-
-// using for avoid hardcoding using hardcoded env keys
-const (
-	botTokenEnvKey = "BOT_TOKEN"
-	botDebugKey    = "BOT_DEBUG"
 )
 
 // HttpClient default interface for using by bot
@@ -58,35 +51,10 @@ type Bot struct {
 	Debug bool `json:"debug"`
 }
 
-// SetOrGetEnv, you guess for what this function
-// checkout for env existsing, or return value which passed before
-func SetOrGetEnv(value string, key string) string {
-	env_value, ok := os.LookupEnv(key)
-	if ok != true {
-		return value
-	} else {
-		return env_value
-	}
-}
-
-// ToBool uses for convert from string to bool
-// ehh, i want generics too...
-func ToBool(value string) bool {
-	value = strings.ToLower(value)
-	if value != "1" && value != "true" {
-		return false
-	} else {
-		return true
-	}
-}
-
 // NewBot get a new Bot
 // This Fucntion checks a token
 // for spaces and etc.
 func NewBot(token string, checkToken bool, parseMode string) (*Bot, error) {
-	debug := ToBool(SetOrGetEnv("false", botDebugKey))
-	token = SetOrGetEnv(token, botTokenEnvKey)
-
 	if checkToken {
 		// Check out for correct token
 		err := utils.CheckToken(token)
@@ -99,7 +67,6 @@ func NewBot(token string, checkToken bool, parseMode string) (*Bot, error) {
 		ParseMode: parseMode,
 		server:    DefaultTelegramServer,
 		Client:    &http.Client{},
-		Debug:     debug,
 	}, nil
 }
 
