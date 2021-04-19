@@ -1,7 +1,8 @@
 package utils
 
 // ParseModes
-var (
-	HTML   = "HTML"
-	Italic = "italic"
+const (
+	ModeMarkdown   = "Markdown"
+	ModeMarkdownV2 = "MarkdownV2"
+	ModeHTML       = "HTML"
 )
