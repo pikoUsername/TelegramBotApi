@@ -4,10 +4,10 @@ import "github.com/pikoUsername/tgp/bot"
 
 type HandlerObj interface {
 	Register(HandlerType)
-	Trigger(interface{}, bot.Bot)
+	Trigger(interface{}, bot.Bot) error
 }
 
-type HandlerType func(interface{}, bot.Bot)
+type HandlerType func(interface{}, bot.Bot) error
 
 // HandlerObj uses for save Callback
 type DefaultHandlerObj struct {
@@ -31,13 +31,16 @@ func (ho *DefaultHandlerObj) RegisterMiddleware(f MiddlewareType) {
 }
 
 // Trigger is from aiogram framework
-func (ho *DefaultHandlerObj) Trigger(obj interface{}, bot bot.Bot) {
+// Support only for pre-process middlewares, yet
+func (ho *DefaultHandlerObj) Trigger(obj interface{}, bot bot.Bot) error {
 	if ho.Middleware != nil {
-		for _, f := range ho.Middleware.GetCallbacks() {
-			f(obj, nil) // stub
-		}
+		ho.Middleware.Trigger(obj, nil)
 	}
 	for _, cb := range ho.Callbacks {
-		cb(obj, bot)
+		err := cb(obj, bot)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }

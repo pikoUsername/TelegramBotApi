@@ -20,6 +20,7 @@ type Dispatcher struct {
 	// Handlers
 	MessageHandler       HandlerObj
 	CallbackQueryHandler HandlerObj
+	UpdatesHandler       HandlerObj
 
 	polling bool
 	webhook bool
@@ -34,6 +35,7 @@ func NewDispatcher(bot *bot.Bot) (*Dispatcher, error) {
 
 	dp.MessageHandler = &DefaultHandlerObj{}
 	dp.CallbackQueryHandler = &DefaultHandlerObj{}
+	dp.UpdatesHandler = &DefaultHandlerObj{}
 
 	return dp, nil
 }
@@ -79,13 +81,14 @@ func (dp *Dispatcher) ProcessUpdates(updates []objects.Update) error {
 func (dp *Dispatcher) ProcessOneUpdate(update objects.Update) error {
 	if update.Message != nil {
 		event := update.Message
-		dp.MessageHandler.Trigger(event, *dp.Bot)
+		return dp.MessageHandler.Trigger(event, *dp.Bot)
+	} else if update.CallbackQuery != nil {
+		event := update.CallbackQuery
+		return dp.MessageHandler.Trigger(event, *dp.Bot)
 	} else {
 		text := "Detected Not supported type of updates Seems like Telegram bot api updated brfore this package updated"
 		return errors.New(text)
 	}
-
-	return nil
 }
 
 // StartPolling check out to comming updates
