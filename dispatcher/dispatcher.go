@@ -32,12 +32,15 @@ func NewDispatcher(bot *bot.Bot) (*Dispatcher, error) {
 	dp := &Dispatcher{
 		Bot: bot,
 	}
-
-	dp.MessageHandler = &DefaultHandlerObj{}
-	dp.CallbackQueryHandler = &DefaultHandlerObj{}
-	dp.UpdatesHandler = &DefaultHandlerObj{}
+	dp.Configure()
 
 	return dp, nil
+}
+
+func (dp *Dispatcher) Configure() {
+	dp.MessageHandler = NewDHandlerObj(dp)
+	dp.CallbackQueryHandler = NewDHandlerObj(dp)
+	dp.UpdatesHandler = NewDHandlerObj(dp)
 }
 
 func (dp *Dispatcher) ResetWebhook(check bool) error {
@@ -81,10 +84,10 @@ func (dp *Dispatcher) ProcessUpdates(updates []objects.Update) error {
 func (dp *Dispatcher) ProcessOneUpdate(update objects.Update) error {
 	if update.Message != nil {
 		event := update.Message
-		return dp.MessageHandler.Trigger(event, *dp.Bot)
+		return dp.MessageHandler.Trigger(event, dp.Bot)
 	} else if update.CallbackQuery != nil {
 		event := update.CallbackQuery
-		return dp.MessageHandler.Trigger(event, *dp.Bot)
+		return dp.MessageHandler.Trigger(event, dp.Bot)
 	} else {
 		text := "Detected Not supported type of updates Seems like Telegram bot api updated brfore this package updated"
 		return errors.New(text)
