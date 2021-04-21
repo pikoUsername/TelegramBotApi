@@ -10,6 +10,7 @@ type Chat struct {
 
 // https://core.telegram.org/bots/api#chatmember
 type ChatMember struct {
+	// User ofc
 	User        *User  `json:"user"`
 	Status      string `json:"status"`
 	CustomTitle string `json:"custom_title"`
