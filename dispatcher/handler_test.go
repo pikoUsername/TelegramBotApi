@@ -12,7 +12,7 @@ func TestRegister(t *testing.T) {
 	dp.ResetWebhook(false)
 	// oh shit, nooo, no way, i cant use objects.Message type,
 	// but first argument is interface, is not fair ;(
-	// dp.MessageHandler.Register(func(mes *objects.Message, bot bot.Bot) {
+	// dp.MessageHandler.Register(func(mes interface{} , bot bot.Bot) {
 
 	// })
 }
