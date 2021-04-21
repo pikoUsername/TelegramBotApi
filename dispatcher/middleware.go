@@ -1,23 +1,43 @@
 package dispatcher
 
 // MiddlewareType is typeof callbacks
+// Middleware is one type, but you can make various middlewares,
+// and activate command in any place of your middleware, pshe
 type MiddlewareType func(interface{}, *HandlerType)
 
 // Middleware is interface, default realization is DefaultMiddleware
-type Middleware interface {
-	Trigger(obj interface{}, handler HandlerType) error
-	Register(MiddlewareType) error
-	Unregister(string) (*MiddlewareType, error)
-	GetCallbacks() []MiddlewareType // for iteration
+type MiddlewareManager interface {
+	Trigger(obj interface{}, handler *HandlerType)
+	Register(MiddlewareType)
+	Unregister(MiddlewareType) (*MiddlewareType, error)
 }
 
-type MiddlewareDefault struct {
-	Callbacks []MiddlewareType
+type DefaultMiddlewareManager struct {
+	middlewares []MiddlewareType
+	dp          *Dispatcher
 }
 
-func (md *MiddlewareDefault) Trigger(obj interface{}, handler HandlerType) error {
-	for _, cb := range md.Callbacks {
-		cb(obj, &handler)
+// NewDMiddlewareManager creates a DefaultMiddlewareManager, and return
+func NewDMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
+	return &DefaultMiddlewareManager{
+		dp: dp,
 	}
-	return nil
+}
+
+// Trigger uses for trigger all middlewares
+func (dmm *DefaultMiddlewareManager) Trigger(obj interface{}, handler *HandlerType) {
+	for _, cb := range dmm.middlewares {
+		if cb != nil {
+			cb(obj, handler)
+		}
+	}
+}
+
+func (dmm *DefaultMiddlewareManager) Register(md MiddlewareType) {
+	dmm.middlewares = append(dmm.middlewares, md)
+}
+
+// Unregister a middleware
+func (dmm *DefaultMiddlewareManager) Unregister(md MiddlewareType) (*MiddlewareType, error) {
+	return &md, nil // magic!
 }
