@@ -34,8 +34,6 @@ type InputFile struct {
 	File interface{}
 }
 
-func (f *InputFile) Params() (map[string]string, error)
-
 // For CopyMessage method config
 // https://core.telegram.org/bots/api#copymessage
 type CopyMessageConfig struct {
