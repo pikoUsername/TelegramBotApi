@@ -520,3 +520,9 @@ func (gc *GetChat) Values() (*url.Values, error) {
 func (gc *GetChat) Method() string {
 	return "NONE"
 }
+
+type GetUserProfilePhotosConf struct {
+	UserId int64
+	Offset int
+	limit  int
+}
