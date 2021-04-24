@@ -2,6 +2,13 @@ package dispatcher_test
 
 import (
 	"testing"
+
+	"github.com/pikoUsername/tgp/configs"
+	"github.com/pikoUsername/tgp/dispatcher"
+)
+
+var (
+	TestChatID = -534916942
 )
 
 func TestRegister(t *testing.T) {
@@ -10,9 +17,13 @@ func TestRegister(t *testing.T) {
 		t.Error(err)
 	}
 	dp.ResetWebhook(false)
-	// oh shit, nooo, no way, i cant use objects.Message type,
-	// but first argument is interface, is not fair ;(
-	// dp.MessageHandler.Register(func(mes interface{} , bot bot.Bot) {
-
-	// })
+	dp.MessageHandler.Register(func(mes *dispatcher.Context) interface{} {
+		msg, err := mes.Send(&configs.SendMessageConfig{
+			ChatID: int64(TestChatID),
+		})
+		if err != nil {
+			panic(err)
+		}
+		return msg
+	})
 }

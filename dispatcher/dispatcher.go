@@ -20,7 +20,6 @@ type Dispatcher struct {
 	// Handlers
 	MessageHandler       HandlerObj
 	CallbackQueryHandler HandlerObj
-	UpdatesHandler       HandlerObj
 
 	polling bool
 	webhook bool
@@ -40,7 +39,6 @@ func NewDispatcher(bot *bot.Bot) (*Dispatcher, error) {
 func (dp *Dispatcher) Configure() {
 	dp.MessageHandler = NewDHandlerObj(dp)
 	dp.CallbackQueryHandler = NewDHandlerObj(dp)
-	dp.UpdatesHandler = NewDHandlerObj(dp)
 }
 
 func (dp *Dispatcher) ResetWebhook(check bool) error {
@@ -61,12 +59,6 @@ func (dp *Dispatcher) RegisterMessageHandler(callback HandlerType) {
 	dp.MessageHandler.Register(callback)
 }
 
-// ProcessUpdates havenot got any efficient
-// if you use webhook and long polling
-func (dp *Dispatcher) ProcessPollingUpdates(updates []objects.Update) error {
-	return nil // TODO
-}
-
 // ProcessUpdates using for process updates from any way
 func (dp *Dispatcher) ProcessUpdates(updates []objects.Update) error {
 	for _, upd := range updates {
@@ -79,19 +71,32 @@ func (dp *Dispatcher) ProcessUpdates(updates []objects.Update) error {
 	return nil
 }
 
+func (dp *Dispatcher) CreateContext(obj interface{}) (*Context, error) {
+	return &Context{}, nil
+}
+
 // ProcessOneUpdate you guess, processes ONLY one comming update
 // Support only one Message update
 func (dp *Dispatcher) ProcessOneUpdate(update objects.Update) error {
 	if update.Message != nil {
 		event := update.Message
-		return dp.MessageHandler.Trigger(event, dp.Bot)
+		ctx, err := dp.CreateContext(event)
+		if err != nil {
+			return err
+		}
+		dp.MessageHandler.Trigger(ctx)
 	} else if update.CallbackQuery != nil {
 		event := update.CallbackQuery
-		return dp.MessageHandler.Trigger(event, dp.Bot)
+		ctx, err := dp.CreateContext(event)
+		if err != nil {
+			return err
+		}
+		dp.MessageHandler.Trigger(ctx)
 	} else {
 		text := "Detected Not supported type of updates Seems like Telegram bot api updated brfore this package updated"
 		return errors.New(text)
 	}
+	return nil
 }
 
 // StartPolling check out to comming updates
@@ -107,7 +112,7 @@ func (dp *Dispatcher) StartPolling(c *configs.GetUpdatesConfig) error {
 		}
 		if updates != nil {
 			// I cant understand how it s works, and where need to use goroutines
-			err := dp.ProcessPollingUpdates(updates)
+			err := dp.ProcessUpdates(updates)
 			if err != nil {
 				return err
 			}

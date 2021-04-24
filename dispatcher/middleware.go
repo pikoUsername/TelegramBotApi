@@ -3,11 +3,11 @@ package dispatcher
 // MiddlewareType is typeof callbacks
 // Middleware is one type, but you can make various middlewares,
 // and activate command in any place of your middleware, pshe
-type MiddlewareType func(interface{}, *HandlerType)
+type MiddlewareType func(*Context, *HandlerType) interface{}
 
 // Middleware is interface, default realization is DefaultMiddleware
 type MiddlewareManager interface {
-	Trigger(obj interface{}, handler *HandlerType)
+	Trigger(*Context, *HandlerType)
 	Register(MiddlewareType)
 	Unregister(MiddlewareType) (*MiddlewareType, error)
 }
@@ -25,14 +25,13 @@ func NewDMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
 }
 
 // Trigger uses for trigger all middlewares
-func (dmm *DefaultMiddlewareManager) Trigger(obj interface{}, handler *HandlerType) {
+func (dmm *DefaultMiddlewareManager) Trigger(ctx *Context, handler *HandlerType) {
 	for _, cb := range dmm.middlewares {
-		if cb != nil {
-			cb(obj, handler)
-		}
+		cb(ctx, handler)
 	}
 }
 
+// Register ...
 func (dmm *DefaultMiddlewareManager) Register(md MiddlewareType) {
 	dmm.middlewares = append(dmm.middlewares, md)
 }

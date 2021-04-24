@@ -1,15 +1,11 @@
 package dispatcher
 
-import (
-	"github.com/pikoUsername/tgp/bot"
-)
-
 type HandlerObj interface {
 	Register(HandlerType)
-	Trigger(interface{}, *bot.Bot) error
+	Trigger(*Context)
 }
 
-type HandlerType func(interface{}, bot.Bot) error
+type HandlerType func(*Context) interface{}
 
 // HandlerObj uses for save Callback
 type DefaultHandlerObj struct {
@@ -41,13 +37,10 @@ func (ho *DefaultHandlerObj) RegisterMiddleware(f MiddlewareType) {
 // Trigger is from aiogram framework
 // Trigger is triggers all callbacks in handler
 // when middlewares activates, middleware calls a handler
-func (ho *DefaultHandlerObj) Trigger(obj interface{}, bot *bot.Bot) error {
+// Just triggers one, you must call Handler in Middleware,
+// and handle error, which raised by Handler
+func (ho *DefaultHandlerObj) Trigger(ctx *Context) {
 	for _, cb := range ho.callbacks {
-		err := cb(obj, *bot)
-		ho.Middleware.Trigger(obj, &cb)
-		if err != nil {
-			return err
-		}
+		ho.Middleware.Trigger(ctx, &cb)
 	}
-	return nil
 }
