@@ -471,6 +471,7 @@ func (bot *Bot) DeleteChatStickerSet(chat_id int64) (bool, error) {
 	return ok, nil
 }
 
+// GetChat ...
 func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
 	v := &url.Values{}
 	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
