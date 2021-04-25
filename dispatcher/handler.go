@@ -1,11 +1,14 @@
 package dispatcher
 
+import "github.com/pikoUsername/tgp/objects"
+
 type HandlerObj interface {
 	Register(HandlerType)
-	Trigger(*Context)
+	Trigger(objects.Update)
+	RegisterMiddleware(MiddlewareType)
 }
 
-type HandlerType func(*Context) interface{}
+type HandlerType func(objects.Update)
 
 // HandlerObj uses for save Callback
 type DefaultHandlerObj struct {
@@ -30,6 +33,8 @@ func (ho *DefaultHandlerObj) Register(f HandlerType) {
 // for example, you want to register every user which writed to you bot
 // You can registerMiddleware for MessageHandler, not for all handlers
 // Or maybe want to make throttling middleware, just Registers middleware
+//
+// Example of middlware see in handler_test.go
 func (ho *DefaultHandlerObj) RegisterMiddleware(f MiddlewareType) {
 	ho.Middleware.Register(f)
 }
@@ -39,8 +44,8 @@ func (ho *DefaultHandlerObj) RegisterMiddleware(f MiddlewareType) {
 // when middlewares activates, middleware calls a handler
 // Just triggers one, you must call Handler in Middleware,
 // and handle error, which raised by Handler
-func (ho *DefaultHandlerObj) Trigger(ctx *Context) {
+func (ho *DefaultHandlerObj) Trigger(upd objects.Update) {
 	for _, cb := range ho.callbacks {
-		ho.Middleware.Trigger(ctx, &cb)
+		ho.Middleware.Trigger(&upd, cb)
 	}
 }
