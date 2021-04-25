@@ -61,14 +61,15 @@ func (dp *Dispatcher) RegisterMessageHandler(callback HandlerType) {
 
 // ProcessUpdates using for process updates from any way
 func (dp *Dispatcher) ProcessUpdates(updates []objects.Update) error {
+	var err error = nil
 	for _, upd := range updates {
-		err := dp.ProcessOneUpdate(upd)
+		err = dp.ProcessOneUpdate(upd)
 		if err != nil {
-			return err
+			break
 		}
 	}
 
-	return nil
+	return err
 }
 
 // ProcessOneUpdate you guess, processes ONLY one comming update
