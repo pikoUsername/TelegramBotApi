@@ -491,3 +491,27 @@ func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
 
 	return &chat, nil
 }
+
+// ================
+// User methods
+// ================
+
+// GetUserProfilePhotos resresents getUserProfilePhotos method
+// https://core.telegram.org/bots/api#getuserprofilephotos
+func (bot *Bot) GetUserProfilePhotos(c configs.GetUserProfilePhotosConf) (*objects.UserProfilePhotos, error) {
+	v, _ := c.Values()
+	resp, err := bot.MakeRequest(c.Method(), v)
+
+	if err != nil {
+		return &objects.UserProfilePhotos{}, nil
+	}
+
+	var photos objects.UserProfilePhotos
+	err = json.Unmarshal(resp.Result, &photos)
+
+	if err != nil {
+		return &photos, err
+	}
+
+	return &photos, nil
+}

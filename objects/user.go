@@ -16,3 +16,10 @@ type User struct {
 
 	Location *ChatLocation `json:"location"`
 }
+
+// UserProfilePhotos resresents UserProfilePhotos object
+// https://core.telegram.org/bots/api#userprofilephotos
+type UserProfilePhotos struct {
+	TotalCount int          `json:"total_count"`
+	Photos     []*PhotoSize `json:"photos"`
+}

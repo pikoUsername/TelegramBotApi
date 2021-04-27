@@ -521,8 +521,24 @@ func (gc *GetChat) Method() string {
 	return "NONE"
 }
 
+// GetUserProfilePhotosConf represents getUserProfilePhotos method fields
+// https://core.telegram.org/bots/api#getUserProfilePhotos
 type GetUserProfilePhotosConf struct {
 	UserId int64
 	Offset int
-	limit  int
+	Limit  int
+}
+
+func (guppc *GetUserProfilePhotosConf) Values() (*url.Values, error) {
+	v := &url.Values{}
+
+	v.Add("user_id", strconv.FormatInt(guppc.UserId, 10))
+	v.Add("offset", strconv.Itoa(guppc.Offset))
+	v.Add("limit", strconv.Itoa(guppc.Limit))
+
+	return v, nil
+}
+
+func (guppc *GetUserProfilePhotosConf) Method() string {
+	return "getUserProfilePhotos"
 }
