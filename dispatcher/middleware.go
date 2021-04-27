@@ -1,13 +1,15 @@
 package dispatcher
 
+import "github.com/pikoUsername/tgp/objects"
+
 // MiddlewareType is typeof callbacks
 // Middleware is one type, but you can make various middlewares,
 // and activate command in any place of your middleware, pshe
-type MiddlewareType func(*Context, *HandlerType) interface{}
+type MiddlewareType func(*objects.Update, HandlerType)
 
 // Middleware is interface, default realization is DefaultMiddleware
 type MiddlewareManager interface {
-	Trigger(*Context, *HandlerType)
+	Trigger(*objects.Update, HandlerType)
 	Register(MiddlewareType)
 	Unregister(MiddlewareType) (*MiddlewareType, error)
 }
@@ -25,9 +27,10 @@ func NewDMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
 }
 
 // Trigger uses for trigger all middlewares
-func (dmm *DefaultMiddlewareManager) Trigger(ctx *Context, handler *HandlerType) {
+// I write this againm you must to call handler in the middleware function
+func (dmm *DefaultMiddlewareManager) Trigger(upd *objects.Update, handler HandlerType) {
 	for _, cb := range dmm.middlewares {
-		cb(ctx, handler)
+		cb(upd, handler)
 	}
 }
 

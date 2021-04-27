@@ -61,37 +61,24 @@ func (dp *Dispatcher) RegisterMessageHandler(callback HandlerType) {
 
 // ProcessUpdates using for process updates from any way
 func (dp *Dispatcher) ProcessUpdates(updates []objects.Update) error {
+	var err error = nil
 	for _, upd := range updates {
-		err := dp.ProcessOneUpdate(upd)
+		err = dp.ProcessOneUpdate(upd)
 		if err != nil {
-			return err
+			break
 		}
 	}
 
-	return nil
-}
-
-func (dp *Dispatcher) CreateContext(obj interface{}) (*Context, error) {
-	return &Context{}, nil
+	return err
 }
 
 // ProcessOneUpdate you guess, processes ONLY one comming update
 // Support only one Message update
 func (dp *Dispatcher) ProcessOneUpdate(update objects.Update) error {
 	if update.Message != nil {
-		event := update.Message
-		ctx, err := dp.CreateContext(event)
-		if err != nil {
-			return err
-		}
-		dp.MessageHandler.Trigger(ctx)
+		dp.MessageHandler.Trigger(update)
 	} else if update.CallbackQuery != nil {
-		event := update.CallbackQuery
-		ctx, err := dp.CreateContext(event)
-		if err != nil {
-			return err
-		}
-		dp.MessageHandler.Trigger(ctx)
+		dp.MessageHandler.Trigger(update)
 	} else {
 		text := "Detected Not supported type of updates Seems like Telegram bot api updated brfore this package updated"
 		return errors.New(text)
