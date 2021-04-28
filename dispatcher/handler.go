@@ -8,7 +8,7 @@ type HandlerObj interface {
 	RegisterMiddleware(MiddlewareType)
 }
 
-type HandlerType func(objects.Update)
+type HandlerFunc func(objects.Update)
 
 // HandlerObj uses for save Callback
 type DefaultHandlerObj struct {
