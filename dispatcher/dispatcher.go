@@ -55,7 +55,7 @@ func (dp *Dispatcher) ResetWebhook(check bool) error {
 }
 
 // RegisterMessageHandler excepts you pass to parametrs a your function
-func (dp *Dispatcher) RegisterMessageHandler(callback HandlerType) {
+func (dp *Dispatcher) RegisterMessageHandler(callback HandlerFunc) {
 	dp.MessageHandler.Register(callback)
 }
 
