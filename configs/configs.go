@@ -542,3 +542,21 @@ func (guppc *GetUserProfilePhotosConf) Values() (*url.Values, error) {
 func (guppc *GetUserProfilePhotosConf) Method() string {
 	return "getUserProfilePhotos"
 }
+
+type SendChatActionConf struct {
+	ChatID int64
+	Action string // see utils for actions type
+}
+
+func (scac *SendChatActionConf) Values() (*url.Values, error) {
+	v := &url.Values{}
+
+	v.Add("chat_id", strconv.FormatInt(scac.ChatID, 10))
+	v.Add("action", scac.Action)
+
+	return v, nil
+}
+
+func (scac *SendChatActionConf) Method() string {
+	return "sendChatAction"
+}

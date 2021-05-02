@@ -454,6 +454,29 @@ func (bot *Bot) GetWebhookInfo() (*objects.WebhookInfo, error) {
 // Chat methods
 // =====================
 
+// SendChatAction Resrpesents sendChatAction method
+// https://core.telegram.org/bots/api#sendchataction
+// Use this method when you need to tell the user that something is happening on the bot's side.
+// The status is set for 5 seconds or less
+// (when a message arrives from your bot, Telegram clients clear its typing status).
+// Returns True on success.
+func (bot *Bot) SendChatAction(c configs.SendChatActionConf) (bool, error) {
+	v, err := c.Values()
+	if err != nil {
+		return false, err
+	}
+	resp, err := bot.MakeRequest(c.Method(), v)
+	if err != nil {
+		return false, nil
+	}
+	var ok bool
+	err = json.Unmarshal(resp.Result, &ok)
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
 // DeleteChatStickerSet represents deleteChatStickerSet method
 // https://core.telegram.org/bots/api#deletechatstickerset
 func (bot *Bot) DeleteChatStickerSet(chat_id int64) (bool, error) {
