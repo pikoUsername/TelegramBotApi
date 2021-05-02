@@ -10,12 +10,12 @@ type MiddlewareFunc func(*objects.Update, HandlerFunc)
 // Middleware is interface, default realization is DefaultMiddleware
 type MiddlewareManager interface {
 	Trigger(*objects.Update, HandlerFunc)
-	Register(MiddlewareType)
-	Unregister(MiddlewareType) (*MiddlewareType, error)
+	Register(MiddlewareFunc)
+	Unregister(MiddlewareFunc) (*MiddlewareFunc, error)
 }
 
 type DefaultMiddlewareManager struct {
-	middlewares []MiddlewareType
+	middlewares []MiddlewareFunc
 	dp          *Dispatcher
 }
 
@@ -35,11 +35,11 @@ func (dmm *DefaultMiddlewareManager) Trigger(upd *objects.Update, handler Handle
 }
 
 // Register ...
-func (dmm *DefaultMiddlewareManager) Register(md MiddlewareType) {
+func (dmm *DefaultMiddlewareManager) Register(md MiddlewareFunc) {
 	dmm.middlewares = append(dmm.middlewares, md)
 }
 
 // Unregister a middleware
-func (dmm *DefaultMiddlewareManager) Unregister(md MiddlewareType) (*MiddlewareType, error) {
+func (dmm *DefaultMiddlewareManager) Unregister(md MiddlewareFunc) (*MiddlewareFunc, error) {
 	return &md, nil // magic!
 }
