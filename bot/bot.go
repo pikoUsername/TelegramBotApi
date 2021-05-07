@@ -263,6 +263,10 @@ func (bot *Bot) Send(config configs.Configurable) (*objects.Message, error) {
 func (bot *Bot) CopyMessage(config *configs.CopyMessageConfig) (*objects.MessageID, error) {
 	// Stub here, TODO: make for every config a values function/method
 	v, err := config.Values()
+
+	if err != nil {
+		return &objects.MessageID{}, err
+	}
 	resp, err := bot.MakeRequest(config.Method(), v)
 	if err != nil {
 		return &objects.MessageID{}, err
@@ -409,7 +413,6 @@ func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) ([]objects.Update, error
 		}
 	}
 	var upd []objects.Update
-	log.Print(resp.Result)
 	err = json.Unmarshal(resp.Result, &upd)
 	if err != nil {
 		return upd, err
