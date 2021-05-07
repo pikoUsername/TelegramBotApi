@@ -2,20 +2,27 @@ package dispatcher
 
 import "github.com/pikoUsername/tgp/objects"
 
+type HandlerFunc func(objects.Update)
+
+// Another level of acbstraction
+type HandlerType struct {
+	Callback HandlerFunc
+	Filters  []Filter
+}
+
 type HandlerObj interface {
-	Register(HandlerFunc)
+	Register(HandlerFunc, ...Filter)
 	Trigger(objects.Update)
 	RegisterMiddleware(MiddlewareFunc)
 }
 
-type HandlerFunc func(objects.Update)
-
 // HandlerObj uses for save Callback
 type DefaultHandlerObj struct {
-	callbacks  []HandlerFunc
+	handlers   []HandlerType
 	Middleware MiddlewareManager
 }
 
+// NEwDHandlerObj creates new DefaultHandlerObj
 func NewDHandlerObj(dp *Dispatcher) *DefaultHandlerObj {
 	return &DefaultHandlerObj{
 		Middleware: NewDMiddlewareManager(dp),
@@ -23,8 +30,13 @@ func NewDHandlerObj(dp *Dispatcher) *DefaultHandlerObj {
 }
 
 // Register, append to Callbacks, e.g handler functions
-func (ho *DefaultHandlerObj) Register(f HandlerFunc) {
-	ho.callbacks = append(ho.callbacks, f)
+func (ho *DefaultHandlerObj) Register(f HandlerFunc, filters ...Filter) {
+	ht := HandlerType{
+		Callback: f,
+		Filters:  filters,
+	}
+
+	ho.handlers = append(ho.handlers, ht)
 }
 
 // RegisterMiddleware looks like a bad code
@@ -43,7 +55,8 @@ func (ho *DefaultHandlerObj) RegisterMiddleware(f MiddlewareFunc) {
 // Just triggers one, you must call Handler in Middleware,
 // and handle error, which raised by Handler
 func (ho *DefaultHandlerObj) Trigger(upd objects.Update) {
-	for _, cb := range ho.callbacks {
-		ho.Middleware.Trigger(&upd, cb)
+	for _, cb := range ho.handlers {
+		ho.Middleware.Trigger(&upd, cb.Callback)
 	}
+	// TODO: Filters as aiogram.
 }

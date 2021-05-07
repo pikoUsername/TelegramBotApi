@@ -32,16 +32,11 @@ func TestMiddlwareRegister(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	dp.MessageHandler.RegisterMiddleware(func(u *objects.Update, ht dispatcher.HandlerFunc) {
-		u.Message.Text = "жил был, один фанат исекая. А на завтра его сбила машина, КОНЕЦ(а он ждал, и ждал в бесонечной темноте, пока его личность не растворилась навсегда)!"
-		// Or if you want register user in Database:
-		// go storage.RegisterUser(&u.Message.From)
-		// or ACL:
-		// usr := storage.GetUser(&u.Message.From.ID)
-		// if usr == nil { SendError("Not allowed!!!")}
-		ht(*u)
-		// Here you can use any metric
-		// go metrics.CreateMetricBaseAtUser(&u.Message.From)
-		// or anything you can image! as always ;)
+	dp.MessageHandler.RegisterMiddleware(func(u *objects.Update, hf dispatcher.HandlerFunc) {
+		// You can write any stuff you want to
+		// FOr example simple ACL, or maybe other
+		if u.Message.From.FirstName == "Aleksei" {
+			hf(*u)
+		}
 	})
 }

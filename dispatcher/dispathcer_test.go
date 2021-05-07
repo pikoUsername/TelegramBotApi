@@ -25,6 +25,6 @@ func TestNewDispatcher(t *testing.T) {
 		t.Error(err)
 	}
 	if dp == nil {
-		t.Error("Oh no, Dispatcher didnt created, fix it")
+		t.Error("Oh no, Dispatcher didnt create, fix it")
 	}
 }
