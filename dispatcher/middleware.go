@@ -2,11 +2,11 @@ package dispatcher
 
 import "github.com/pikoUsername/tgp/objects"
 
-type MiddlewareFunc func(*objects.Update, HandlerFunc)
+type MiddlewareFunc func(*objects.Update, HandlerType)
 
 // Middleware is interface, default realization is DefaultMiddleware
 type MiddlewareManager interface {
-	Trigger(*objects.Update, HandlerFunc)
+	Trigger(*objects.Update, HandlerType)
 	Register(...MiddlewareFunc) // for many middleware add
 	Unregister(MiddlewareFunc) (*MiddlewareFunc, error)
 }
@@ -26,7 +26,7 @@ func NewDMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
 // Trigger triggers special type of middlewares
 // have three middleware types: pre, process, post
 // We can register a middleware using Register Middleware
-func (dmm *DefaultMiddlewareManager) Trigger(upd *objects.Update, handler HandlerFunc) {
+func (dmm *DefaultMiddlewareManager) Trigger(upd *objects.Update, handler HandlerType) {
 	for _, cb := range dmm.middlewares {
 		cb(upd, handler)
 	}

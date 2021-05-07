@@ -2,18 +2,42 @@ package dispatcher
 
 import "github.com/pikoUsername/tgp/objects"
 
-type HandlerFunc func(objects.Update)
+type HandlerFunc func(*objects.Update)
 
-// Another level of acbstraction
+// Another level of abstraction
 type HandlerType struct {
 	Callback HandlerFunc
 	Filters  []Filter
 }
 
+// CheckForFilters iterate all filters and call Check method for check
+func (ht *HandlerType) CheckForFilters(u *objects.Update) bool {
+	for _, f := range ht.Filters {
+		b := f.Check(u)
+		if !b {
+			return false
+		}
+	}
+	return true
+}
+
+// Call uses for checking using filters
+func (ht *HandlerType) Call(u *objects.Update) {
+	fr := ht.CheckForFilters(u)
+	if !fr {
+		return
+	}
+
+	if u != nil {
+		ht.Callback(u)
+	}
+}
+
+// Interface for creating custom HandlerObj
 type HandlerObj interface {
 	Register(HandlerFunc, ...Filter)
 	Trigger(objects.Update)
-	RegisterMiddleware(MiddlewareFunc)
+	RegisterMiddleware(...MiddlewareFunc)
 }
 
 // HandlerObj uses for save Callback
@@ -45,8 +69,8 @@ func (ho *DefaultHandlerObj) Register(f HandlerFunc, filters ...Filter) {
 // Or maybe want to make throttling middleware, just Registers middleware
 //
 // Example of middlware see in handler_test.go
-func (ho *DefaultHandlerObj) RegisterMiddleware(f MiddlewareFunc) {
-	ho.Middleware.Register(f)
+func (ho *DefaultHandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
+	ho.Middleware.Register(f...)
 }
 
 // Trigger is from aiogram framework
@@ -56,7 +80,6 @@ func (ho *DefaultHandlerObj) RegisterMiddleware(f MiddlewareFunc) {
 // and handle error, which raised by Handler
 func (ho *DefaultHandlerObj) Trigger(upd objects.Update) {
 	for _, cb := range ho.handlers {
-		ho.Middleware.Trigger(&upd, cb.Callback)
+		ho.Middleware.Trigger(&upd, cb)
 	}
-	// TODO: Filters as aiogram.
 }

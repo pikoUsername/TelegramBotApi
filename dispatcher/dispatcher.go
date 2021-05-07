@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"errors"
+	"time"
 
 	"github.com/pikoUsername/tgp/bot"
 	"github.com/pikoUsername/tgp/configs"
@@ -22,8 +23,30 @@ type Dispatcher struct {
 	CallbackQueryHandler HandlerObj
 	ChannelPost          HandlerObj
 
-	polling bool
-	webhook bool
+	// polling bool
+	// webhook bool
+}
+
+// Config for start polling method
+// idk where to put this config, configs or dispatcher?
+type StartPollingConfig struct {
+	configs.GetUpdatesConfig
+	Relax        time.Duration
+	ResetWebhook bool
+	ErrorSleep   uint8
+}
+
+func NewStartPollingConf() *StartPollingConfig {
+	return &StartPollingConfig{
+		GetUpdatesConfig: configs.GetUpdatesConfig{
+			Timeout: 20,
+			Limit:   0,
+			Offset:  -1,
+		},
+		Relax:        1,
+		ResetWebhook: false,
+		ErrorSleep:   5,
+	}
 }
 
 // NewDispathcer get a new Dispatcher
@@ -81,7 +104,7 @@ func (dp *Dispatcher) ProcessOneUpdate(update objects.Update) error {
 	} else if update.ChannelPost != nil {
 		dp.ChannelPost.Trigger(update)
 	} else {
-		text := "Detected Not supported type of updates Seems like Telegram bot api updated brfore this package updated"
+		text := "Detected not supported type of updates seems like Telegram bot api updated brfore this package updated"
 		return errors.New(text)
 	}
 	return nil
@@ -91,10 +114,14 @@ func (dp *Dispatcher) ProcessOneUpdate(update objects.Update) error {
 // If yes, Telegram Get to your bot a Update
 // Using GetUpdates method in Bot structure
 // GetUpdates config using for getUpdates method
-func (dp *Dispatcher) StartPolling(c *configs.GetUpdatesConfig) error {
+func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
+	if c.ResetWebhook {
+		dp.ResetWebhook(true)
+	}
+
 	for {
 		// TODO: timeout
-		updates, err := dp.Bot.GetUpdates(c)
+		updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
 		if err != nil {
 			return err
 		}
@@ -104,6 +131,10 @@ func (dp *Dispatcher) StartPolling(c *configs.GetUpdatesConfig) error {
 			if err != nil {
 				return err
 			}
+		}
+
+		if c.Relax != 0 {
+			time.Sleep(c.Relax)
 		}
 	}
 }
