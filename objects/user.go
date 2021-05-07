@@ -3,7 +3,7 @@ package objects
 // User represents Telegram User object
 // docs: https://core.telegram.org/bots/api#user
 type User struct {
-	ID    int32 `json:"id"`
+	ID    int64 `json:"id"`
 	IsBot bool  `json:"is_bot"`
 
 	// Usernames
