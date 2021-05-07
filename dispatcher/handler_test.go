@@ -10,10 +10,7 @@ import (
 )
 
 func TestRegister(t *testing.T) {
-	dp, err := GetDispatcher(t)
-	if err != nil {
-		t.Error(err)
-	}
+	dp := GetDispatcher(t)
 	// Simple echo handler
 	dp.MessageHandler.Register(func(upd *objects.Update) {
 		bot := dp.Bot
@@ -28,10 +25,7 @@ func TestRegister(t *testing.T) {
 }
 
 func TestMiddlwareRegister(t *testing.T) {
-	dp, err := GetDispatcher(t)
-	if err != nil {
-		t.Error(err)
-	}
+	dp := GetDispatcher(t)
 	dp.MessageHandler.RegisterMiddleware(func(u *objects.Update, hf dispatcher.HandlerType) {
 		// You can write any stuff you want to
 		// FOr example simple ACL, or maybe other

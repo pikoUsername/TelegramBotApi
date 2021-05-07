@@ -399,7 +399,7 @@ func (bot *Bot) DeleteWebhook(c *configs.DeleteWebhookConfig) error {
 
 // GetUpdates uses for long polling
 // https://core.telegram.org/bots/api#getupdates
-func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) ([]objects.Update, error) {
+func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) ([]*objects.Update, error) {
 	v, err := c.Values()
 	if err != nil {
 		return nil, err
@@ -412,7 +412,7 @@ func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) ([]objects.Update, error
 			ResponseParameters: objects.ResponseParameters{},
 		}
 	}
-	var upd []objects.Update
+	var upd []*objects.Update
 	err = json.Unmarshal(resp.Result, &upd)
 	if err != nil {
 		return upd, err

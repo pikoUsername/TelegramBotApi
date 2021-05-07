@@ -36,7 +36,7 @@ func (ht *HandlerType) Call(u *objects.Update) {
 // Interface for creating custom HandlerObj
 type HandlerObj interface {
 	Register(HandlerFunc, ...Filter)
-	Trigger(objects.Update)
+	Trigger(*objects.Update)
 	RegisterMiddleware(...MiddlewareFunc)
 }
 
@@ -78,8 +78,8 @@ func (ho *DefaultHandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
 // when middlewares activates, middleware calls a handler
 // Just triggers one, you must call Handler in Middleware,
 // and handle error, which raised by Handler
-func (ho *DefaultHandlerObj) Trigger(upd objects.Update) {
+func (ho *DefaultHandlerObj) Trigger(upd *objects.Update) {
 	for _, cb := range ho.handlers {
-		ho.Middleware.Trigger(&upd, cb)
+		ho.Middleware.Trigger(upd, cb)
 	}
 }

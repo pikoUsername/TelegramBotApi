@@ -9,6 +9,16 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
+func CheckUpdatesIsNil(upds []*objects.Update) bool {
+	for _, u := range upds {
+		nil_upd_copy := &objects.Update{UpdateID: u.UpdateID}
+		if u == nil_upd_copy {
+			return false
+		}
+	}
+	return true
+}
+
 // Dispatcher need for Polling, and webhook
 // For Bot run,
 // Bot struct uses as API wrapper
@@ -22,9 +32,6 @@ type Dispatcher struct {
 	MessageHandler       HandlerObj
 	CallbackQueryHandler HandlerObj
 	ChannelPost          HandlerObj
-
-	// polling bool
-	// webhook bool
 }
 
 // Config for start polling method
@@ -82,7 +89,7 @@ func (dp *Dispatcher) RegisterMessageHandler(callback HandlerFunc) {
 }
 
 // ProcessUpdates using for process updates from any way
-func (dp *Dispatcher) ProcessUpdates(updates []objects.Update) error {
+func (dp *Dispatcher) ProcessUpdates(updates []*objects.Update) error {
 	var err error = nil
 	for _, upd := range updates {
 		err = dp.ProcessOneUpdate(upd)
@@ -96,7 +103,7 @@ func (dp *Dispatcher) ProcessUpdates(updates []objects.Update) error {
 
 // ProcessOneUpdate you guess, processes ONLY one comming update
 // Support only one Message update
-func (dp *Dispatcher) ProcessOneUpdate(update objects.Update) error {
+func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 	if update.Message != nil {
 		dp.MessageHandler.Trigger(update)
 	} else if update.CallbackQuery != nil {
@@ -125,8 +132,7 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 		if err != nil {
 			return err
 		}
-		if updates != nil {
-			// I cant understand how it s works, and where need to use goroutines
+		if CheckUpdatesIsNil(updates) {
 			err := dp.ProcessUpdates(updates)
 			if err != nil {
 				return err
