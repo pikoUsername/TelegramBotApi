@@ -329,6 +329,7 @@ func NewEditMessageLL(longitude float32, latit float32, chat_id int64, message_i
 	}
 }
 
+// GetUpdate method fields
 type GetUpdatesConfig struct {
 	Offset         int
 	Limit          uint
