@@ -30,7 +30,7 @@ type StartPollingConfig struct {
 	configs.GetUpdatesConfig
 	Relax        time.Duration
 	ResetWebhook bool
-	ErrorSleep   uint8
+	ErrorSleep   uint
 }
 
 func NewStartPollingConf() *StartPollingConfig {
