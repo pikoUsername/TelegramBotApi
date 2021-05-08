@@ -9,16 +9,6 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
-func CheckUpdatesIsNil(upds []*objects.Update) bool {
-	for _, u := range upds {
-		nil_upd_copy := &objects.Update{UpdateID: u.UpdateID}
-		if u == nil_upd_copy {
-			return false
-		}
-	}
-	return true
-}
-
 // Dispatcher need for Polling, and webhook
 // For Bot run,
 // Bot struct uses as API wrapper
@@ -91,6 +81,7 @@ func (dp *Dispatcher) RegisterMessageHandler(callback HandlerFunc) {
 // ProcessUpdates using for process updates from any way
 func (dp *Dispatcher) ProcessUpdates(updates []*objects.Update) error {
 	var err error = nil
+
 	for _, upd := range updates {
 		err = dp.ProcessOneUpdate(upd)
 		if err != nil {
@@ -132,7 +123,7 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 		if err != nil {
 			return err
 		}
-		if CheckUpdatesIsNil(updates) {
+		if updates != nil {
 			err := dp.ProcessUpdates(updates)
 			if err != nil {
 				return err
