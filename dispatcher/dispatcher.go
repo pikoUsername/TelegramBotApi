@@ -2,7 +2,6 @@ package dispatcher
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"time"
 
@@ -134,7 +133,6 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 				index = 0
 			}
 
-			fmt.Println(updates)
 			c.Offset = updates[index].UpdateID + 1
 
 			err := dp.ProcessUpdates(updates, c)
