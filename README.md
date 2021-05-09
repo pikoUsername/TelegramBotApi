@@ -1,6 +1,11 @@
 simple Telegram Bot Api wrapper, maybe will grow to framework 
 
-###### version 0.1.0A 
+<h1>
+This package is on alpha version,
+and any update can broke backward capability
+</h1>
+
+###### version 0.1.0
 <br>
 
 ###### docs: 
