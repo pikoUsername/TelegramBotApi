@@ -36,7 +36,7 @@ func (ht *HandlerType) Call(u *objects.Update) {
 // Interface for creating custom HandlerObj
 type HandlerObj interface {
 	Register(HandlerFunc, ...Filter)
-	Trigger(*objects.Update)
+	Notify(*objects.Update)
 	RegisterMiddleware(...MiddlewareFunc)
 }
 
@@ -73,12 +73,11 @@ func (ho *DefaultHandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
 	ho.Middleware.Register(f...)
 }
 
-// Trigger is from aiogram framework
-// Trigger is triggers all callbacks in handler
+// Notify is from aiogram framework
+// Notify is notify all callbacks in handler
 // when middlewares activates, middleware calls a handler
 // Just triggers one, you must call Handler in Middleware,
-// and handle error, which raised by Handler
-func (ho *DefaultHandlerObj) Trigger(upd *objects.Update) {
+func (ho *DefaultHandlerObj) Notify(upd *objects.Update) {
 	for _, cb := range ho.handlers {
 		ho.Middleware.Trigger(upd, cb)
 	}

@@ -2,6 +2,8 @@ package dispatcher
 
 import (
 	"errors"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/pikoUsername/tgp/bot"
@@ -38,7 +40,6 @@ func NewStartPollingConf() *StartPollingConfig {
 		GetUpdatesConfig: configs.GetUpdatesConfig{
 			Timeout: 20,
 			Limit:   0,
-			Offset:  -1,
 		},
 		Relax:        1,
 		ResetWebhook: false,
@@ -79,28 +80,25 @@ func (dp *Dispatcher) RegisterMessageHandler(callback HandlerFunc) {
 }
 
 // ProcessUpdates using for process updates from any way
-func (dp *Dispatcher) ProcessUpdates(updates []*objects.Update) error {
-	var err error = nil
-
+func (dp *Dispatcher) ProcessUpdates(updates []*objects.Update, conf *StartPollingConfig) error {
 	for _, upd := range updates {
-		err = dp.ProcessOneUpdate(upd)
+		err := dp.ProcessOneUpdate(upd)
 		if err != nil {
-			break
+			return err
 		}
 	}
-
-	return err
+	return nil
 }
 
 // ProcessOneUpdate you guess, processes ONLY one comming update
 // Support only one Message update
 func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 	if update.Message != nil {
-		dp.MessageHandler.Trigger(update)
+		dp.MessageHandler.Notify(update)
 	} else if update.CallbackQuery != nil {
-		dp.CallbackQueryHandler.Trigger(update)
+		dp.CallbackQueryHandler.Notify(update)
 	} else if update.ChannelPost != nil {
-		dp.ChannelPost.Trigger(update)
+		dp.ChannelPost.Notify(update)
 	} else {
 		text := "Detected not supported type of updates seems like Telegram bot api updated brfore this package updated"
 		return errors.New(text)
@@ -121,10 +119,25 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 		// TODO: timeout
 		updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
 		if err != nil {
-			return err
+			log.Println(err)
+			log.Println("Error with getting updates")
+			time.Sleep(time.Duration(c.ErrorSleep))
+
+			continue
 		}
-		if updates != nil {
-			err := dp.ProcessUpdates(updates)
+
+		if updates != nil && len(updates) > 0 {
+			index := len(updates) - 1
+
+			if index < 0 {
+				// Index can be -1, golang doesnot support non postive indexes ;(
+				index = 0
+			}
+
+			fmt.Println(updates)
+			c.Offset = updates[index].UpdateID + 1
+
+			err := dp.ProcessUpdates(updates, c)
 			if err != nil {
 				return err
 			}
