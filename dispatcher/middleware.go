@@ -6,9 +6,9 @@ type MiddlewareFunc func(*objects.Update, HandlerType)
 
 // Middleware is interface, default realization is DefaultMiddleware
 type MiddlewareManager interface {
-	Trigger(*objects.Update, HandlerType)
-	Register(...MiddlewareFunc) // for many middleware add
-	Unregister(MiddlewareFunc) (*MiddlewareFunc, error)
+	Trigger(update *objects.Update, handler HandlerType)
+	Register(middlewares ...MiddlewareFunc) // for many middleware add
+	Unregister(middleware MiddlewareFunc) (*MiddlewareFunc, error)
 }
 
 type DefaultMiddlewareManager struct {

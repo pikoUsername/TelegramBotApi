@@ -35,9 +35,9 @@ func (ht *HandlerType) Call(u *objects.Update) {
 
 // Interface for creating custom HandlerObj
 type HandlerObj interface {
-	Register(HandlerFunc, ...Filter)
-	Notify(*objects.Update)
-	RegisterMiddleware(...MiddlewareFunc)
+	Register(handler HandlerFunc, filters ...Filter)
+	Notify(update *objects.Update)
+	RegisterMiddleware(middlewares ...MiddlewareFunc)
 }
 
 // HandlerObj uses for save Callback
