@@ -24,6 +24,7 @@ type FileableConf interface {
 	Configurable
 	Params() (map[string]string, error)
 	Name() string
+	Path() string
 	GetFile() interface{}
 }
 
@@ -32,6 +33,13 @@ type FileableConf interface {
 type InputFile struct {
 	URL  string
 	File interface{}
+}
+
+type BaseFile struct {
+	FileID      string
+	UseExisting bool
+	MimeType    string
+	FileSize    int
 }
 
 // For CopyMessage method config
@@ -157,10 +165,33 @@ func (spc *SendPhotoConfig) Method() string {
 
 // represents a sendAudio fields
 type SendAudioConfig struct {
+	ChatId          int64
+	Audio           InputFile
+	Caption         string
+	ParseMode       string
+	CaptionEntities []*objects.MessageEntity
+	Duration        uint
+	Performer       string
+	Title           string
+	Thumb           InputFile
 }
 
 func (sac *SendAudioConfig) Values() (*url.Values, error) {
-	return &url.Values{}, nil
+	v := &url.Values{}
+
+	v.Add("chat_id", strconv.FormatInt(sac.ChatId, 10))
+	// Btw how???
+	// v.Add("audio", )
+	v.Add("caption", sac.Caption)
+	if sac.ParseMode != "" {
+		v.Add("parse_mode", sac.ParseMode)
+	}
+	v.Add("duration", strconv.FormatUint(uint64(sac.Duration), 10))
+	v.Add("performer", sac.Performer)
+	if sac.Title != "" {
+		v.Add("title", sac.Title)
+	}
+	return v, nil
 }
 
 func (sac *SendAudioConfig) Method() string {
@@ -267,33 +298,105 @@ func (svc *SendVoiceConfig) Method() string {
 	return "sendVoice"
 }
 
-type SendVideoNameConfig struct {
+type SendVideoNoteConfig struct {
 }
 
-func (svnc *SendVideoNameConfig) Values() (*url.Values, error) {
+func (svnc *SendVideoNoteConfig) Values() (*url.Values, error) {
 	return &url.Values{}, nil
 }
 
-func (svnc *SendVideoNameConfig) Method() string {
+func (svnc *SendVideoNoteConfig) Method() string {
 	return "sendVideoName"
 }
 
 type SendMediaGroupConfig struct {
+	// required fields
+	ChatID int64
+	Media  []interface{} // type: Union[[]InputMediaAudio, []InputMediaDocument, []InputMediaPhoto, []InputMediaVideo]
+
+	// Optional fields
+	DisableNotification      bool
+	ReplyToMessageID         int64
+	AllowSendingWithoutReply bool
 }
 
 func (smgc *SendMediaGroupConfig) Values() (*url.Values, error) {
-	return &url.Values{}, nil
+	v := &url.Values{}
+
+	v.Add("chat_id", strconv.FormatInt(smgc.ChatID, 10))
+	// TOOD: media types
+	// v.Add("media", smgc.Media)
+	v.Add("disable_notification", strconv.FormatBool(smgc.DisableNotification))
+
+	if smgc.ReplyToMessageID != 0 {
+		v.Add("reply_to_message_id", strconv.FormatInt(smgc.ReplyToMessageID, 10))
+	}
+
+	v.Add("allow_sending_without_reply", strconv.FormatBool(smgc.AllowSendingWithoutReply))
+
+	return v, nil
 }
 
 func (smgc *SendMediaGroupConfig) Method() string {
 	return "sendMediaGroup"
 }
 
+func NewSendMediaGroupConfig(chat_id int64, media []interface{}) *SendMediaGroupConfig {
+	return &SendMediaGroupConfig{
+		ChatID: chat_id,
+		Media:  media,
+	}
+}
+
 type SendLocationConfig struct {
+	ChatID                   int64   // req
+	Latitude                 float32 // req
+	Longitude                float32 // req
+	HorizontalAccuracy       float32
+	LivePeriod               uint
+	Heading                  int
+	ProximityAlertRadius     int
+	DisableNotification      bool
+	ReplyToMessageID         int
+	AllowSendingWithoutReply bool
 }
 
 func (slc *SendLocationConfig) Values() (*url.Values, error) {
-	return &url.Values{}, nil
+	v := &url.Values{}
+
+	v.Add("chat_id", strconv.FormatInt(slc.ChatID, 10))
+
+	// Same lines, broken DRY
+	v.Add("latitude", strconv.FormatFloat(float64(slc.Latitude), 'E', -1, 64))
+	v.Add("longitude", strconv.FormatFloat(float64(slc.Longitude), 'E', -1, 64))
+	v.Add("horizontal_accuracy", strconv.FormatFloat(float64(slc.HorizontalAccuracy), 'E', -1, 64))
+
+	if slc.LivePeriod != 0 {
+		v.Add("live_period", strconv.FormatUint(uint64(slc.LivePeriod), 10))
+	}
+
+	if slc.Heading != 0 {
+		v.Add("heading", strconv.FormatInt(int64(slc.Heading), 10))
+	}
+
+	v.Add("proximity_alert_radius", strconv.FormatInt(int64(slc.ProximityAlertRadius), 10))
+	v.Add("disable_notification", strconv.FormatBool(slc.DisableNotification))
+
+	if slc.ReplyToMessageID != 0 {
+		v.Add("reply_to_message_id", strconv.Itoa(slc.ReplyToMessageID))
+	}
+
+	v.Add("allow_sending_without_reply", strconv.FormatBool(slc.AllowSendingWithoutReply))
+
+	return v, nil
+}
+
+func NewSendLocationConf(chat_id int64, latitude float32, longitude float32) *SendLocationConfig {
+	return &SendLocationConfig{
+		ChatID:    chat_id,
+		Latitude:  latitude,
+		Longitude: longitude,
+	}
 }
 
 func (slc *SendLocationConfig) Method() string {
