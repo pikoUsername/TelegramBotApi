@@ -2,7 +2,7 @@ package dispatcher
 
 import "github.com/pikoUsername/tgp/objects"
 
-type HandlerFunc func(*objects.Update)
+type HandlerFunc func(update *objects.Update)
 
 // Another level of abstraction
 type HandlerType struct {

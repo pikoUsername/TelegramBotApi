@@ -125,13 +125,8 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 			continue
 		}
 
-		if updates != nil && len(updates) > 0 {
+		if len(updates) > 0 && updates != nil {
 			index := len(updates) - 1
-
-			if index < 0 {
-				// Index can be -1, golang doesnot support non postive indexes ;(
-				index = 0
-			}
 
 			c.Offset = updates[index].UpdateID + 1
 
