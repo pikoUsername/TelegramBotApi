@@ -311,7 +311,7 @@ func (bot *Bot) SendVoice(config *configs.SendVoiceConfig) (*objects.Message, er
 }
 
 // SendVideoName ...
-func (bot *Bot) SendVideoName(config *configs.SendVideoNameConfig) (*objects.Message, error) {
+func (bot *Bot) SendVideoName(config *configs.SendVideoNoteConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
