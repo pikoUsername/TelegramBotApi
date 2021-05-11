@@ -1,6 +1,6 @@
 package objects
 
-// Message Telegram object
+// Message Telegram object(a huge object)
 // https://core.telegram.org/bots/api#message
 type Message struct {
 	// MessageId ...
@@ -32,6 +32,40 @@ type Message struct {
 
 	// ReplyMarkup second most important thing
 	ReplyMarkup *InlineKeyboardMarkup `json:"reply_markup"`
+	SenderChat  *Chat                 `json:"sender_chat"`
+	Chat        *Chat                 `json:"chat"`
+
+	// Forwards
+	ForwardFrom          *User  `json:"forward_from"`
+	ForwardFromChat      *User  `json:"forward_from_chat"`
+	ForwardFromMessageId int64  `json:"forward_from_message_id"`
+	ForwardSignature     string `json:"forward_signature"`
+	ForwardSenderName    string `json:"forward_sender_name"`
+	ForwardDate          int64  `json:"forward_date"`
+
+	// Start files fields
+	Video *Video `json:"video"`
+
+	// Hmmmm documentation...
+	Document  *Document    `json:"document"`
+	Animation *Animation   `json:"animation"`
+	Photo     []*PhotoSize `json:"photo"`
+	// Voice     *Voice       `json:"voice"`
+
+	ConnectedWebsite string `json:"connected_website"`
+	// Invoice          *Invoice `json:"invoice"`
+
+	// Uses when user send message with photo
+	Caption string `json:"caption"`
+
+	// your location here
+	*Location `json:"location"`
+
+	// Chat stuff
+	NewChatMembers []*ChatMember `json:"new_chat_members"`
+	NewChatTitle   string        `json:"new_chat_title"`
+	NewChatPhoto   []*PhotoSize  `json:"new_chat_photo"`
+	LeftChatMember *User         `json:"left_chat_member"`
 }
 
 // MessageEntity Uses in Message struct
