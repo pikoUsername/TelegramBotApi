@@ -101,7 +101,7 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 	} else if update.ChannelPost != nil {
 		dp.ChannelPost.Notify(update)
 	} else {
-		text := "Detected not supported type of updates seems like Telegram bot api updated brfore this package updated"
+		text := "detected not supported type of updates seems like telegram bot api updated before this package updated"
 		return errors.New(text)
 	}
 	return nil
