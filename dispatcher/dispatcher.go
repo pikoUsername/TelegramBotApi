@@ -32,9 +32,10 @@ type StartPollingConfig struct {
 	Relax        time.Duration
 	ResetWebhook bool
 	ErrorSleep   uint
+	SkipUpdates  bool
 }
 
-func NewStartPollingConf() *StartPollingConfig {
+func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 	return &StartPollingConfig{
 		GetUpdatesConfig: configs.GetUpdatesConfig{
 			Timeout: 20,
@@ -43,6 +44,7 @@ func NewStartPollingConf() *StartPollingConfig {
 		Relax:        1,
 		ResetWebhook: false,
 		ErrorSleep:   5,
+		SkipUpdates:  skip_updates,
 	}
 }
 
@@ -105,6 +107,13 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 	return nil
 }
 
+func (dp *Dispatcher) SkipUpdates() {
+	dp.Bot.GetUpdates(&configs.GetUpdatesConfig{
+		Offset:  -1,
+		Timeout: 1,
+	})
+}
+
 // StartPolling check out to comming updates
 // If yes, Telegram Get to your bot a Update
 // Using GetUpdates method in Bot structure
@@ -112,6 +121,10 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	if c.ResetWebhook {
 		dp.ResetWebhook(true)
+	}
+
+	if c.SkipUpdates {
+		dp.SkipUpdates()
 	}
 
 	for {

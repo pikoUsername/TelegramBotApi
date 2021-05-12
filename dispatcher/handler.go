@@ -1,6 +1,10 @@
 package dispatcher
 
-import "github.com/pikoUsername/tgp/objects"
+import (
+	"fmt"
+
+	"github.com/pikoUsername/tgp/objects"
+)
 
 type HandlerFunc func(update *objects.Update)
 
@@ -78,6 +82,8 @@ func (ho *DefaultHandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
 // when middlewares activates, middleware calls a handler
 // Just triggers one, you must call Handler in Middleware,
 func (ho *DefaultHandlerObj) Notify(upd *objects.Update) {
+	fmt.Println(upd.Message)
+
 	for _, cb := range ho.handlers {
 		ho.Middleware.Trigger(upd, cb)
 	}

@@ -21,7 +21,7 @@ func (c *Command) Check(u *objects.Update) bool {
 		return false
 	}
 	text_args := strings.Split(u.Message.Text, " ")
-	args := text_args[1]
+	args := text_args[0]
 	mention := strings.ToLower(strings.Split(args, "@")[1])
 
 	if !c.ignore_caption && mention != "" {
