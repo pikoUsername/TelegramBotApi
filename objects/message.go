@@ -1,5 +1,7 @@
 package objects
 
+import "github.com/pikoUsername/tgp/utils"
+
 // Message Telegram object(a huge object)
 // https://core.telegram.org/bots/api#message
 type Message struct {
@@ -66,6 +68,16 @@ type Message struct {
 	NewChatTitle   string        `json:"new_chat_title"`
 	NewChatPhoto   []*PhotoSize  `json:"new_chat_photo"`
 	LeftChatMember *User         `json:"left_chat_member"`
+}
+
+func (m *Message) GetContentType() string {
+	if m.Text != "" {
+		return utils.TEXT
+	} else if m.Animation != nil {
+		return utils.ANIMATION
+	} else {
+		return utils.UNKNOWN
+	}
 }
 
 // MessageEntity Uses in Message struct

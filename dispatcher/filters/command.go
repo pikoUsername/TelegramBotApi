@@ -40,12 +40,14 @@ func NewCommand(cmd ...string) *Command {
 	}
 }
 
-// NewCommandStart uses for skip routine
+// ========================
+// Command based filters
+// ========================
+
 func NewCommandStart() *Command {
 	return NewCommand("start")
 }
 
-// Uses like NewCommandStart
 func NewCommandHelp() *Command {
 	return NewCommand("help")
 }
