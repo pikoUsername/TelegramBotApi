@@ -1,7 +1,5 @@
 package objects
 
-import "github.com/pikoUsername/tgp/utils"
-
 // Message Telegram object(a huge object)
 // https://core.telegram.org/bots/api#message
 type Message struct {
@@ -71,12 +69,13 @@ type Message struct {
 }
 
 func (m *Message) GetContentType() string {
+	// ContentTypes from utils/ can be used bc cycle import
 	if m.Text != "" {
-		return utils.TEXT
+		return "TEXT"
 	} else if m.Animation != nil {
-		return utils.ANIMATION
+		return "ANIMATION"
 	} else {
-		return utils.UNKNOWN
+		return "UNKNOWN"
 	}
 }
 
