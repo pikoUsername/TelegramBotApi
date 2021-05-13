@@ -1,7 +1,5 @@
 package objects
 
-import "time"
-
 type Poll struct {
 	ID                    int64            `json:"id"`
 	Question              string           `json:"question"`
@@ -14,8 +12,8 @@ type Poll struct {
 	CorrectOptionId       int64            `json:"correct_option_id"`
 	Explanation           string           `json:"explanation"`
 	ExplanationEntities   []*MessageEntity `json:"explanation_entities"`
-	OpenPeriod            time.Duration    `json:"open_period"`
-	CloseDate             time.Duration    `json:"close_date"`
+	OpenPeriod            int64            `json:"open_period"`
+	CloseDate             int64            `json:"close_date"`
 }
 
 type PollAnswer struct {
