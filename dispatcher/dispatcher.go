@@ -3,6 +3,8 @@ package dispatcher
 import (
 	"errors"
 	"log"
+	"os"
+	"os/signal"
 	"time"
 
 	"github.com/pikoUsername/tgp/bot"
@@ -23,6 +25,8 @@ type Dispatcher struct {
 	MessageHandler       HandlerObj
 	CallbackQueryHandler HandlerObj
 	ChannelPost          HandlerObj
+
+	safeExit bool
 }
 
 // Config for start polling method
@@ -41,7 +45,7 @@ func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 			Timeout: 20,
 			Limit:   0,
 		},
-		Relax:        1,
+		Relax:        1 * time.Second,
 		ResetWebhook: false,
 		ErrorSleep:   5,
 		SkipUpdates:  skip_updates,
@@ -52,7 +56,8 @@ func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 // And with autoconfiguration, need to run once
 func NewDispatcher(bot *bot.Bot) (*Dispatcher, error) {
 	dp := &Dispatcher{
-		Bot: bot,
+		Bot:      bot,
+		safeExit: true,
 	}
 
 	dp.MessageHandler = NewDHandlerObj(dp)
@@ -114,6 +119,26 @@ func (dp *Dispatcher) SkipUpdates() {
 	})
 }
 
+func (dp *Dispatcher) SafeExit() {
+	if dp.safeExit {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			for c := range c {
+				if c.String() != "" {
+					dp.ShutDown()
+					os.Exit(0)
+				}
+			}
+		}()
+	}
+}
+
+func (dp *Dispatcher) ShutDown() {
+	// Here will be other methods
+	dp.ResetWebhook(true)
+}
+
 // StartPolling check out to comming updates
 // If yes, Telegram Get to your bot a Update
 // Using GetUpdates method in Bot structure
@@ -128,6 +153,7 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	}
 
 	for {
+		dp.SafeExit()
 		// TODO: timeout
 		updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
 		if err != nil {
@@ -153,9 +179,4 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 			time.Sleep(c.Relax)
 		}
 	}
-}
-
-// StartWebhook ...
-func (dp *Dispatcher) StartWebhook() error {
-	return nil
 }
