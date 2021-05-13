@@ -22,8 +22,7 @@ func (t *Text) Check(u *objects.Update) bool {
 	if u.Message != nil {
 		text = u.Message.Text
 	} else if u.CallbackQuery != nil {
-		// TODO: Callback query object
-		// text = u.CallbackQuery
+		text = u.CallbackQuery.Data
 	} else if u.InlineQuery != nil {
 		text = u.InlineQuery.Query
 	} else if u.Poll != nil {
