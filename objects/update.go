@@ -1,7 +1,6 @@
 package objects
 
 // Update Represents telegram Update object
-//
 // https://core.telegram.org/bots/api#update
 type Update struct {
 	UpdateID           int                 `json:"update_id"`
@@ -21,4 +20,7 @@ type Update struct {
 	ForwardFrom        *User               `json:"forward_from"`
 	ForwardDate        int                 `json:"forward_date"`
 	Dice               *Dice               `json:"dice"`
+
+	// Using for data in handlers, NOT USING!
+	DATA map[string]interface{}
 }

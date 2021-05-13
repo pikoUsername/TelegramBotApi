@@ -1,5 +1,14 @@
 package objects
 
+// CallbackQuery represents telegram object
+// https://core.telegram.org/bots/api#callbackquery
 type CallbackQuery struct {
-	ID int `json:"id"`
+	// Nothing to see, :P
+	ID              int64 `json:"id"`
+	From            *User `json:"from"`
+	*Message        `json:"message"`
+	InlineMessageID int64  `json:"inline_message_id"`
+	ChatInstance    string `json:"chat_instance"`
+	Data            string `json:"data"`
+	GameShortName   string `json:"game_short_name"`
 }
