@@ -14,7 +14,7 @@ type Update struct {
 	ShippingQuery      *ShippingQuery      `json:"shipping_query"`
 	Poll               *Poll               `json:"poll"`
 	PollAnswer         *PollAnswer         `json:"poll_answer"`
-	MyChatMember       *MyChatMember       `json:"my_chat_member"`
+	MyChatMember       *ChatMemberUpdated  `json:"my_chat_member"`
 	ChatMember         *ChatMember         `json:"chat_member"`
 	Date               int                 `json:"date"`
 	ForwardFrom        *User               `json:"forward_from"`
