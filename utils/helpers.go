@@ -1,5 +1,7 @@
 package utils
 
+import "encoding/json"
+
 // Will be a other stuff, but useful stuff
 
 // actions for telegram bot api
@@ -43,4 +45,12 @@ type Permissions struct {
 	CanSendPolls          bool `json:"can_send_polls"`
 	CanSendOtherMessage   bool `json:"can_send_other_messages"`
 	CanAddWebPagePreviews bool `json:"can_add_web_page_previews"`
+}
+
+func ObjectToJson(obj interface{}) string {
+	marshal, err := json.Marshal(obj)
+	if err != nil {
+		return ""
+	}
+	return string(marshal)
 }
