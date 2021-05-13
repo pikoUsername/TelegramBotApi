@@ -26,8 +26,13 @@ type Dispatcher struct {
 	CallbackQueryHandler HandlerObj
 	ChannelPost          HandlerObj
 
-	safeExit bool
+	// If you want to add onshutdown function
+	// just append to this object, :P
+	OnShutdownCallbacks []*OnStartAndShutdownFunc
+	OnStartupCallbacks  []*OnStartAndShutdownFunc
 }
+
+type OnStartAndShutdownFunc func(dp *Dispatcher)
 
 // Config for start polling method
 // idk where to put this config, configs or dispatcher?
@@ -37,6 +42,7 @@ type StartPollingConfig struct {
 	ResetWebhook bool
 	ErrorSleep   uint
 	SkipUpdates  bool
+	SafeExit     bool
 }
 
 func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
@@ -49,22 +55,22 @@ func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 		ResetWebhook: false,
 		ErrorSleep:   5,
 		SkipUpdates:  skip_updates,
+		SafeExit:     true,
 	}
 }
 
 // NewDispathcer get a new Dispatcher
 // And with autoconfiguration, need to run once
-func NewDispatcher(bot *bot.Bot) (*Dispatcher, error) {
+func NewDispatcher(bot *bot.Bot) *Dispatcher {
 	dp := &Dispatcher{
-		Bot:      bot,
-		safeExit: true,
+		Bot: bot,
 	}
 
 	dp.MessageHandler = NewDHandlerObj(dp)
 	dp.CallbackQueryHandler = NewDHandlerObj(dp)
 	dp.ChannelPost = NewDHandlerObj(dp)
 
-	return dp, nil
+	return dp
 }
 
 func (dp *Dispatcher) ResetWebhook(check bool) error {
@@ -119,24 +125,63 @@ func (dp *Dispatcher) SkipUpdates() {
 	})
 }
 
-func (dp *Dispatcher) SafeExit() {
-	if dp.safeExit {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		go func() {
-			for c := range c {
-				if c.String() != "" {
-					dp.ShutDown()
-					os.Exit(0)
-				}
-			}
-		}()
+// ========================================
+// On Startup and Shutdown related methods
+// ========================================
+
+func (dp *Dispatcher) Shutdown() {
+	for _, cb := range dp.OnShutdownCallbacks {
+		c := *cb
+		c(dp)
 	}
 }
 
-func (dp *Dispatcher) ShutDown() {
+func (dp *Dispatcher) StartUp() {
+	for _, cb := range dp.OnStartupCallbacks {
+		c := *cb
+		c(dp)
+	}
+}
+
+func (dp *Dispatcher) OnStartup(f ...OnStartAndShutdownFunc) {
+	var objs []*OnStartAndShutdownFunc
+
+	for _, cb := range f {
+		objs = append(objs, &cb)
+	}
+
+	dp.OnStartupCallbacks = append(dp.OnStartupCallbacks, objs...)
+}
+
+func (dp *Dispatcher) OnShutdown(f ...OnStartAndShutdownFunc) {
+	var objs []*OnStartAndShutdownFunc
+
+	for _, cb := range f {
+		objs = append(objs, &cb)
+	}
+
+	dp.OnShutdownCallbacks = append(dp.OnShutdownCallbacks, objs...)
+}
+
+// Thanks: https://stackoverflow.com/questions/11268943/is-it-possible-to-capture-a-ctrlc-signal-and-run-a-cleanup-function-in-a-defe
+func (dp *Dispatcher) SafeExit() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for c := range c {
+			if c.String() != "" {
+				dp.ShutDownDP()
+				os.Exit(0)
+			}
+		}
+	}()
+}
+
+// ShutDownDP calls ResetWebhook for reset webhook in telegram servers, if yes
+func (dp *Dispatcher) ShutDownDP() {
 	// Here will be other methods
 	dp.ResetWebhook(true)
+	dp.Shutdown()
 }
 
 // StartPolling check out to comming updates
@@ -152,8 +197,12 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 		dp.SkipUpdates()
 	}
 
+	dp.StartUp()
 	for {
-		dp.SafeExit()
+		if c.SafeExit {
+			dp.SafeExit()
+		}
+
 		// TODO: timeout
 		updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
 		if err != nil {
