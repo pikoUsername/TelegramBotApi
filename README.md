@@ -13,3 +13,45 @@ NOTE: This package can be used for sirous bots, bc have a kilotonn of bugs!
 ###### docs: 
 <br>
  (WIP) for first time, you can read the code 
+
+<h3>Example:</h3>
+<code lang="golang">
+package main
+
+import (
+	"fmt"
+	"log"
+
+	tgbot "github.com/pikoUsername/tgp/bot"
+	"github.com/pikoUsername/tgp/dispatcher"
+	"github.com/pikoUsername/tgp/utils"
+    "github.com/pikoUsername/tgp/objects"
+    "github.com/pikoUsername/tgp/configs"
+)
+
+func main() {
+
+	bot, err := tgbot.NewBot("<token>", true, utils.ModeHTML)
+	if err != nil {
+		panic(err)
+	}
+
+	dp := dispatcher.NewDispatcher(bot)
+	if err != nil {
+		panic(err)
+	}
+    dp.MessageHandler.Register(func(u *objects.Update) { 
+        if u.Message.Text == "" { 
+            return 
+        }
+        _, err := bot.SendMessage(&configs.SendMessageConfig{
+            ChatID: u.Message.Chat.ID, 
+            Text: u.Message.Text, 
+        })
+        if err != nil { 
+            fmt.Println(err)
+        }
+    })
+    dp.StartPolling(dispatcher.NewStartPollingConfig(true))
+}
+</code>
