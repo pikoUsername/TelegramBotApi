@@ -14,8 +14,12 @@ NOTE: This package can be used for sirous bots, bc have a kilotonn of bugs!
 <br>
  (WIP) for first time, you can read the code 
 
+Download This package using this command `go get -v github.com/pikoUsername/tgp` 
+Ignore a warning about no files in root directory, if you want download a new version of this package 
+Then delete a past version in folder where saved on.
+
 <h3>Example:</h3>
-<code lang="golang">
+```go
 package main
 
 import (
@@ -30,7 +34,6 @@ import (
 )
 
 func main() {
-
 	bot, err := tgbot.NewBot("<token>", true, utils.ModeHTML)
 	if err != nil {
 		panic(err)
@@ -54,4 +57,4 @@ func main() {
     })
     dp.StartPolling(dispatcher.NewStartPollingConfig(true))
 }
-</code>
+```
