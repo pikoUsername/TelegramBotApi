@@ -33,7 +33,7 @@ type Message struct {
 	// ReplyMarkup second most important thing
 	ReplyMarkup *InlineKeyboardMarkup `json:"reply_markup"`
 	SenderChat  *Chat                 `json:"sender_chat"`
-	Chat        *Chat                 `json:"chat"`
+	*Chat       `json:"chat"`
 
 	// Forwards
 	ForwardFrom          *User  `json:"forward_from"`
@@ -53,7 +53,7 @@ type Message struct {
 	// Voice     *Voice       `json:"voice"`
 
 	ConnectedWebsite string `json:"connected_website"`
-	// Invoice          *Invoice `json:"invoice"`
+	// Invoice *Invoice `json:"invoice"`
 
 	// Uses when user send message with photo
 	Caption string `json:"caption"`

@@ -11,7 +11,7 @@ type Chat struct {
 // https://core.telegram.org/bots/api#chatmember
 type ChatMember struct {
 	// User ofc
-	User        *User  `json:"user"`
+	User        `json:"user"`
 	Status      string `json:"status"`
 	CustomTitle string `json:"custom_title"`
 	IsAnon      bool   `json:"is_anonymous"`
@@ -35,9 +35,6 @@ type ChatMember struct {
 	CanSendPolls          bool `json:"can_send_polls"`
 	CanSendOtherMessage   bool `json:"can_send_other_messages"`
 	CanAddWebPagePreviews bool `json:"can_add_web_page_previews"`
-}
-
-type MyChatMember struct {
 }
 
 // ChatInviteLink represents ChatInvite object
