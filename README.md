@@ -7,10 +7,10 @@ and any update can broke backward capability
 
 NOTE: This package can be used for sirous bots, bc have a kilotonn of bugs!
 
-###### version 0.1.1
+## version 0.1.1
 <br>
 
-###### docs: 
+## docs
 <br>
  (WIP) for first time, you can read the code 
 
