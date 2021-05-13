@@ -1,11 +1,11 @@
 package configs
 
 import (
-	"fmt"
 	"net/url"
 	"strconv"
 
 	"github.com/pikoUsername/tgp/objects"
+	"github.com/pikoUsername/tgp/utils"
 )
 
 // This file stores ALL method configs
@@ -98,6 +98,9 @@ func (smc *SendMessageConfig) Values() (*url.Values, error) {
 	}
 
 	result.Add("disable_web_page_preview", strconv.FormatBool(smc.DisableWebPagePreview))
+	// Must be work!
+	result.Add("entities", utils.ObjectToJson(smc.Entities))
+
 	return result, nil
 }
 
@@ -191,6 +194,7 @@ func (sac *SendAudioConfig) Values() (*url.Values, error) {
 	if sac.Title != "" {
 		v.Add("title", sac.Title)
 	}
+	v.Add("caption_entities", utils.ObjectToJson(sac.CaptionEntities))
 	return v, nil
 }
 
@@ -275,6 +279,7 @@ type SendVoiceConfig struct {
 	Duration             int
 	DisableNotifications bool
 	ReplyToMessageID     int64
+
 	// Must be generic object, but for first time you can use InlineKeyboardMarkup
 	// TODO
 	ReplyMarkup *objects.InlineKeyboardMarkup
@@ -291,6 +296,8 @@ func (svc *SendVoiceConfig) Values() (*url.Values, error) {
 	if svc.ReplyToMessageID != 0 {
 		v.Add("reply_to_message_id", strconv.FormatInt(svc.ReplyToMessageID, 10))
 	}
+
+	v.Add("caption_entities", utils.ObjectToJson(svc.CaptionEntities))
 	// TODO: reply Markup parsing function
 
 	return v, nil
@@ -467,12 +474,12 @@ func NewGetUpdateConfig(Offset int) *GetUpdatesConfig {
 }
 
 type SetMyCommandsConfig struct {
-	commands []*objects.BotCommand
+	Commands []*objects.BotCommand
 }
 
 func (smcc *SetMyCommandsConfig) Values() (*url.Values, error) {
 	v := &url.Values{}
-	v.Add("commands", "null") // Stub
+	v.Add("commands", utils.ObjectToJson(smcc.Commands))
 	return v, nil
 }
 
@@ -482,7 +489,7 @@ func (smcc *SetMyCommandsConfig) Method() string {
 
 func NewSetMyCommands(commands []*objects.BotCommand) *SetMyCommandsConfig {
 	return &SetMyCommandsConfig{
-		commands: commands,
+		Commands: commands,
 	}
 }
 
@@ -589,7 +596,7 @@ func (spc *SendPollConfig) Values() (*url.Values, error) {
 		v.Add("explanation_parse_mode", spc.ExpalnationParseMode)
 	}
 	if spc.ExplnationEntites != nil {
-		v.Add("explanation_entities", fmt.Sprintln(spc.ExplnationEntites))
+		v.Add("explanation_entities", utils.ObjectToJson(spc.ExplnationEntites))
 	}
 	v.Add("open_period", strconv.FormatInt(spc.OpenPeriod, 10))
 	v.Add("close_date", strconv.FormatInt(spc.CloseDate, 10))
