@@ -275,7 +275,9 @@ type SendVoiceConfig struct {
 	Duration             int
 	DisableNotifications bool
 	ReplyToMessageID     int64
-	ReplyMarkup          *objects.InlineKeyboard
+	// Must be generic object, but for first time you can use InlineKeyboardMarkup
+	// TODO
+	ReplyMarkup *objects.InlineKeyboardMarkup
 }
 
 func (svc *SendVoiceConfig) Values() (*url.Values, error) {
