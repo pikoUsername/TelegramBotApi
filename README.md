@@ -18,8 +18,8 @@ Download This package using this command `go get -v github.com/pikoUsername/tgp`
 Ignore a warning about no files in root directory, if you want download a new version of this package 
 Then delete a past version in folder where saved on.
 
-<h3>Example:</h3>
-```go <br>
+###### Example
+```go
 package main
 
 import (
