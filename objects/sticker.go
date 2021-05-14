@@ -18,7 +18,7 @@ type Sticker struct {
 	IsAnimated bool `json:"is_animated"`
 
 	// Thumb, idk what is it
-	Thumb *Thumb `json:"thumb"`
+	*Thumb `json:"thumb"`
 
 	// FileID Emoji file id, strange but file_id is string
 	FileID string `json:"file_id"`
