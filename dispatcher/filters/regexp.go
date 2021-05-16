@@ -7,7 +7,7 @@ import (
 )
 
 type Regexp struct {
-	RegexpPattern *regexp.Regexp
+	*regexp.Regexp
 }
 
 func (r *Regexp) Check(u *objects.Update) bool {
@@ -22,7 +22,7 @@ func (r *Regexp) Check(u *objects.Update) bool {
 		return false
 	}
 
-	match := string(r.RegexpPattern.Find([]byte(content)))
+	match := string(r.Regexp.Find([]byte(content)))
 	return match != ""
 }
 
@@ -33,6 +33,6 @@ func NewRegexp(re string) (*Regexp, error) {
 	}
 
 	return &Regexp{
-		RegexpPattern: rex,
+		Regexp: rex,
 	}, nil
 }
