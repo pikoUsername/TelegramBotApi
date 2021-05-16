@@ -73,6 +73,7 @@ func NewDispatcher(bot *bot.Bot) *Dispatcher {
 	return dp
 }
 
+// ResetWebhook uses for reset webhook for telegram
 func (dp *Dispatcher) ResetWebhook(check bool) error {
 	if check {
 		wi, err := dp.Bot.GetWebhookInfo()
@@ -118,6 +119,7 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 	return nil
 }
 
+// SkipUpdates skip comming updates, sending to telegram servers
 func (dp *Dispatcher) SkipUpdates() {
 	dp.Bot.GetUpdates(&configs.GetUpdatesConfig{
 		Offset:  -1,
@@ -129,6 +131,8 @@ func (dp *Dispatcher) SkipUpdates() {
 // On Startup and Shutdown related methods
 // ========================================
 
+// Shutdown calls when you enter ^C(which means SIGINT)
+// And SafeExit trap it, before you exit
 func (dp *Dispatcher) Shutdown() {
 	for _, cb := range dp.OnShutdownCallbacks {
 		c := *cb
@@ -136,6 +140,8 @@ func (dp *Dispatcher) Shutdown() {
 	}
 }
 
+// StartUp function, iterate over a callbacks from OnStartupCallbacks
+// Calls in StartPolling function
 func (dp *Dispatcher) StartUp() {
 	for _, cb := range dp.OnStartupCallbacks {
 		c := *cb
@@ -143,6 +149,9 @@ func (dp *Dispatcher) StartUp() {
 	}
 }
 
+// Onstartup method append to OnStartupCallbaks a callbacks
+// Using pointers bc cant unregister function using copy of object
+// And golang doesnot support generics, and type equals
 func (dp *Dispatcher) OnStartup(f ...OnStartAndShutdownFunc) {
 	var objs []*OnStartAndShutdownFunc
 
@@ -153,6 +162,8 @@ func (dp *Dispatcher) OnStartup(f ...OnStartAndShutdownFunc) {
 	dp.OnStartupCallbacks = append(dp.OnStartupCallbacks, objs...)
 }
 
+// OnShutdown method using for register OnShutdown callbacks
+// Same code like OnStartup
 func (dp *Dispatcher) OnShutdown(f ...OnStartAndShutdownFunc) {
 	var objs []*OnStartAndShutdownFunc
 
@@ -179,7 +190,6 @@ func (dp *Dispatcher) SafeExit() {
 
 // ShutDownDP calls ResetWebhook for reset webhook in telegram servers, if yes
 func (dp *Dispatcher) ShutDownDP() {
-	// Here will be other methods
 	dp.ResetWebhook(true)
 	dp.Shutdown()
 }
