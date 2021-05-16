@@ -22,5 +22,5 @@ type Update struct {
 	Dice               *Dice              `json:"dice"`
 
 	// Using for data in handlers, NOT USING!
-	DATA map[string]interface{}
+	// DATA map[string]interface{}
 }
