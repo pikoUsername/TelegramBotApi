@@ -5,7 +5,7 @@ This package is on alpha version,
 and any update can broke backward capability
 </h1>
 
-NOTE: This package can be used for sirous bots, bc have a kilotonn of bugs!
+NOTE: Please dont try use this package 
 
 ## version 0.1.1
 <br>
