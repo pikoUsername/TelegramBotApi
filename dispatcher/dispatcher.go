@@ -73,6 +73,10 @@ func NewDispatcher(bot *bot.Bot) *Dispatcher {
 	dp.MessageHandler = NewDHandlerObj(dp)
 	dp.CallbackQueryHandler = NewDHandlerObj(dp)
 	dp.ChannelPostHandler = NewDHandlerObj(dp)
+	dp.ChatMemberHandler = NewDHandlerObj(dp)
+	dp.PollHandler = NewDHandlerObj(dp)
+	dp.PollAnswerHandler = NewDHandlerObj(dp)
+	dp.ChannelPostHandler = NewDHandlerObj(dp)
 
 	return dp
 }
