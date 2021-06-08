@@ -24,7 +24,11 @@ type Dispatcher struct {
 	// Handlers
 	MessageHandler       HandlerObj
 	CallbackQueryHandler HandlerObj
-	ChannelPost          HandlerObj
+	ChannelPostHandler   HandlerObj
+	PollHandler          HandlerObj
+	ChatMemberHandler    HandlerObj
+	PollAnswerHandler    HandlerObj
+	MyChatMemberHandler  HandlerObj
 
 	// If you want to add onshutdown function
 	// just append to this object, :P
@@ -68,7 +72,7 @@ func NewDispatcher(bot *bot.Bot) *Dispatcher {
 
 	dp.MessageHandler = NewDHandlerObj(dp)
 	dp.CallbackQueryHandler = NewDHandlerObj(dp)
-	dp.ChannelPost = NewDHandlerObj(dp)
+	dp.ChannelPostHandler = NewDHandlerObj(dp)
 
 	return dp
 }
@@ -111,7 +115,15 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 	} else if update.CallbackQuery != nil {
 		dp.CallbackQueryHandler.Notify(update)
 	} else if update.ChannelPost != nil {
-		dp.ChannelPost.Notify(update)
+		dp.ChannelPostHandler.Notify(update)
+	} else if update.Poll != nil {
+		dp.PollHandler.Notify(update)
+	} else if update.PollAnswer != nil {
+		dp.PollAnswerHandler.Notify(update)
+	} else if update.ChatMember != nil {
+		dp.ChatMemberHandler.Notify(update)
+	} else if update.MyChatMember != nil {
+		dp.MyChatMemberHandler.Notify(update)
 	} else {
 		text := "detected not supported type of updates seems like telegram bot api updated before this package updated"
 		return errors.New(text)
