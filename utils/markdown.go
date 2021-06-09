@@ -38,7 +38,7 @@ func HItalic(text ...string) string {
 // Code is Code, telegram only lanuage- startswith classes for code
 func Code(code string, language string) string {
 	return fmt.Sprintf(
-		"<code class='language-%s'>%s</code>", language, code, "code"
+		"<code class='language-%s'>%s</code>", language, code,
 	)
 }
 

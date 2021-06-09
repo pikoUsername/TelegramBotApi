@@ -1,14 +1,15 @@
 package dispatcher_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/pikoUsername/tgp/bot"
 	"github.com/pikoUsername/tgp/dispatcher"
 )
 
-const (
-	TestToken = "1780004238:AAENHJU4i9PaSIkgNjw-P2OvcQrtrO96JB4"
+var (
+	TestToken = os.Getenv("TEST_TOKEN")
 )
 
 func GetDispatcher(t *testing.T) *dispatcher.Dispatcher {

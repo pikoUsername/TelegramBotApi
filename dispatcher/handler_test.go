@@ -6,6 +6,7 @@ import (
 
 	"github.com/pikoUsername/tgp/configs"
 	"github.com/pikoUsername/tgp/dispatcher"
+	"github.com/pikoUsername/tgp/dispatcher/filters"
 	"github.com/pikoUsername/tgp/objects"
 )
 
@@ -22,7 +23,7 @@ func TestRegister(t *testing.T) {
 			panic(err)
 		}
 		fmt.Println(msg.Text)
-	}, nil)
+	}, filters.NewCommandStart())
 }
 
 func TestMiddlwareRegister(t *testing.T) {

@@ -23,16 +23,14 @@ func (c *Command) Check(u *objects.Update) bool {
 	}
 	text_args := strings.Split(u.Message.Text, " ")
 	raw_text := text_args[0]
-
 	raw := strings.Split(raw_text, "@")
+
 	if len(raw) > 1 {
 		mention = strings.ToLower(raw[1])
 	}
 
 	command := strings.ToLower(raw[0])
-
 	prefix := raw_text[0]
-
 	if !c.ignore_caption && mention != "" || prefix != c.prefix {
 		return false
 	}
@@ -42,7 +40,6 @@ func (c *Command) Check(u *objects.Update) bool {
 			return true
 		}
 	}
-
 	return true
 }
 

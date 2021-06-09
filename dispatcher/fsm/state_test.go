@@ -15,8 +15,8 @@ func TestGetFullState(t *testing.T) {
 	fs := test_state.GetFullState()
 	fs1 := test_state1.GetFullState()
 
-	if fs != "@:*" {
-		t.Error("* any state now is not")
+	if fs != "*" {
+		t.Error("* any state now is not", fs)
 	}
 	if fs1 != "kekek:LOLLOLOLLOLLOLLOLLOLLOLLOLLOL" {
 		t.Error("Not correct string formation")

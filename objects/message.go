@@ -69,7 +69,7 @@ type Message struct {
 }
 
 func (m *Message) GetContentType() string {
-	// ContentTypes from utils/ can be used bc cycle import
+	// ContentTypes from utils/ can not be used bc cycle import
 	if m.Text != "" {
 		return "TEXT"
 	} else if m.Animation != nil {
@@ -86,7 +86,7 @@ type MessageEntity struct {
 	Offset   int    `json:"offset"`
 	Length   int    `json:"length"`
 	URL      string `json:"url"`
-	User     *User  `json:"user"`
+	*User    `json:"user"`
 	Language string `json:"language"`
 }
 
