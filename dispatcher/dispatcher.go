@@ -9,6 +9,7 @@ import (
 
 	"github.com/pikoUsername/tgp/bot"
 	"github.com/pikoUsername/tgp/configs"
+	"github.com/pikoUsername/tgp/dispatcher/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
 )
 
@@ -65,7 +66,7 @@ func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 
 // NewDispathcer get a new Dispatcher
 // And with autoconfiguration, need to run once
-func NewDispatcher(bot *bot.Bot) *Dispatcher {
+func NewDispatcher(bot *bot.Bot, storage storage.Storage) *Dispatcher {
 	dp := &Dispatcher{
 		Bot: bot,
 	}
@@ -206,6 +207,7 @@ func (dp *Dispatcher) SafeExit() {
 
 // ShutDownDP calls ResetWebhook for reset webhook in telegram servers, if yes
 func (dp *Dispatcher) ShutDownDP() {
+	log.Println("Stop polling!")
 	dp.ResetWebhook(true)
 	dp.Shutdown()
 }

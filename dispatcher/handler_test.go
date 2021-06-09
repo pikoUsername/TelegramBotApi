@@ -12,16 +12,17 @@ import (
 func TestRegister(t *testing.T) {
 	dp := GetDispatcher(t)
 	// Simple echo handler
-	dp.MessageHandler.Register(func(upd *objects.Update) {
+	dp.MessageHandler.Register(func(update *objects.Update) {
 		bot := dp.Bot
 		msg, err := bot.Send(&configs.SendMessageConfig{
-			ChatID: int64(upd.Message.From.ID),
+			ChatID: int64(update.Message.From.ID),
+			Text:   update.Message.Text,
 		})
 		if err != nil {
 			panic(err)
 		}
 		fmt.Println(msg.Text)
-	})
+	}, nil)
 }
 
 func TestMiddlwareRegister(t *testing.T) {

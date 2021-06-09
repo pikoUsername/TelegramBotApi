@@ -4,12 +4,13 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
-type HandlerFunc func(update *objects.Update)
+// HandlerFunc ...
+type HandlerFunc func(upd *objects.Update)
 
 // Another level of abstraction
 type HandlerType struct {
-	Callback *HandlerFunc
-	Filters  []Filter
+	Callback   *HandlerFunc
+	Filters    []Filter
 }
 
 // CheckForFilters iterate all filters and call Check method for check
@@ -60,8 +61,8 @@ func NewDHandlerObj(dp *Dispatcher) *DefaultHandlerObj {
 // Register, append to Callbacks, e.g handler functions
 func (ho *DefaultHandlerObj) Register(f HandlerFunc, filters ...Filter) {
 	ht := HandlerType{
-		Callback: &f,
-		Filters:  filters,
+		Callback:   &f,
+		Filters:    filters,
 	}
 
 	ho.handlers = append(ho.handlers, ht)
