@@ -50,7 +50,7 @@ func (ms *MemoryStorage) GetState(ChatID int64, UserID int64) string {
 }
 
 func (ms *MemoryStorage) Clear() {
-	ms.Data = nil
+	ms.Data = &DataType{}
 }
 
 var (
