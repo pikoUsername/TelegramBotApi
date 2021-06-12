@@ -196,12 +196,9 @@ func (dp *Dispatcher) SafeExit() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
-		for c := range c {
-			if c.String() != "" {
-				dp.ShutDownDP()
-				os.Exit(0)
-			}
-		}
+		<-c
+		dp.ShutDownDP()
+		os.Exit(0)
 	}()
 }
 
