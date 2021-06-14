@@ -113,10 +113,6 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	return utils.CheckResult(tgresp)
 }
 
-func (bot *Bot) UploadFile(method string, fields map[string]string, file interface{}) (*objects.TelegramResponse, error) {
-	return nil, nil
-}
-
 // GetMe reporesents telegram method
 // https://core.telegram.org/bots/api#getme
 func (bot *Bot) GetMe() (*objects.User, error) {

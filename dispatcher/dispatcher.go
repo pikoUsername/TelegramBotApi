@@ -211,14 +211,21 @@ func (dp *Dispatcher) ShutDownDP() {
 	dp.Shutdown()
 }
 
-// GetUpdatesChan ...
+// GetUpdatesChan makes getUpdates request to telegram servers
+// sends update to updates channel
+// Time.Sleep here for stop goroutine for a c.Relax time
+//
+// yeah it bad, and works only on crutches, but works, idk how
 func (dp *Dispatcher) GetUpdatesChan(c *StartPollingConfig) chan *objects.Update {
 	upd_c := make(chan *objects.Update, c.Limit)
 
 	go func() {
 		for {
-			updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
+			if c.Relax != 0 {
+				time.Sleep(c.Relax)
+			}
 
+			updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
 			if err != nil {
 				log.Println(err)
 				log.Println("Error with getting updates")
@@ -252,25 +259,24 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 		dp.SkipUpdates()
 	}
 
-	for {
-		if c.SafeExit {
-			dp.SafeExit()
-		}
+	// TODO: timeout
+	updates := dp.GetUpdatesChan(c)
 
-		// TODO: timeout
-		updates := dp.GetUpdatesChan(c)
+	if c.SafeExit {
+		// runs goroutine for safeexiting
+		// and terminates program
+		go dp.SafeExit()
+	}
 
-		if len(updates) > 0 && updates != nil {
-			for upd := range updates {
-				err := dp.ProcessOneUpdate(upd)
-				if err != nil {
-					return err
-				}
+	for upd := range updates {
+		// waiting untill update come...
+		if upd != nil {
+			err := dp.ProcessOneUpdate(upd)
+			if err != nil {
+				return err
 			}
 		}
-
-		if c.Relax != 0 {
-			time.Sleep(c.Relax)
-		}
 	}
+
+	return nil
 }
