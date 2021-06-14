@@ -48,6 +48,7 @@ type StartPollingConfig struct {
 	ErrorSleep   uint
 	SkipUpdates  bool
 	SafeExit     bool
+	Timeout      time.Duration
 }
 
 func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
@@ -61,6 +62,7 @@ func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 		ErrorSleep:   5,
 		SkipUpdates:  skip_updates,
 		SafeExit:     true,
+		Timeout:      5 * time.Second,
 	}
 }
 
@@ -209,43 +211,61 @@ func (dp *Dispatcher) ShutDownDP() {
 	dp.Shutdown()
 }
 
+// GetUpdatesChan ...
+func (dp *Dispatcher) GetUpdatesChan(c *StartPollingConfig) chan *objects.Update {
+	upd_c := make(chan *objects.Update, c.Limit)
+
+	go func() {
+		for {
+			updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
+
+			if err != nil {
+				log.Println(err)
+				log.Println("Error with getting updates")
+				time.Sleep(time.Duration(c.ErrorSleep))
+
+				continue
+			}
+
+			for _, update := range updates {
+				if update.UpdateID >= c.Offset {
+					c.Offset = update.UpdateID + 1
+					upd_c <- update
+				}
+			}
+		}
+	}()
+
+	return upd_c
+}
+
 // StartPolling check out to comming updates
 // If yes, Telegram Get to your bot a Update
 // Using GetUpdates method in Bot structure
 // GetUpdates config using for getUpdates method
 func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
+	dp.StartUp()
 	if c.ResetWebhook {
 		dp.ResetWebhook(true)
 	}
-
 	if c.SkipUpdates {
 		dp.SkipUpdates()
 	}
 
-	dp.StartUp()
 	for {
 		if c.SafeExit {
 			dp.SafeExit()
 		}
 
 		// TODO: timeout
-		updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
-		if err != nil {
-			log.Println(err)
-			log.Println("Error with getting updates")
-			time.Sleep(time.Duration(c.ErrorSleep))
-
-			continue
-		}
+		updates := dp.GetUpdatesChan(c)
 
 		if len(updates) > 0 && updates != nil {
-			index := len(updates) - 1
-
-			c.Offset = updates[index].UpdateID + 1
-
-			err := dp.ProcessUpdates(updates, c)
-			if err != nil {
-				return err
+			for upd := range updates {
+				err := dp.ProcessOneUpdate(upd)
+				if err != nil {
+					return err
+				}
 			}
 		}
 

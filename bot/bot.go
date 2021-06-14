@@ -93,10 +93,12 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	if err != nil {
 		return nil, err
 	}
+
 	request.Header.Set("Content-Type", "application/json")
 	// Most important staff doing here
 	// Sending Request to Telegram servers
 	resp, err := bot.Client.Do(request)
+
 	// check for error
 	if err != nil {
 		return nil, err
@@ -109,6 +111,10 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 		return tgresp, err
 	}
 	return utils.CheckResult(tgresp)
+}
+
+func (bot *Bot) UploadFile(method string, fields map[string]string, file interface{}) (*objects.TelegramResponse, error) {
+	return nil, nil
 }
 
 // GetMe reporesents telegram method
