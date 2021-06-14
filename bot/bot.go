@@ -151,76 +151,80 @@ func (bot *Bot) Logout() (bool, error) {
 
 // DeleteChatPhoto represents deleteChatPhoto method
 // https://core.telegram.org/bots/api#deletechatphoto
-func (bot *Bot) DeleteChatPhoto(ChatId int64) error {
+func (bot *Bot) DeleteChatPhoto(ChatId int64) (*objects.TelegramResponse, error) {
 	v := &url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 
-	_, err := bot.MakeRequest("deleteChatPhoto", v)
+	resp, err := bot.MakeRequest("deleteChatPhoto", v)
 
 	if err != nil {
-		return err
+		return resp, err
 	}
 
-	return nil
+	return resp, nil
 }
 
 // SetchatTitle respresents setChatTitle method
 // https://core.telegram.org/bots/api#setChatTitle
-func (bot *Bot) SetChatTitle(ChatId int64, Title string) error {
+func (bot *Bot) SetChatTitle(ChatId int64, Title string) (*objects.TelegramResponse, error) {
 	v := &url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("title", Title)
 
-	_, err := bot.MakeRequest("setChatTitle", v)
+	resp, err := bot.MakeRequest("setChatTitle", v)
 
 	if err != nil {
-		return err
+		return resp, err
 	}
 
-	return nil
+	return resp, nil
 }
 
 // SetChatDescription respresents setChatDescription method
 // https://core.telegram.org/bots/api#setChatDescription
-func (bot *Bot) SetChatDescription(ChatId int64, Description string) error {
+func (bot *Bot) SetChatDescription(ChatId int64, Description string) (*objects.TelegramResponse, error) {
 	v := &url.Values{}
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("description", Description)
-	_, err := bot.MakeRequest("setChatDescription", v)
+	resp, err := bot.MakeRequest("setChatDescription", v)
 	if err != nil {
-		return err
+		return resp, err
 	}
-	return nil
+	return resp, nil
 }
 
 // PinChatMessage respresents pinChatMessage method
 // https://core.telegram.org/bots/api#pinchatmessage
-func (bot *Bot) PinChatMessage(ChatId int64, MessageId int64, DisableNotifiaction bool) error {
+func (bot *Bot) PinChatMessage(
+	ChatId int64,
+	MessageId int64,
+	DisableNotifiaction bool,
+) (*objects.TelegramResponse, error) {
 	v := &url.Values{}
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("message_id", strconv.FormatInt(MessageId, 10))
 	v.Add("disable_notifications", strconv.FormatBool(DisableNotifiaction))
-	_, err := bot.MakeRequest("pinChatMessage", v)
+	resp, err := bot.MakeRequest("pinChatMessage", v)
 	if err != nil {
-		return err
+		return resp, err
 	}
 
-	return nil
+	return resp, nil
 }
 
 // UnpinAllChatMessage respresents unpinAllChatMessages method
 // https://core.telegram.org/bots/api#unpinAllChatMessages
-func (bot *Bot) UnpinAllChatMessages(ChatId int64) error {
+func (bot *Bot) UnpinAllChatMessages(ChatId int64) (*objects.TelegramResponse, error) {
 	v := &url.Values{}
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
-	_, err := bot.MakeRequest("unpinAllChatMessages", v)
+	resp, err := bot.MakeRequest("unpinAllChatMessages", v)
 	if err != nil {
-		return err
+		return resp, err
 	}
 
-	return nil
+	return resp, nil
 }
 
 // =============================
