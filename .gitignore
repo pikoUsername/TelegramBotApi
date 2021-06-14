@@ -1,6 +1,7 @@
 # other stuff 
 test.go
 main.go
+.other
 
 # Binaries for programs and plugins
 *.exe
