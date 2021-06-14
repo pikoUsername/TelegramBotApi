@@ -7,7 +7,7 @@ import (
 )
 
 type Regexp struct {
-	*regexp.Regexp
+	Regexp *regexp.Regexp
 }
 
 func (r *Regexp) Check(u *objects.Update) bool {
