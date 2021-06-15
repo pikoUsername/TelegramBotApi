@@ -9,8 +9,8 @@ type HandlerFunc func(upd *objects.Update)
 
 // Another level of abstraction
 type HandlerType struct {
-	Callback   *HandlerFunc
-	Filters    []Filter
+	Callback *HandlerFunc
+	Filters  []Filter
 }
 
 // CheckForFilters iterate all filters and call Check method for check
@@ -54,15 +54,15 @@ type DefaultHandlerObj struct {
 // NEwDHandlerObj creates new DefaultHandlerObj
 func NewDHandlerObj(dp *Dispatcher) *DefaultHandlerObj {
 	return &DefaultHandlerObj{
-		Middleware: NewDMiddlewareManager(dp),
+		Middleware: NewMiddlewareManager(dp),
 	}
 }
 
 // Register, append to Callbacks, e.g handler functions
 func (ho *DefaultHandlerObj) Register(f HandlerFunc, filters ...Filter) {
 	ht := HandlerType{
-		Callback:   &f,
-		Filters:    filters,
+		Callback: &f,
+		Filters:  filters,
 	}
 
 	ho.handlers = append(ho.handlers, ht)
@@ -100,6 +100,10 @@ func (ho *DefaultHandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
 // Just triggers one, you must call Handler in Middleware,
 func (ho *DefaultHandlerObj) Notify(upd *objects.Update) {
 	for _, cb := range ho.handlers {
-		ho.Middleware.Trigger(upd, cb)
+		err := ho.Middleware.Trigger(upd)
+		if err != nil {
+			continue
+		}
+		cb.Call(upd)
 	}
 }

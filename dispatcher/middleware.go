@@ -6,11 +6,11 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
-type MiddlewareFunc func(update *objects.Update, handler HandlerType)
+type MiddlewareFunc func(update *objects.Update) error
 
 // Middleware is interface, default realization is DefaultMiddleware
 type MiddlewareManager interface {
-	Trigger(update *objects.Update, handler HandlerType)
+	Trigger(update *objects.Update) error
 	Register(middlewares ...MiddlewareFunc) // for many middleware add
 	Unregister(middleware *MiddlewareFunc) (*MiddlewareFunc, error)
 }
@@ -21,20 +21,28 @@ type DefaultMiddlewareManager struct {
 }
 
 // NewDMiddlewareManager creates a DefaultMiddlewareManager, and return
-func NewDMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
-	return &DefaultMiddlewareManager{
+func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
+	dmm := &DefaultMiddlewareManager{
 		dp: dp,
 	}
+
+	return dmm
 }
 
 // Trigger triggers special type of middlewares
 // have three middleware types: pre, process, post
 // We can register a middleware using Register Middleware
-func (dmm *DefaultMiddlewareManager) Trigger(upd *objects.Update, handler HandlerType) {
+func (dmm *DefaultMiddlewareManager) Trigger(upd *objects.Update) error {
 	for _, cb := range dmm.middlewares {
 		c := *cb
-		c(upd, handler)
+
+		err := c(upd)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // Register ...
@@ -62,4 +70,8 @@ func (dmm *DefaultMiddlewareManager) Unregister(md *MiddlewareFunc) (*Middleware
 		}
 	}
 	return nil, errors.New("this function not in middlewares")
+}
+
+func (dmm *DefaultMiddlewareManager) UnregisterByIndex(i uint) {
+	dmm.middlewares = append(dmm.middlewares[i:], dmm.middlewares[:i+1]...)
 }

@@ -2,6 +2,8 @@ package fsm
 
 import (
 	"fmt"
+
+	"github.com/pikoUsername/tgp/dispatcher/fsm/storage"
 )
 
 // State ...
@@ -25,6 +27,10 @@ func (s *State) GetFullState() string {
 	}
 
 	return fmt.Sprintf("%s:%s", group, s.State)
+}
+
+func (s *State) Set(storage storage.Storage) {
+
 }
 
 // NewState init function

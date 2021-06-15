@@ -1,11 +1,11 @@
 package dispatcher_test
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/pikoUsername/tgp/configs"
-	"github.com/pikoUsername/tgp/dispatcher"
 	"github.com/pikoUsername/tgp/dispatcher/filters"
 	"github.com/pikoUsername/tgp/objects"
 )
@@ -28,11 +28,12 @@ func TestRegister(t *testing.T) {
 
 func TestMiddlwareRegister(t *testing.T) {
 	dp := GetDispatcher(t)
-	dp.MessageHandler.RegisterMiddleware(func(u *objects.Update, hf dispatcher.HandlerType) {
+	dp.MessageHandler.RegisterMiddleware(func(u *objects.Update) error {
 		// You can write any stuff you want to
 		// FOr example simple ACL, or maybe other
 		if u.Message.From.FirstName == "Aleksei" {
-			hf.Call(u)
+			return errors.New("lol")
 		}
+		return nil
 	})
 }
