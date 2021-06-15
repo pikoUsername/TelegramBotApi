@@ -100,8 +100,8 @@ func (ho *DefaultHandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
 // Just triggers one, you must call Handler in Middleware,
 func (ho *DefaultHandlerObj) Notify(upd *objects.Update) {
 	for _, cb := range ho.handlers {
-		err := ho.Middleware.Trigger(upd)
-		if err != nil {
+		be := ho.Middleware.Trigger(upd)
+		if !be {
 			continue
 		}
 		cb.Call(upd)

@@ -1,7 +1,6 @@
 package dispatcher_test
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
@@ -28,12 +27,9 @@ func TestRegister(t *testing.T) {
 
 func TestMiddlwareRegister(t *testing.T) {
 	dp := GetDispatcher(t)
-	dp.MessageHandler.RegisterMiddleware(func(u *objects.Update) error {
+	dp.MessageHandler.RegisterMiddleware(func(u *objects.Update) bool {
 		// You can write any stuff you want to
 		// FOr example simple ACL, or maybe other
-		if u.Message.From.FirstName == "Aleksei" {
-			return errors.New("lol")
-		}
-		return nil
+		return u.Message.From.FirstName == "Aleksei"
 	})
 }
