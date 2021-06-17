@@ -43,13 +43,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-    dp.MessageHandler.Register(func(u *objects.Update) { 
-        if u.Message.Text == "" { 
-            return 
-        }
+    dp.MessageHandler.Register(func(m *objects.Message) { 
         _, err := bot.SendMessage(&configs.SendMessageConfig{
-            ChatID: u.Message.Chat.ID, 
-            Text: u.Message.Text, 
+            ChatID: m.Chat.ID, 
+            Text: m.Text, 
         })
         if err != nil { 
             fmt.Println(err)

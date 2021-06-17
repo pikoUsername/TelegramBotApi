@@ -4,8 +4,8 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
-// HandlerFunc ...
-type HandlerFunc func(upd *objects.Update)
+// HandlerFunc is stub
+type HandlerFunc interface{}
 
 // Another level of abstraction
 type HandlerType struct {
@@ -25,15 +25,16 @@ func (ht *HandlerType) CheckForFilters(u *objects.Update) bool {
 }
 
 // Call uses for checking using filters
-func (ht *HandlerType) Call(u *objects.Update) {
+func (ht *HandlerType) Call(u *objects.Update, f func(), synchronus bool) {
 	fr := ht.CheckForFilters(u)
 	if !fr {
 		return
 	}
 
-	if u != nil {
-		cb := *ht.Callback
-		cb(u)
+	if synchronus {
+		f()
+	} else {
+		go f()
 	}
 }
 
@@ -41,8 +42,9 @@ func (ht *HandlerType) Call(u *objects.Update) {
 type HandlerObj interface {
 	Register(handler HandlerFunc, filters ...Filter)
 	Unregister(handler *HandlerFunc)
-	Notify(update *objects.Update)
 	RegisterMiddleware(middlewares ...MiddlewareFunc)
+	GetHandlers() []HandlerType
+	TriggerMiddleware(update *objects.Update) error
 }
 
 // HandlerObj uses for save Callback
@@ -84,7 +86,7 @@ func (ho *DefaultHandlerObj) Unregister(handler *HandlerFunc) {
 	}
 }
 
-// RegisterMiddleware looks like a bad code
+// RegisterMiddleware ...
 // for example, you want to register every user which writed to you bot
 // You can registerMiddleware for MessageHandler, not for all handlers
 // Or maybe want to make throttling middleware, just Registers middleware
@@ -94,16 +96,10 @@ func (ho *DefaultHandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
 	ho.Middleware.Register(f...)
 }
 
-// Notify is from aiogram framework
-// Notify is notify all callbacks in handler
-// when middlewares activates, middleware calls a handler
-// Just triggers one, you must call Handler in Middleware,
-func (ho *DefaultHandlerObj) Notify(upd *objects.Update) {
-	for _, cb := range ho.handlers {
-		be := ho.Middleware.Trigger(upd)
-		if !be {
-			continue
-		}
-		cb.Call(upd)
-	}
+func (ho *DefaultHandlerObj) GetHandlers() []HandlerType {
+	return ho.handlers
+}
+
+func (ho *DefaultHandlerObj) TriggerMiddleware(update *objects.Update) error {
+	return ho.Middleware.Trigger(update)
 }

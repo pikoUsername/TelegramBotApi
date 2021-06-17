@@ -121,7 +121,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 	}
 	resp, err := bot.MakeRequest("getMe", &url.Values{})
 	if err != nil {
-		return &objects.User{}, err
+		return new(objects.User), err
 	}
 	var user objects.User
 	err = json.Unmarshal(resp.Result, &user)
@@ -135,14 +135,8 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 
 // Logout your bot from telegram
 // https://core.telegram.org/bots/api#logout
-func (bot *Bot) Logout() (bool, error) {
-	_, err := bot.MakeRequest("logout", &url.Values{})
-
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
+func (bot *Bot) Logout() (*objects.TelegramResponse, error) {
+	return bot.MakeRequest("logout", &url.Values{})
 } // Indeed
 
 // ===============================

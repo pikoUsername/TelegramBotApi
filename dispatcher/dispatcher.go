@@ -2,9 +2,11 @@ package dispatcher
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"reflect"
 	"time"
 
 	"github.com/pikoUsername/tgp/bot"
@@ -20,7 +22,8 @@ import (
 // Middlewares uses function
 // Another level of abstraction
 type Dispatcher struct {
-	Bot *bot.Bot
+	Bot     *bot.Bot
+	Storage storage.Storage
 
 	// Handlers
 	MessageHandler       HandlerObj
@@ -35,7 +38,13 @@ type Dispatcher struct {
 	// just append to this object, :P
 	OnShutdownCallbacks []*OnStartAndShutdownFunc
 	OnStartupCallbacks  []*OnStartAndShutdownFunc
+
+	synchronus bool
 }
+
+var (
+	ErrorTypeAssertion = errors.New("can not do type assertion to this callback")
+)
 
 type OnStartAndShutdownFunc func(dp *Dispatcher)
 
@@ -68,9 +77,11 @@ func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 
 // NewDispathcer get a new Dispatcher
 // And with autoconfiguration, need to run once
-func NewDispatcher(bot *bot.Bot, storage storage.Storage) *Dispatcher {
+func NewDispatcher(bot *bot.Bot, storage storage.Storage, synchronus bool) *Dispatcher {
 	dp := &Dispatcher{
-		Bot: bot,
+		Bot:        bot,
+		synchronus: synchronus,
+		Storage:    storage,
 	}
 
 	dp.MessageHandler = NewDHandlerObj(dp)
@@ -103,44 +114,131 @@ func (dp *Dispatcher) RegisterMessageHandler(callback HandlerFunc) {
 	dp.MessageHandler.Register(callback)
 }
 
-// ProcessUpdates using for process updates from any way
-func (dp *Dispatcher) ProcessUpdates(updates []*objects.Update, conf *StartPollingConfig) error {
-	for _, upd := range updates {
-		err := dp.ProcessOneUpdate(upd)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // ProcessOneUpdate you guess, processes ONLY one comming update
 // Support only one Message update
 func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
+	var err error
+
+	// very bad code, please dont see this bullshit
+	// ============================================
 	if update.Message != nil {
-		dp.MessageHandler.Notify(update)
+		for _, h := range dp.MessageHandler.GetHandlers() {
+			i_cb := *h.Callback
+			cb, ok := i_cb.(func(*objects.Message))
+			if !ok {
+				return errors.New("Message handler type assertion error, need type func(*Message), current type is - " + fmt.Sprintln(reflect.TypeOf(i_cb)))
+			}
+
+			err = dp.MessageHandler.TriggerMiddleware(update)
+			if err != nil {
+				return err
+			}
+
+			h.Call(update, func() { cb(update.Message) }, dp.synchronus)
+		}
+
 	} else if update.CallbackQuery != nil {
-		dp.CallbackQueryHandler.Notify(update)
+		for _, h := range dp.CallbackQueryHandler.GetHandlers() {
+			i_cb := *h.Callback
+			cb, ok := i_cb.(func(*objects.CallbackQuery))
+			if !ok {
+				return errors.New("Callbackquery handler type assertion error, need type func(*CallbackQuery), current type is - " + fmt.Sprintln(reflect.TypeOf(i_cb)))
+			}
+			err = dp.CallbackQueryHandler.TriggerMiddleware(update)
+			if err != nil {
+				return err
+			}
+
+			h.Call(update, func() { cb(update.CallbackQuery) }, dp.synchronus)
+		}
+
 	} else if update.ChannelPost != nil {
-		dp.ChannelPostHandler.Notify(update)
+		for _, h := range dp.ChannelPostHandler.GetHandlers() {
+			i_cb := *h.Callback
+			cb, ok := i_cb.(func(*objects.Message))
+			if !ok {
+				return errors.New("ChannelPost handler type assertion error, need type func(*ChannelPost), current type is - " + fmt.Sprintln(reflect.TypeOf(i_cb)))
+			}
+			err = dp.ChannelPostHandler.TriggerMiddleware(update)
+			if err != nil {
+				return err
+			}
+
+			h.Call(update, func() { cb(update.ChannelPost) }, dp.synchronus)
+		}
+
 	} else if update.Poll != nil {
-		dp.PollHandler.Notify(update)
+		for _, h := range dp.PollHandler.GetHandlers() {
+			i_cb := *h.Callback
+			cb, ok := i_cb.(func(*objects.Poll))
+			if !ok {
+				return errors.New("Poll handler type assertion error, need type func(*Poll), current type is - " + fmt.Sprintln(reflect.TypeOf(i_cb)))
+			}
+			err = dp.PollHandler.TriggerMiddleware(update)
+			if err != nil {
+				return err
+			}
+
+			h.Call(update, func() { cb(update.Poll) }, dp.synchronus)
+		}
+
 	} else if update.PollAnswer != nil {
-		dp.PollAnswerHandler.Notify(update)
+		for _, h := range dp.PollAnswerHandler.GetHandlers() {
+			i_cb := *h.Callback
+			cb, ok := i_cb.(func(*objects.PollAnswer))
+			if !ok {
+				return errors.New("PollAnswer handler type assertion error, need type func(*PollAnswer), current type is - " + fmt.Sprintln(reflect.TypeOf(i_cb)))
+			}
+			err = dp.PollAnswerHandler.TriggerMiddleware(update)
+			if err != nil {
+				return err
+			}
+
+			h.Call(update, func() { cb(update.PollAnswer) }, dp.synchronus)
+		}
+
 	} else if update.ChatMember != nil {
-		dp.ChatMemberHandler.Notify(update)
+		for _, h := range dp.ChatMemberHandler.GetHandlers() {
+			i_cb := *h.Callback
+			cb, ok := i_cb.(func(*objects.ChatMember))
+			if !ok {
+				return errors.New("ChatMember handler type assertion error, need type func(*ChatMember), current type is - " + fmt.Sprintln(reflect.TypeOf(i_cb)))
+			}
+			err = dp.ChatMemberHandler.TriggerMiddleware(update)
+			if err != nil {
+				return err
+			}
+
+			h.Call(update, func() { cb(update.ChatMember) }, dp.synchronus)
+		}
+
 	} else if update.MyChatMember != nil {
-		dp.MyChatMemberHandler.Notify(update)
+		for _, h := range dp.MyChatMemberHandler.GetHandlers() {
+			i_cb := *h.Callback
+			cb, ok := i_cb.(func(*objects.ChatMemberUpdated))
+			if !ok {
+				return errors.New("MyChatMember handler type assertion error, need type func(*ChatMemberUpdated), current type is - " + fmt.Sprintln(reflect.TypeOf(i_cb)))
+			}
+			err = dp.MyChatMemberHandler.TriggerMiddleware(update)
+			if err != nil {
+				return err
+			}
+
+			h.Call(update, func() { cb(update.MyChatMember) }, dp.synchronus)
+		}
+
 	} else {
 		text := "detected not supported type of updates seems like telegram bot api updated before this package updated"
 		return errors.New(text)
 	}
+
+	// end of something
 	return nil
 }
 
 // SkipUpdates skip comming updates, sending to telegram servers
 func (dp *Dispatcher) SkipUpdates() {
-	dp.Bot.GetUpdates(&configs.GetUpdatesConfig{
+	go dp.Bot.GetUpdates(&configs.GetUpdatesConfig{
 		Offset:  -1,
 		Timeout: 1,
 	})
@@ -208,7 +306,11 @@ func (dp *Dispatcher) SafeExit() {
 func (dp *Dispatcher) ShutDownDP() {
 	log.Println("Stop polling!")
 	dp.ResetWebhook(true)
-	dp.Shutdown()
+	if dp.synchronus {
+		dp.Shutdown()
+	} else {
+		go dp.Shutdown()
+	}
 }
 
 // GetUpdatesChan makes getUpdates request to telegram servers
@@ -251,6 +353,11 @@ func (dp *Dispatcher) GetUpdatesChan(c *StartPollingConfig) chan *objects.Update
 // Using GetUpdates method in Bot structure
 // GetUpdates config using for getUpdates method
 func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
+	if c.SafeExit {
+		// runs goroutine for safly terminate program(bot)
+		go dp.SafeExit()
+	}
+
 	dp.StartUp()
 	if c.ResetWebhook {
 		dp.ResetWebhook(true)
@@ -261,12 +368,6 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 
 	// TODO: timeout
 	updates := dp.GetUpdatesChan(c)
-
-	if c.SafeExit {
-		// runs goroutine for safeexiting
-		// and terminates program
-		go dp.SafeExit()
-	}
 
 	for upd := range updates {
 		// waiting untill update come...

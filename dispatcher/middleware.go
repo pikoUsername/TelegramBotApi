@@ -2,15 +2,25 @@ package dispatcher
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
 
 	"github.com/pikoUsername/tgp/objects"
 )
 
-type MiddlewareFunc func(update *objects.Update) bool
+// MiddlewareFunc is generic,
+// first type, is pre-process middleware
+// func(*objects.Update)
+// second type is process middleware
+// func(*objects.Update) bool
+// and last type, third is post-process middleware
+// func(objects.Update)
+// passing just copy of update, bc pass by ptr havnot got any sense
+type MiddlewareFunc interface{}
 
 // Middleware is interface, default realization is DefaultMiddleware
 type MiddlewareManager interface {
-	Trigger(update *objects.Update) bool
+	Trigger(update *objects.Update) error
 	Register(middlewares ...MiddlewareFunc) // for many middleware add
 	Unregister(middleware *MiddlewareFunc) (*MiddlewareFunc, error)
 }
@@ -32,17 +42,53 @@ func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
 // Trigger triggers special type of middlewares
 // have three middleware types: pre, process, post
 // We can register a middleware using Register Middleware
-func (dmm *DefaultMiddlewareManager) Trigger(upd *objects.Update) bool {
+func (dmm *DefaultMiddlewareManager) Trigger(upd *objects.Update) error {
+	var err_mes string
+
 	for _, cb := range dmm.middlewares {
 		c := *cb
+		pre_middlewre_cb, ok := c.(func(*objects.Update))
 
-		b := c(upd)
-		if !b {
-			return false
+		if ok {
+			pre_middlewre_cb(upd)
+
+			continue
+		} else {
+			err_mes = "func(*objects.Update)"
 		}
+		process_middleware_cb, ok := c.(func(*objects.Update) error)
+
+		if ok {
+			err := process_middleware_cb(upd)
+			if err != nil {
+				return err
+			}
+
+			continue
+		} else {
+			process_middleware_cb, ok := c.(func(*objects.Update) bool)
+
+			if ok {
+				process_middleware_cb(upd)
+
+				continue
+			} else {
+				err_mes = "func(*objects.Update) error / bool"
+			}
+		}
+		post_middleware_cb, ok := c.(func(objects.Update))
+
+		if ok {
+			post_middleware_cb(*upd)
+
+			continue
+		} else {
+			err_mes = "func(objects.Update)"
+		}
+		return errors.New("Failed convert this " + fmt.Sprintln(reflect.TypeOf(c)) + " to " + err_mes)
 	}
 
-	return true
+	return nil
 }
 
 // Register ...
