@@ -1,4 +1,4 @@
-package dispatcher
+package tgp
 
 import (
 	"errors"
@@ -12,15 +12,18 @@ import (
 // first type, is pre-process middleware
 // func(*objects.Update)
 // second type is process middleware
-// func(*objects.Update) bool
+// func(*objects.Update) bool/error
 // and last type, third is post-process middleware
 // func(objects.Update)
 // passing just copy of update, bc pass by ptr havnot got any sense
 type MiddlewareFunc interface{}
 
+type PreMiddleware func(*objects.Update)
+type PostMiddleware func(objects.Update)
+
 // Middleware is interface, default realization is DefaultMiddleware
 type MiddlewareManager interface {
-	Trigger(update *objects.Update) error
+	Trigger(update *objects.Update, typ string) error
 	Register(middlewares ...MiddlewareFunc) // for many middleware add
 	Unregister(middleware *MiddlewareFunc) (*MiddlewareFunc, error)
 }
@@ -29,6 +32,12 @@ type DefaultMiddlewareManager struct {
 	middlewares []*MiddlewareFunc
 	dp          *Dispatcher
 }
+
+var (
+	PREMIDDLEWARE     = "pre"
+	PROCESSMIDDLEWARE = "process"
+	POSTMIDDLEWARE    = "post"
+)
 
 // NewDMiddlewareManager creates a DefaultMiddlewareManager, and return
 func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
@@ -42,50 +51,62 @@ func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
 // Trigger triggers special type of middlewares
 // have three middleware types: pre, process, post
 // We can register a middleware using Register Middleware
-func (dmm *DefaultMiddlewareManager) Trigger(upd *objects.Update) error {
-	var err_mes string
-
+func (dmm *DefaultMiddlewareManager) Trigger(upd *objects.Update, typ string) error {
 	for _, cb := range dmm.middlewares {
 		c := *cb
-		pre_middlewre_cb, ok := c.(func(*objects.Update))
 
-		if ok {
-			pre_middlewre_cb(upd)
-
-			continue
-		} else {
-			err_mes = "func(*objects.Update)"
-		}
-		process_middleware_cb, ok := c.(func(*objects.Update) error)
-
-		if ok {
-			err := process_middleware_cb(upd)
-			if err != nil {
-				return err
-			}
-
-			continue
-		} else {
-			process_middleware_cb, ok := c.(func(*objects.Update) bool)
+		switch typ {
+		case "pre":
+			pre_middlewre_cb, ok := c.(PreMiddleware)
 
 			if ok {
-				process_middleware_cb(upd)
+				pre_middlewre_cb(upd)
 
 				continue
 			} else {
-				err_mes = "func(*objects.Update) error / bool"
+				err_mes := "func(*objects.Update)"
+				return errors.New("Failed convert this " + fmt.Sprintln(reflect.TypeOf(c)) + " to " + err_mes)
 			}
-		}
-		post_middleware_cb, ok := c.(func(objects.Update))
 
-		if ok {
-			post_middleware_cb(*upd)
+		case "process":
+			process_middleware_cb, ok := c.(func(*objects.Update) error)
 
-			continue
-		} else {
-			err_mes = "func(objects.Update)"
+			if ok {
+				err := process_middleware_cb(upd)
+				if err != nil {
+					return err
+				}
+
+				continue
+			} else {
+				process_middleware_cb, ok := c.(func(*objects.Update) bool)
+
+				if ok {
+					b := process_middleware_cb(upd)
+					if !b {
+						return errors.New("false")
+					}
+
+					continue
+				} else {
+					err_mes := "func(*objects.Update) error / bool"
+					return errors.New("Failed convert this " + fmt.Sprintln(reflect.TypeOf(c)) + " to " + err_mes)
+				}
+			}
+		case "post":
+			post_middleware_cb, ok := c.(PostMiddleware)
+
+			if ok {
+				post_middleware_cb(*upd)
+
+				continue
+			} else {
+				err_mes := "func(objects.Update)"
+				return errors.New("Failed convert this " + fmt.Sprintln(reflect.TypeOf(c)) + " to " + err_mes)
+			}
+		default:
+			return errors.New("typ variable not in ['post', 'pre', 'process']")
 		}
-		return errors.New("Failed convert this " + fmt.Sprintln(reflect.TypeOf(c)) + " to " + err_mes)
 	}
 
 	return nil

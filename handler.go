@@ -1,4 +1,4 @@
-package dispatcher
+package tgp
 
 import (
 	"github.com/pikoUsername/tgp/objects"
@@ -44,7 +44,7 @@ type HandlerObj interface {
 	Unregister(handler *HandlerFunc)
 	RegisterMiddleware(middlewares ...MiddlewareFunc)
 	GetHandlers() []HandlerType
-	TriggerMiddleware(update *objects.Update) error
+	TriggerMiddleware(update *objects.Update, typ string) error
 }
 
 // HandlerObj uses for save Callback
@@ -100,6 +100,6 @@ func (ho *DefaultHandlerObj) GetHandlers() []HandlerType {
 	return ho.handlers
 }
 
-func (ho *DefaultHandlerObj) TriggerMiddleware(update *objects.Update) error {
-	return ho.Middleware.Trigger(update)
+func (ho *DefaultHandlerObj) TriggerMiddleware(update *objects.Update, typ string) error {
+	return ho.Middleware.Trigger(update, typ)
 }

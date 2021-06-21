@@ -1,12 +1,12 @@
-package dispatcher_test
+package tgp_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/pikoUsername/tgp/configs"
-	"github.com/pikoUsername/tgp/dispatcher/filters"
-	"github.com/pikoUsername/tgp/dispatcher/fsm/storage"
+	"github.com/pikoUsername/tgp"
+	"github.com/pikoUsername/tgp/filters"
+	"github.com/pikoUsername/tgp/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
 )
 
@@ -15,7 +15,7 @@ func TestRegister(t *testing.T) {
 	// Simple echo handler
 	dp.MessageHandler.Register(func(m *objects.Message) {
 		bot := dp.Bot
-		msg, err := bot.Send(&configs.SendMessageConfig{
+		msg, err := bot.Send(&tgp.SendMessageConfig{
 			ChatID: int64(m.From.ID),
 			Text:   m.Text,
 		})
@@ -37,9 +37,9 @@ func TestMiddlwareRegister(t *testing.T) {
 		// You can write any stuff you want to
 		// FOr example simple ACL, or maybe other
 		dp.Storage.SetData(
-			u.Chat.ID, 
+			u.Chat.ID,
 			u.From.ID,
-			&storage.PackType{"AAAAAAAAAAA": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa"}
+			&storage.PackType{"AAAAAAAAAAA": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa"},
 		)
 	})
 }

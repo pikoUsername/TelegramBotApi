@@ -25,26 +25,28 @@ package main
 import (
 	"fmt"
 	"log"
-
-	tgbot "github.com/pikoUsername/tgp/bot"
-	"github.com/pikoUsername/tgp/dispatcher"
+    
+    "github.com/pikoUsername/tgp"
 	"github.com/pikoUsername/tgp/utils"
     "github.com/pikoUsername/tgp/objects"
-    "github.com/pikoUsername/tgp/configs"
 )
 
 func main() {
-	bot, err := tgbot.NewBot("<token>", true, utils.ModeHTML)
+	bot, err := tgp.NewBot("<token>", true, utils.ModeHTML)
 	if err != nil {
 		panic(err)
 	}
 
-	dp := dispatcher.NewDispatcher(bot)
+	dp := tgp.NewDispatcher(bot)
 	if err != nil {
 		panic(err)
 	}
     dp.MessageHandler.Register(func(m *objects.Message) { 
-        _, err := bot.SendMessage(&configs.SendMessageConfig{
+        if m.Test == "" { 
+            return
+        }
+
+        _, err := bot.SendMessage(&tgp.SendMessageConfig{
             ChatID: m.Chat.ID, 
             Text: m.Text, 
         })
@@ -52,6 +54,6 @@ func main() {
             fmt.Println(err)
         }
     })
-    dp.StartPolling(dispatcher.NewStartPollingConfig(true))
+    dp.StartPolling(tgp.NewStartPollingConfig(true))
 }
 ```

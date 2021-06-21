@@ -1,4 +1,4 @@
-package bot
+package tgp
 
 import (
 	"encoding/json"
@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pikoUsername/tgp/configs"
 	"github.com/pikoUsername/tgp/objects"
 	"github.com/pikoUsername/tgp/utils"
 )
@@ -226,7 +225,7 @@ func (bot *Bot) UnpinAllChatMessages(ChatId int64) (*objects.TelegramResponse, e
 // =============================
 
 // Send uses as sender for almost all stuff
-func (bot *Bot) SendMessageable(c configs.Configurable) (*objects.Message, error) {
+func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 	v, err := c.Values()
 	if err != nil {
 		return &objects.Message{}, err
@@ -249,9 +248,9 @@ func (bot *Bot) SendMessageable(c configs.Configurable) (*objects.Message, error
 }
 
 // Send ...
-func (bot *Bot) Send(config configs.Configurable) (*objects.Message, error) {
+func (bot *Bot) Send(config Configurable) (*objects.Message, error) {
 	switch config.(type) {
-	case configs.FileableConf:
+	case FileableConf:
 		return &objects.Message{}, nil
 	default:
 		return bot.SendMessageable(config)
@@ -260,7 +259,7 @@ func (bot *Bot) Send(config configs.Configurable) (*objects.Message, error) {
 
 // CopyMessage copies message
 // https://core.telegram.org/bots/api#copymessage
-func (bot *Bot) CopyMessage(config *configs.CopyMessageConfig) (*objects.MessageID, error) {
+func (bot *Bot) CopyMessage(config *CopyMessageConfig) (*objects.MessageID, error) {
 	// Stub here, TODO: make for every config a values function/method
 	v, err := config.Values()
 
@@ -281,68 +280,68 @@ func (bot *Bot) CopyMessage(config *configs.CopyMessageConfig) (*objects.Message
 }
 
 // SendPhoto ...
-func (bot *Bot) SendPhoto(config *configs.SendPhotoConfig) (*objects.Message, error) {
+func (bot *Bot) SendPhoto(config *SendPhotoConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
 // SendAudio ...
-func (bot *Bot) SendAudio(config *configs.SendAudioConfig) (*objects.Message, error) {
+func (bot *Bot) SendAudio(config *SendAudioConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
 // SendDocument ...
-func (bot *Bot) SendDocument(config *configs.SendDocumentConfig) (*objects.Message, error) {
+func (bot *Bot) SendDocument(config *SendDocumentConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
 // SendVideo ...
-func (bot *Bot) SendVideo(config *configs.SendVideoConfig) (*objects.Message, error) {
+func (bot *Bot) SendVideo(config *SendVideoConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
 // SendAnimation ...
-func (bot *Bot) SendAnimation(config *configs.SendAnimationConfig) (*objects.Message, error) {
+func (bot *Bot) SendAnimation(config *SendAnimationConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
 // SendVoice ...
-func (bot *Bot) SendVoice(config *configs.SendVoiceConfig) (*objects.Message, error) {
+func (bot *Bot) SendVoice(config *SendVoiceConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
 // SendVideoName ...
-func (bot *Bot) SendVideoName(config *configs.SendVideoNoteConfig) (*objects.Message, error) {
+func (bot *Bot) SendVideoName(config *SendVideoNoteConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
 // SendMediaGroup ...
-func (bot *Bot) SendMediaGroup(config *configs.SendMediaGroupConfig) (*objects.Message, error) {
+func (bot *Bot) SendMediaGroup(config *SendMediaGroupConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
 // SendLocation ...
-func (bot *Bot) SendLocation(config *configs.SendLocationConfig) (*objects.Message, error) {
+func (bot *Bot) SendLocation(config *SendLocationConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
 // editMessageLiveLocation ...
-func (bot *Bot) EditMessageLiveLocation(config *configs.EditMessageLLConf) (*objects.Message, error) {
+func (bot *Bot) EditMessageLiveLocation(config *EditMessageLLConf) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
 // SendMessage sends message using ChatID
 // see: https://core.telegram.org/bots/api#sendmessage
-func (bot *Bot) SendMessage(config *configs.SendMessageConfig) (*objects.Message, error) {
+func (bot *Bot) SendMessage(config *SendMessageConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
 // SendPoll Use this method to send a native poll
 // https://core.telegram.org/bots/api#sendpoll
-func (bot *Bot) SendPoll(config *configs.SendPollConfig) (*objects.Message, error) {
+func (bot *Bot) SendPoll(config *SendPollConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
-func (bot *Bot) SendDice(config *configs.SendDiceConfig) (*objects.Message, error) {
+func (bot *Bot) SendDice(config *SendDiceConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
@@ -352,7 +351,7 @@ func (bot *Bot) SendDice(config *configs.SendDiceConfig) (*objects.Message, erro
 
 // SetMyCommands Setup command to Telegram bot
 // https://core.telegram.org/bots/api#setmycommands
-func (bot *Bot) SetMyCommands(conf *configs.SetMyCommandsConfig) (bool, error) {
+func (bot *Bot) SetMyCommands(conf *SetMyCommandsConfig) (bool, error) {
 	v, err := conf.Values() // Stub...
 	if err != nil {
 		return false, err
@@ -385,7 +384,7 @@ func (bot *Bot) GetMyCommands() ([]objects.BotCommand, error) {
 
 // DeleteWebhook if result is True, will be nil, if not so err
 // https://core.telegram.org/bots/api#deletewebhook
-func (bot *Bot) DeleteWebhook(c *configs.DeleteWebhookConfig) error {
+func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) error {
 	v, err := c.Values()
 	if err != nil {
 		return err
@@ -399,7 +398,7 @@ func (bot *Bot) DeleteWebhook(c *configs.DeleteWebhookConfig) error {
 
 // GetUpdates uses for long polling
 // https://core.telegram.org/bots/api#getupdates
-func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) ([]*objects.Update, error) {
+func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
 	v, err := c.Values()
 	if err != nil {
 		return nil, err
@@ -426,7 +425,7 @@ func (bot *Bot) GetUpdates(c *configs.GetUpdatesConfig) ([]*objects.Update, erro
 // sends a message to your bot, Telegram know
 // Your bot IP and sends to your bot a Update
 // https://core.telegram.org/bots/api#setwebhook
-func (bot *Bot) SetWebhook(config *configs.SetWebhookConfig) error {
+func (bot *Bot) SetWebhook(config *SetWebhookConfig) error {
 	v, err := config.Values()
 	if err != nil {
 		return err
@@ -463,7 +462,7 @@ func (bot *Bot) GetWebhookInfo() (*objects.WebhookInfo, error) {
 // The status is set for 5 seconds or less
 // (when a message arrives from your bot, Telegram clients clear its typing status).
 // Returns True on success.
-func (bot *Bot) SendChatAction(c configs.SendChatActionConf) (bool, error) {
+func (bot *Bot) SendChatAction(c SendChatActionConf) (bool, error) {
 	v, err := c.Values()
 	if err != nil {
 		return false, err
@@ -524,7 +523,7 @@ func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
 
 // GetUserProfilePhotos resresents getUserProfilePhotos method
 // https://core.telegram.org/bots/api#getuserprofilephotos
-func (bot *Bot) GetUserProfilePhotos(c configs.GetUserProfilePhotosConf) (*objects.UserProfilePhotos, error) {
+func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserProfilePhotos, error) {
 	v, _ := c.Values()
 	resp, err := bot.MakeRequest(c.Method(), v)
 

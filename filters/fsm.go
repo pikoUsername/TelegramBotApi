@@ -1,7 +1,7 @@
 package filters
 
 import (
-	"github.com/pikoUsername/tgp/dispatcher/fsm/storage"
+	"github.com/pikoUsername/tgp/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
 )
 

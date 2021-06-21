@@ -1,4 +1,4 @@
-package configs
+package tgp 
 
 import (
 	"net/url"
