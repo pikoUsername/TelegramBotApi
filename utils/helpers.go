@@ -1,6 +1,10 @@
 package utils
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/pikoUsername/tgp/objects"
+)
 
 // Will be a other stuff, but useful stuff
 
@@ -53,4 +57,18 @@ func ObjectToJson(obj interface{}) string {
 		return ""
 	}
 	return string(marshal)
+}
+
+func MarkupToString(obj interface{}) string {
+	t, ok := obj.(*objects.InlineKeyboardMarkup)
+	if ok {
+		return ObjectToJson(t)
+	}
+
+	t2, ok := obj.(*objects.ReplyKeyboardMarkup)
+	if ok {
+		return ObjectToJson(t2)
+	}
+
+	return ""
 }
