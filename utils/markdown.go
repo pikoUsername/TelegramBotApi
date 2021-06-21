@@ -20,7 +20,7 @@ func getHTTPRegex() *regexp.Regexp {
 // Link check out the link for http and https starting with
 func Link(link string, text string) (string, error) {
 	if !httpRegex.MatchString(link) {
-		return "", errors.New("Link is not valid.")
+		return "", errors.New("link is not valid")
 	}
 	return fmt.Sprintf("<%s href='%s'>%s</%s>", "a", link, text, "a"), nil
 }

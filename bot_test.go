@@ -1,21 +1,19 @@
-package bot_test
+package tgp_test
 
 import (
 	"testing"
 
-	"github.com/pikoUsername/tgp/bot"
-	"github.com/pikoUsername/tgp/configs"
+	"github.com/pikoUsername/tgp"
 	"github.com/pikoUsername/tgp/utils"
 )
 
 const (
-	TestToken  = "1780004238:AAENHJU4i9PaSIkgNjw-P2OvcQrtrO96JB4" // PolshaStrong_test_bot, yeah
 	ParseMode  = "HTML"
 	TestChatID = -534916942
 )
 
-func getBot(t *testing.T) (*bot.Bot, error) {
-	b, err := bot.NewBot(TestToken, true, ParseMode)
+func getBot(t *testing.T) (*tgp.Bot, error) {
+	b, err := tgp.NewBot(TestToken, true, ParseMode)
 	if err != nil {
 		return b, err
 	}
@@ -24,18 +22,18 @@ func getBot(t *testing.T) (*bot.Bot, error) {
 }
 
 func TestCheckToken(t *testing.T) {
-	b, err := bot.NewBot("bla:bla", true, "HTML")
+	b, err := tgp.NewBot("bla:bla", true, "HTML")
 	if err != nil && b == nil {
 		t.Error(err)
 	}
 }
 
 func TestGetUpdates(t *testing.T) {
-	b, err := bot.NewBot(TestToken, false, "HTML")
+	b, err := tgp.NewBot(TestToken, false, "HTML")
 	if err != nil {
 		t.Error(err)
 	}
-	_, err = b.GetUpdates(&configs.GetUpdatesConfig{})
+	_, err = b.GetUpdates(&tgp.GetUpdatesConfig{})
 	if err != nil {
 		t.Error(err)
 	}
@@ -50,7 +48,7 @@ func TestParseMode(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	m := &configs.SendMessageConfig{
+	m := &tgp.SendMessageConfig{
 		ChatID: TestChatID,
 		Text:   line,
 	}

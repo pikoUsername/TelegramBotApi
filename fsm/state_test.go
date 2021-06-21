@@ -3,7 +3,7 @@ package fsm_test
 import (
 	"testing"
 
-	"github.com/pikoUsername/tgp/dispatcher/fsm"
+	"github.com/pikoUsername/tgp/fsm"
 )
 
 func TestGetFullState(t *testing.T) {

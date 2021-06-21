@@ -1,4 +1,4 @@
-package dispatcher
+package tgp
 
 import "github.com/pikoUsername/tgp/objects"
 

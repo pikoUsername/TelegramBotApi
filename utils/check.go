@@ -11,15 +11,15 @@ import (
 func CheckToken(token string) error {
 	// Checks for space in token
 	if strings.Contains(token, " ") {
-		return errors.New("Token is Invalid! Token contains Space")
+		return errors.New("token is invalid! token contains space")
 	}
 	token_parts := strings.Split(token, ":")
 	if len(token_parts) != 2 {
-		return errors.New("Token contains more than 2 parts")
+		return errors.New("token contains more than 2 parts")
 	}
 	// Checks for empty token
 	if token_parts[0] == "" || token_parts[1] == "" {
-		return errors.New("Token is empty")
+		return errors.New("token is empty")
 	}
 	return nil
 }

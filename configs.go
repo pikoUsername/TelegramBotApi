@@ -1,4 +1,4 @@
-package configs
+package tgp
 
 import (
 	"net/url"
@@ -84,6 +84,13 @@ type SendMessageConfig struct {
 	ParseMode             string
 	Entities              []*objects.MessageEntity
 	DisableWebPagePreview bool
+
+	DisableNotifiaction bool
+
+	// ReplyKeyboard types:
+	// InlineKeyboardMarkup
+	// ReplyKeyboardMarkup
+	ReplyKeyboard interface{}
 }
 
 // values ...
@@ -97,6 +104,7 @@ func (smc *SendMessageConfig) Values() (*url.Values, error) {
 		result.Add("parse_mode", smc.ParseMode)
 	}
 
+	result.Add("reply_markup", utils.MarkupToString(smc.ReplyKeyboard))
 	result.Add("disable_web_page_preview", strconv.FormatBool(smc.DisableWebPagePreview))
 	// Must be work!
 	result.Add("entities", utils.ObjectToJson(smc.Entities))

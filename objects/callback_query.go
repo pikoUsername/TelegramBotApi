@@ -4,8 +4,8 @@ package objects
 // https://core.telegram.org/bots/api#callbackquery
 type CallbackQuery struct {
 	// Nothing to see, :P
-	ID              int64 `json:"id"`
-	From            *User `json:"from"`
+	ID              string `json:"id"`
+	From            *User  `json:"from"`
 	*Message        `json:"message"`
 	InlineMessageID int64  `json:"inline_message_id"`
 	ChatInstance    string `json:"chat_instance"`
