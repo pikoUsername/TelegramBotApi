@@ -1,15 +1,17 @@
 package tgp_test
 
 import (
+	"os"
+	"strconv"
 	"testing"
 
 	"github.com/pikoUsername/tgp"
 	"github.com/pikoUsername/tgp/utils"
 )
 
-const (
-	ParseMode  = "HTML"
-	TestChatID = -534916942
+var (
+	ParseMode     = "HTML"
+	TestChatID, _ = strconv.ParseInt(os.Getenv("test_chat_id"), 10, 64)
 )
 
 func getBot(t *testing.T) (*tgp.Bot, error) {
@@ -44,12 +46,12 @@ func TestParseMode(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	line, err := utils.Link("https://www.google.com", "lol")
+	line, err := utils.NewHTMLMarkdown().Link("https://www.google.com", "lol")
 	if err != nil {
 		t.Error(err)
 	}
 	m := &tgp.SendMessageConfig{
-		ChatID: TestChatID,
+		ChatID: int64(TestChatID),
 		Text:   line,
 	}
 	_, err = b.SendMessageable(m)
