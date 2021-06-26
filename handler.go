@@ -43,13 +43,13 @@ type HandlerObj interface {
 	Register(handler HandlerFunc, filters ...Filter)
 	Unregister(handler *HandlerFunc)
 	RegisterMiddleware(middlewares ...MiddlewareFunc)
-	GetHandlers() []HandlerType
+	GetHandlers() []*HandlerType
 	TriggerMiddleware(update *objects.Update, typ string) error
 }
 
 // HandlerObj uses for save Callback
 type DefaultHandlerObj struct {
-	handlers   []HandlerType
+	handlers   []*HandlerType
 	Middleware MiddlewareManager
 }
 
@@ -67,7 +67,7 @@ func (ho *DefaultHandlerObj) Register(f HandlerFunc, filters ...Filter) {
 		Filters:  filters,
 	}
 
-	ho.handlers = append(ho.handlers, ht)
+	ho.handlers = append(ho.handlers, &ht)
 }
 
 // Unregister checkout to memory address
@@ -96,7 +96,7 @@ func (ho *DefaultHandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
 	ho.Middleware.Register(f...)
 }
 
-func (ho *DefaultHandlerObj) GetHandlers() []HandlerType {
+func (ho *DefaultHandlerObj) GetHandlers() []*HandlerType {
 	return ho.handlers
 }
 

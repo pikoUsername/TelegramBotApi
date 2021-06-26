@@ -17,10 +17,15 @@ type MemoryStorage struct {
 // ResolveData ...
 func (ms *MemoryStorage) ResolveData(ChatId int64, UserId int64) *MemoryStorageRecord {
 	d := *ms.Data
-	record := d[ChatId][UserId]
+	_, ok := d[ChatId][UserId]
 
-	if *record == EmptyRecord {
-		d[ChatId][UserId] = &MemoryStorageRecord{}
+	if !ok {
+		d[ChatId] = make(map[int64]*MemoryStorageRecord)
+	}
+	record, ok := d[ChatId][UserId]
+
+	if !ok {
+		d[ChatId][UserId] = &MemoryStorageRecord{Data: &PackType{}}
 		record = d[ChatId][UserId]
 	}
 
@@ -56,3 +61,9 @@ func (ms *MemoryStorage) Clear() {
 var (
 	EmptyRecord = MemoryStorageRecord{}
 )
+
+func NewMemoryStorage() *MemoryStorage {
+	return &MemoryStorage{
+		Data: &DataType{},
+	}
+}

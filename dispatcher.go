@@ -7,21 +7,23 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"sync"
 	"time"
 
+	"github.com/pikoUsername/tgp/fsm"
 	"github.com/pikoUsername/tgp/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
+	"github.com/pikoUsername/tgp/utils"
 )
 
-// Dispatcher need for Polling, and webhook
-// For Bot run,
+// Dispatcher purpose is run bot, and comfortable execution
 // Bot struct uses as API wrapper
 // Dispatcher uses as Bot starter
-// Middlewares uses function
 // Another level of abstraction
 type Dispatcher struct {
-	Bot     *Bot
-	Storage storage.Storage
+	Bot       *Bot `json:"bot"`
+	UpdatesCh chan *objects.Update
+	Storage   storage.Storage `json:"-"`
 
 	// Handlers
 	MessageHandler       HandlerObj
@@ -37,7 +39,9 @@ type Dispatcher struct {
 	OnShutdownCallbacks []*OnStartAndShutdownFunc
 	OnStartupCallbacks  []*OnStartAndShutdownFunc
 
-	synchronus bool
+	currentUpdate *objects.Update
+	synchronus    bool
+	Mutex         *sync.Mutex
 }
 
 var (
@@ -80,6 +84,7 @@ func NewDispatcher(bot *Bot, storage storage.Storage, synchronus bool) *Dispatch
 		Bot:        bot,
 		synchronus: synchronus,
 		Storage:    storage,
+		UpdatesCh:  make(chan *objects.Update, 0),
 	}
 
 	dp.MessageHandler = NewDHandlerObj(dp)
@@ -257,10 +262,16 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 
 // SkipUpdates skip comming updates, sending to telegram servers
 func (dp *Dispatcher) SkipUpdates() {
-	go dp.Bot.GetUpdates(&GetUpdatesConfig{
+	dp.Bot.GetUpdates(&GetUpdatesConfig{
 		Offset:  -1,
 		Timeout: 1,
 	})
+}
+
+func (dp *Dispatcher) SetState(state *fsm.State) {
+	u := dp.currentUpdate
+	cid, uid := utils.GetUidAndCidFromUpd(u)
+	dp.Storage.SetState(cid, uid, state.GetFullState())
 }
 
 // ========================================
@@ -325,6 +336,7 @@ func (dp *Dispatcher) SafeExit() {
 func (dp *Dispatcher) ShutDownDP() {
 	log.Println("Stop polling!")
 	dp.ResetWebhook(true)
+	dp.Storage.Clear()
 	if dp.synchronus {
 		dp.Shutdown()
 	} else {
@@ -337,9 +349,7 @@ func (dp *Dispatcher) ShutDownDP() {
 // Time.Sleep here for stop goroutine for a c.Relax time
 //
 // yeah it bad, and works only on crutches, but works, idk how
-func (dp *Dispatcher) GetUpdatesChan(c *StartPollingConfig) chan *objects.Update {
-	upd_c := make(chan *objects.Update, c.Limit)
-
+func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig) {
 	go func() {
 		for {
 			if c.Relax != 0 {
@@ -358,13 +368,11 @@ func (dp *Dispatcher) GetUpdatesChan(c *StartPollingConfig) chan *objects.Update
 			for _, update := range updates {
 				if update.UpdateID >= c.Offset {
 					c.Offset = update.UpdateID + 1
-					upd_c <- update
+					dp.UpdatesCh <- update
 				}
 			}
 		}
 	}()
-
-	return upd_c
 }
 
 // StartPolling check out to comming updates
@@ -374,7 +382,7 @@ func (dp *Dispatcher) GetUpdatesChan(c *StartPollingConfig) chan *objects.Update
 func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	if c.SafeExit {
 		// runs goroutine for safly terminate program(bot)
-		go dp.SafeExit()
+		dp.SafeExit()
 	}
 
 	dp.StartUp()
@@ -386,17 +394,13 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	}
 
 	// TODO: timeout
-	updates := dp.GetUpdatesChan(c)
-
-	for upd := range updates {
-		// waiting untill update come...
-		if upd != nil {
-			err := dp.ProcessOneUpdate(upd)
-			if err != nil {
-				return err
-			}
+	dp.MakeUpdatesChan(c)
+	for upd := range dp.UpdatesCh {
+		dp.currentUpdate = upd
+		err := dp.ProcessOneUpdate(upd)
+		if err != nil {
+			return err
 		}
 	}
-
-	return nil
+	return errors.New("how? this peace of text is not reachable")
 }

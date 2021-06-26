@@ -72,3 +72,24 @@ func MarkupToString(obj interface{}) string {
 
 	return ""
 }
+
+func GetUidAndCidFromUpd(u *objects.Update) (cid_, uid_ int64) {
+
+	var cid, uid int64
+
+	if u.Message != nil {
+		cid = u.Message.Chat.ID
+		uid = u.Message.From.ID
+	} else if u.EditedMessage != nil {
+		cid = u.EditedMessage.Chat.ID
+		uid = u.EditedMessage.From.ID
+	} else if u.PinnedMessage != nil {
+		cid = u.PinnedMessage.Chat.ID
+		uid = u.PinnedMessage.From.ID
+	} else if u.ReplyToMessage != nil {
+		cid = u.ReplyToMessage.Chat.ID
+		uid = u.ReplyToMessage.From.ID
+	}
+
+	return cid, uid
+}
