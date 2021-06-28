@@ -1,6 +1,7 @@
 package tgp_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pikoUsername/tgp"
@@ -56,4 +57,16 @@ func TestParseMode(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+}
+
+func TestSetWebhook(t *testing.T) {
+	b, err := getBot(t)
+	if err != nil {
+		t.Error(err)
+	}
+	resp, err := b.SetWebhook(tgp.NewSetWebhook("<URL>"))
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println(resp)
 }

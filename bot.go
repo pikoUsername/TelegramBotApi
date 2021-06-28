@@ -84,7 +84,7 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	// Creating URL
 	// fix bug with sending request,
 	// when url creates here or NewRequest not creates a correct url with url params
-	tgurl := bot.server.ApiURL(bot.Token, Method+"?"+params.Encode())
+	tgurl := bot.server.ApiURL(bot.Token, Method)
 
 	// Content Type is Application/json
 	// Telegram uses application/json content type
@@ -425,16 +425,16 @@ func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
 // sends a message to your bot, Telegram know
 // Your bot IP and sends to your bot a Update
 // https://core.telegram.org/bots/api#setwebhook
-func (bot *Bot) SetWebhook(config *SetWebhookConfig) error {
+func (bot *Bot) SetWebhook(config *SetWebhookConfig) (*objects.TelegramResponse, error) {
 	v, err := config.Values()
 	if err != nil {
-		return err
+		return &objects.TelegramResponse{}, err
 	}
-	_, err = bot.MakeRequest(config.Method(), v)
+	resp, err := bot.MakeRequest(config.Method(), v)
 	if err != nil {
-		return err
+		return resp, err
 	}
-	return nil
+	return resp, nil
 }
 
 // GetWebhookInfo not require parametrs
@@ -540,3 +540,7 @@ func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserP
 
 	return &photos, nil
 }
+
+// ====================
+// other method
+// ====================

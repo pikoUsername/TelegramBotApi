@@ -1,16 +1,20 @@
 package tgp
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/pikoUsername/tgp/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
+	"github.com/pikoUsername/tgp/utils"
 )
 
 // Dispatcher need for Polling, and webhook
@@ -20,8 +24,9 @@ import (
 // Middlewares uses function
 // Another level of abstraction
 type Dispatcher struct {
-	Bot     *Bot
-	Storage storage.Storage
+	Bot       *Bot
+	UpdatesCh chan *objects.Update
+	Storage   storage.Storage
 
 	// Handlers
 	MessageHandler       HandlerObj
@@ -37,7 +42,10 @@ type Dispatcher struct {
 	OnShutdownCallbacks []*OnStartAndShutdownFunc
 	OnStartupCallbacks  []*OnStartAndShutdownFunc
 
-	synchronus bool
+	currentUpdate *objects.Update
+	synchronus    bool
+	welcome       bool
+	Mutex         *sync.Mutex
 }
 
 var (
@@ -73,6 +81,20 @@ func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 	}
 }
 
+type StartWebhookConfig struct {
+	BotURL   string
+	Address  string
+	Handler  http.Handler
+	CertFile string
+}
+
+func NewStartWebhookConf(url string, address string) *StartWebhookConfig {
+	return &StartWebhookConfig{
+		BotURL:  url,
+		Address: address,
+	}
+}
+
 // NewDispathcer get a new Dispatcher
 // And with autoconfiguration, need to run once
 func NewDispatcher(bot *Bot, storage storage.Storage, synchronus bool) *Dispatcher {
@@ -80,6 +102,7 @@ func NewDispatcher(bot *Bot, storage storage.Storage, synchronus bool) *Dispatch
 		Bot:        bot,
 		synchronus: synchronus,
 		Storage:    storage,
+		UpdatesCh:  make(chan *objects.Update, 1),
 	}
 
 	dp.MessageHandler = NewDHandlerObj(dp)
@@ -272,7 +295,11 @@ func (dp *Dispatcher) SkipUpdates() {
 func (dp *Dispatcher) Shutdown() {
 	for _, cb := range dp.OnShutdownCallbacks {
 		c := *cb
-		c(dp)
+		if dp.synchronus {
+			c(dp)
+		} else {
+			go c(dp)
+		}
 	}
 }
 
@@ -281,7 +308,11 @@ func (dp *Dispatcher) Shutdown() {
 func (dp *Dispatcher) StartUp() {
 	for _, cb := range dp.OnStartupCallbacks {
 		c := *cb
-		c(dp)
+		if dp.synchronus {
+			c(dp)
+		} else {
+			go c(dp)
+		}
 	}
 }
 
@@ -325,6 +356,8 @@ func (dp *Dispatcher) SafeExit() {
 func (dp *Dispatcher) ShutDownDP() {
 	log.Println("Stop polling!")
 	dp.ResetWebhook(true)
+	dp.Storage.Clear()
+	close(dp.UpdatesCh)
 	if dp.synchronus {
 		dp.Shutdown()
 	} else {
@@ -332,14 +365,17 @@ func (dp *Dispatcher) ShutDownDP() {
 	}
 }
 
+func (dp *Dispatcher) Welcome() {
+	dp.Bot.GetMe()
+	log.Println("Bot: ", dp.Bot.Me)
+}
+
 // GetUpdatesChan makes getUpdates request to telegram servers
 // sends update to updates channel
 // Time.Sleep here for stop goroutine for a c.Relax time
 //
 // yeah it bad, and works only on crutches, but works, idk how
-func (dp *Dispatcher) GetUpdatesChan(c *StartPollingConfig) chan *objects.Update {
-	upd_c := make(chan *objects.Update, c.Limit)
-
+func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig) {
 	go func() {
 		for {
 			if c.Relax != 0 {
@@ -358,13 +394,22 @@ func (dp *Dispatcher) GetUpdatesChan(c *StartPollingConfig) chan *objects.Update
 			for _, update := range updates {
 				if update.UpdateID >= c.Offset {
 					c.Offset = update.UpdateID + 1
-					upd_c <- update
+					dp.UpdatesCh <- update
 				}
 			}
 		}
 	}()
+}
 
-	return upd_c
+func (dp *Dispatcher) HandleUpdateChannel() error {
+	for upd := range dp.UpdatesCh {
+		dp.currentUpdate = upd
+		err := dp.ProcessOneUpdate(upd)
+		if err != nil {
+			return err
+		}
+	}
+	return errors.New("how? this peace of text is not reachable")
 }
 
 // StartPolling check out to comming updates
@@ -384,19 +429,30 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	if c.SkipUpdates {
 		dp.SkipUpdates()
 	}
+	go dp.Welcome()
 
 	// TODO: timeout
-	updates := dp.GetUpdatesChan(c)
+	dp.MakeUpdatesChan(c)
+	return dp.HandleUpdateChannel()
+}
 
-	for upd := range updates {
-		// waiting untill update come...
-		if upd != nil {
-			err := dp.ProcessOneUpdate(upd)
-			if err != nil {
-				return err
-			}
+func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig) {
+	http.HandleFunc(c.BotURL, func(wr http.ResponseWriter, req *http.Request) {
+		update, err := utils.RequestToUpdate(req)
+		if err != nil {
+			errMsg, _ := json.Marshal(map[string]string{"error": err.Error()})
+			wr.WriteHeader(http.StatusBadRequest)
+			wr.Header().Set("Content-Type", "application/json")
+			wr.Write(errMsg)
+			return
 		}
-	}
 
-	return nil
+		dp.UpdatesCh <- update
+	})
+}
+
+func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
+	dp.MakeWebhookChan(c)
+	go dp.HandleUpdateChannel()
+	return http.ListenAndServe(c.Address, c.Handler)
 }

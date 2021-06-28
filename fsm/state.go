@@ -3,7 +3,7 @@ package fsm
 import (
 	"fmt"
 
-	"github.com/pikoUsername/tgp/dispatcher/fsm/storage"
+	"github.com/pikoUsername/tgp/fsm/storage"
 )
 
 // State ...

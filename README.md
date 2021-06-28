@@ -18,6 +18,11 @@ Download This package using this command `go get -v github.com/pikoUsername/tgp`
 Ignore a warning about no files in root directory, if you want download a new version of this package 
 Then delete a past version in folder where saved on.
 
+<<<<<<< Updated upstream
+=======
+This package based/expired/copy_pasted on go-telegram-bot, and aiogram
+
+>>>>>>> Stashed changes
 ## Example
 ```go
 package main

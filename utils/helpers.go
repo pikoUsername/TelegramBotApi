@@ -1,7 +1,14 @@
 package utils
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
+	"errors"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
 
 	"github.com/pikoUsername/tgp/objects"
 )
@@ -71,4 +78,72 @@ func MarkupToString(obj interface{}) string {
 	}
 
 	return ""
+}
+
+func GetUidAndCidFromUpd(u *objects.Update) (cid_, uid_ int64) {
+	var cid, uid int64
+
+	if u.Message != nil {
+		cid = u.Message.Chat.ID
+		uid = u.Message.From.ID
+	} else if u.EditedMessage != nil {
+		cid = u.EditedMessage.Chat.ID
+		uid = u.EditedMessage.From.ID
+	} else if u.PinnedMessage != nil {
+		cid = u.PinnedMessage.Chat.ID
+		uid = u.PinnedMessage.From.ID
+	} else if u.ReplyToMessage != nil {
+		cid = u.ReplyToMessage.Chat.ID
+		uid = u.ReplyToMessage.From.ID
+	}
+
+	return cid, uid
+}
+
+func FileToBytes(f interface{}, compress bool) ([]byte, error) {
+	var bs []byte
+
+	switch f := f.(type) {
+	case string:
+		fp, err := os.Open(f)
+		if err != nil {
+			return []byte{}, err
+		}
+		defer fp.Close()
+		if compress {
+			compressed := &bytes.Buffer{}
+			cw, err := gzip.NewWriterLevel(compressed, gzip.BestCompression)
+			if err != nil {
+				return []byte{}, err
+			}
+			if _, err := io.Copy(cw, fp); err != nil {
+				return []byte{}, err
+			}
+			cw.Close()
+			return ioutil.ReadAll(compressed)
+		}
+
+		return ioutil.ReadAll(fp)
+	case os.File:
+	case *os.File:
+		return ioutil.ReadAll(f)
+	case []byte:
+		return f, nil
+	}
+
+	return bs, nil
+}
+
+func RequestToUpdate(req *http.Request) (*objects.Update, error) {
+	if req.Method != http.MethodPost {
+		return nil, errors.New("wrong HTTP method required POST")
+	}
+
+	var update *objects.Update
+	err := json.NewDecoder(req.Body).Decode(&update)
+	if err != nil {
+		return &objects.Update{}, err
+	}
+
+	return update, nil
 }

@@ -127,7 +127,7 @@ func NewSendMessage(chat_id int64, text string) *SendMessageConfig {
 // You may not fill all fields in struct
 // https://core.telegram.org/bots/api#setwebhook
 type SetWebhookConfig struct {
-	URL                *url.URL // required
+	URL                string // required
 	Certificate        interface{}
 	Offset             int
 	MaxConnections     int
@@ -138,9 +138,15 @@ type SetWebhookConfig struct {
 
 func (wc *SetWebhookConfig) Values() (*url.Values, error) {
 	result := &url.Values{}
-	// omg, why it s so bore ;(
-	result.Add("url", wc.URL.String())
-	// result.Add("certificate", wc.Certificate.URL())
+	result.Add("url", wc.URL)
+
+	if wc.Certificate == nil {
+		cert, err := utils.FileToBytes(wc.Certificate, true)
+		if err != nil {
+			return &url.Values{}, err
+		}
+		result.Add("certificate", string(cert))
+	}
 	result.Add("ip_address", wc.IP) // required field
 	if wc.MaxConnections != 0 {
 		result.Add("max_connections", strconv.Itoa(wc.MaxConnections))
@@ -155,7 +161,7 @@ func (wc *SetWebhookConfig) Method() string {
 	return "setWebhook"
 }
 
-func NewSetWebhook(url *url.URL) *SetWebhookConfig {
+func NewSetWebhook(url string) *SetWebhookConfig {
 	return &SetWebhookConfig{
 		URL: url,
 	}
