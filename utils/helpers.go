@@ -147,3 +147,26 @@ func RequestToUpdate(req *http.Request) (*objects.Update, error) {
 
 	return update, nil
 }
+
+func GuessFileName(f interface{}) (string, error) {
+	var s string
+
+	switch f := f.(type) {
+	case io.Reader:
+
+	case os.File:
+	case *os.File:
+		info, err := f.Stat()
+		if err != nil {
+			return "", err
+		}
+		if info.IsDir() {
+			return "", errors.New("file is directory")
+		}
+		s = info.Name()
+	default:
+		return "", nil
+	}
+
+	return s, nil
+}

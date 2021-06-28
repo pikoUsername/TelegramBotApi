@@ -1,6 +1,7 @@
 package tgp
 
 import (
+	"io"
 	"net/url"
 	"strconv"
 
@@ -31,8 +32,9 @@ type FileableConf interface {
 // InputFile interaced by FileableConf
 // Uses as Abstract level for real file
 type InputFile struct {
+	Name string
 	URL  string
-	File interface{}
+	File io.Reader
 }
 
 type BaseFile struct {

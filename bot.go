@@ -1,7 +1,11 @@
 package tgp
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -10,6 +14,7 @@ import (
 
 	"github.com/pikoUsername/tgp/objects"
 	"github.com/pikoUsername/tgp/utils"
+	"github.com/technoweenie/multipartstreamer"
 )
 
 // HttpClient default interface for using by bot
@@ -109,6 +114,68 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	if err != nil {
 		return tgresp, err
 	}
+	return utils.CheckResult(tgresp)
+}
+
+// UploadFile same as MakeRequest, with one defference, file, and name variable, and nothing more
+// copypaste of UploadFile go-telegram-bot
+func (b *Bot) UploadFile(method string, f interface{}, fieldname string, values map[string]string) (*objects.TelegramResponse, error) {
+	var name string
+	ms := multipartstreamer.New()
+
+	switch m := f.(type) {
+	case string:
+		name = m
+		ms.WriteFile(fieldname, m)
+	case InputFile:
+		if m.URL != "" {
+			values[fieldname] = m.URL
+
+			ms.WriteFields(values)
+		} else {
+			data, err := ioutil.ReadAll(m.File)
+			name = m.Name
+			if name == "" {
+				return &objects.TelegramResponse{}, errors.New("name field is nothing")
+			}
+			if err != nil {
+				return &objects.TelegramResponse{}, err
+			}
+
+			buf := bytes.NewBuffer(data)
+
+			ms.WriteReader(fieldname, m.Name, int64(len(data)), buf)
+		}
+	case url.URL:
+	case *url.URL:
+		values[fieldname] = m.String()
+
+		ms.WriteFields(values)
+	default:
+		return &objects.TelegramResponse{}, errors.New("not reached")
+	}
+	// creating File url
+	tgurl := b.server.FileURL(b.Token, name)
+
+	req, err := http.NewRequest(method, tgurl, nil)
+	if err != nil {
+		return &objects.TelegramResponse{}, err
+	}
+	ms.SetupRequest(req)
+
+	// sending request
+	resp, err := b.Client.Do(req)
+	if err != nil {
+		return &objects.TelegramResponse{}, err
+	}
+	// closing body
+	b.Log("Response as bytes: ", nil, fmt.Sprintln(resp))
+	defer resp.Body.Close()
+	tgresp, err := utils.ResponseDecode(resp.Body)
+	if err != nil {
+		return tgresp, err
+	}
+	// returns response instant
 	return utils.CheckResult(tgresp)
 }
 
@@ -247,11 +314,33 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 	return &msg, nil
 }
 
+// uploadAndSend will send a Message with a new file to Telegram.
+func (bot *Bot) uploadAndSend(config FileableConf) (*objects.Message, error) {
+	params, err := config.Params()
+	if err != nil {
+		return &objects.Message{}, err
+	}
+
+	file := config.GetFile()
+	method := config.Method()
+	resp, err := bot.UploadFile(method, file, config.Name(), params)
+	if err != nil {
+		return &objects.Message{}, err
+	}
+
+	var message *objects.Message
+	json.Unmarshal(resp.Result, &message)
+
+	bot.Log(method, nil, message)
+
+	return message, nil
+}
+
 // Send ...
 func (bot *Bot) Send(config Configurable) (*objects.Message, error) {
 	switch config.(type) {
 	case FileableConf:
-		return &objects.Message{}, nil
+		return bot.uploadAndSend(config.(FileableConf))
 	default:
 		return bot.SendMessageable(config)
 	}

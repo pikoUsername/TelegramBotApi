@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pikoUsername/tgp/fsm"
 	"github.com/pikoUsername/tgp/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
 	"github.com/pikoUsername/tgp/utils"
@@ -114,6 +115,11 @@ func NewDispatcher(bot *Bot, storage storage.Storage, synchronus bool) *Dispatch
 	dp.ChannelPostHandler = NewDHandlerObj(dp)
 
 	return dp
+}
+
+func (dp *Dispatcher) SetState(state *fsm.State) {
+	cid, uid := utils.GetUidAndCidFromUpd(dp.currentUpdate)
+	dp.Storage.SetState(cid, uid, state.GetFullState())
 }
 
 // ResetWebhook uses for reset webhook for telegram
@@ -409,7 +415,7 @@ func (dp *Dispatcher) HandleUpdateChannel() error {
 			return err
 		}
 	}
-	return errors.New("how? this peace of text is not reachable")
+	return errors.New("complete sucessful")
 }
 
 // StartPolling check out to comming updates
