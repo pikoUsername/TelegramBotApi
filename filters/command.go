@@ -40,7 +40,7 @@ func (c *Command) Check(u *objects.Update) bool {
 			return true
 		}
 	}
-	return true
+	return false
 }
 
 // NewCommand creates new Command object
