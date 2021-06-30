@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -146,6 +147,16 @@ func (b *Bot) UploadFile(method string, f interface{}, fieldname string, values 
 
 			ms.WriteReader(fieldname, m.Name, int64(len(data)), buf)
 		}
+	case FileableConf:
+		name = m.Name()
+
+		data, err := ioutil.ReadAll(m.GetFile().(io.Reader))
+		if err != nil {
+			return &objects.TelegramResponse{}, err
+		}
+		buf := bytes.NewBuffer(data)
+
+		ms.WriteReader(fieldname, name, int64(len(data)), buf)
 	case url.URL:
 	case *url.URL:
 		values[fieldname] = m.String()
