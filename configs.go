@@ -489,6 +489,26 @@ func NewGetUpdateConfig(Offset int) *GetUpdatesConfig {
 	}
 }
 
+type GetMyCommandsConfig struct {
+	Scope        objects.BotCommandScope // optional
+	LanguageCode string                  // optional
+}
+
+func (gmcc *GetMyCommandsConfig) Values() (*url.Values, error) {
+	v := &url.Values{}
+	if gmcc.Scope != nil {
+		v.Add("scope", utils.ObjectToJson(gmcc.Scope))
+	}
+	if gmcc.LanguageCode != "" {
+		v.Add("language_code", gmcc.LanguageCode)
+	}
+	return v, nil
+}
+
+func (gmcc *GetMyCommandsConfig) Method() string {
+	return "getMyCommands"
+}
+
 // DeleteMyCommandsConfig ...
 type DeleteMyCommandsConfig struct {
 	Scope        objects.BotCommandScope // optional

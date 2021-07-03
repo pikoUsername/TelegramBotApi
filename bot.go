@@ -471,12 +471,13 @@ func (bot *Bot) SetMyCommands(conf *SetMyCommandsConfig) (bool, error) {
 
 // GetMyCommands get from bot commands command
 // https://core.telegram.org/bots/api#getmycommands
-func (bot *Bot) GetMyCommands() ([]*objects.BotCommand, error) {
-	resp, err := bot.MakeRequest("getMyCommands", &url.Values{})
+func (bot *Bot) GetMyCommands(c *GetMyCommandsConfig) ([]objects.BotCommand, error) {
+	v, _ := c.Values()
+	resp, err := bot.MakeRequest(c.Method(), v)
 	if err != nil {
 		return nil, err
 	}
-	var cmds []*objects.BotCommand
+	var cmds []objects.BotCommand
 	err = json.Unmarshal(resp.Result, &cmds)
 	if err != nil {
 		return cmds, err
