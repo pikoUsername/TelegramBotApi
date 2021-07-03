@@ -24,9 +24,10 @@ import (
 // Dispatcher uses as Bot starter
 // Another level of abstraction
 type Dispatcher struct {
-	Bot     *Bot
-	Storage storage.Storage
-	Mutex   *sync.Mutex
+	Bot      *Bot
+	Storage  storage.Storage
+	Mutex    *sync.Mutex
+	Welcome_ bool
 
 	// Handlers
 	MessageHandler       HandlerObj
@@ -44,9 +45,9 @@ type Dispatcher struct {
 
 	// private fields
 	updatesCh     chan *objects.Update
+	errorCh       chan error
 	currentUpdate *objects.Update
 	synchronus    bool
-	welcome       bool
 	polling       bool
 	webhook       bool
 }
@@ -135,10 +136,11 @@ func (dp *Dispatcher) ResetWebhook(check bool) error {
 			return err
 		}
 		if wi.URL == "" {
-			return nil
+			return errors.New("url is nothing")
 		}
 	}
-	return dp.Bot.DeleteWebhook(&DeleteWebhookConfig{})
+	_, err := dp.Bot.DeleteWebhook(&DeleteWebhookConfig{})
+	return err
 }
 
 // RegisterMessageHandler excepts you pass to parametrs a your function
@@ -285,13 +287,13 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 		return errors.New(text)
 	}
 
-	// end of something
+	// end of adventure
 	return nil
 }
 
 // SkipUpdates skip comming updates, sending to telegram servers
 func (dp *Dispatcher) SkipUpdates() {
-	go dp.Bot.GetUpdates(&GetUpdatesConfig{
+	dp.Bot.GetUpdates(&GetUpdatesConfig{
 		Offset:  -1,
 		Timeout: 1,
 	})
@@ -368,12 +370,7 @@ func (dp *Dispatcher) ShutDownDP() {
 	log.Println("Stop polling!")
 	dp.ResetWebhook(true)
 	dp.Storage.Clear()
-	close(dp.updatesCh)
-	if dp.synchronus {
-		dp.Shutdown()
-	} else {
-		go dp.Shutdown()
-	}
+	dp.Shutdown()
 }
 
 func (dp *Dispatcher) Welcome() {
@@ -395,7 +392,7 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig) {
 
 			updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
 			if err != nil {
-				log.Println(err)
+				log.Println(err.Error())
 				log.Println("Error with getting updates")
 				time.Sleep(time.Duration(c.ErrorSleep))
 
@@ -412,17 +409,6 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig) {
 	}()
 }
 
-func (dp *Dispatcher) HandleUpdateChannel() error {
-	for upd := range dp.updatesCh {
-		dp.currentUpdate = upd
-		err := dp.ProcessOneUpdate(upd)
-		if err != nil {
-			return err
-		}
-	}
-	return errors.New("complete sucessful")
-}
-
 // StartPolling check out to comming updates
 // If yes, Telegram Get to your bot a Update
 // Using GetUpdates method in Bot structure
@@ -430,7 +416,7 @@ func (dp *Dispatcher) HandleUpdateChannel() error {
 func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	if c.SafeExit {
 		// runs goroutine for safly terminate program(bot)
-		go dp.SafeExit()
+		dp.SafeExit()
 	}
 
 	dp.StartUp()
@@ -440,13 +426,22 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	if c.SkipUpdates {
 		dp.SkipUpdates()
 	}
-	if dp.welcome {
-		go dp.Welcome()
+	if dp.Welcome_ {
+		dp.Welcome()
 	}
 	// TODO: timeout
 	dp.polling = true
 	dp.MakeUpdatesChan(c)
-	return dp.HandleUpdateChannel()
+
+	for upd := range dp.updatesCh {
+		dp.currentUpdate = upd
+		err := dp.ProcessOneUpdate(upd)
+		if err != nil {
+			return err
+		}
+	}
+
+	return errors.New(":P")
 }
 
 func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig) {
