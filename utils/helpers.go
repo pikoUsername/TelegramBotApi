@@ -152,10 +152,13 @@ func GuessFileName(f interface{}) (string, error) {
 	var s string
 
 	switch f := f.(type) {
-	case io.Reader:
+	case os.FileInfo:
+		return f.Name(), nil
+
+	case string:
+		return f, nil
 
 	case os.File:
-	case *os.File:
 		info, err := f.Stat()
 		if err != nil {
 			return "", err
@@ -165,7 +168,7 @@ func GuessFileName(f interface{}) (string, error) {
 		}
 		s = info.Name()
 	default:
-		return "", nil
+		return "", errors.New("reached, not reachable")
 	}
 
 	return s, nil

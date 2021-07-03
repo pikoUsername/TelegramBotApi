@@ -361,7 +361,6 @@ func (bot *Bot) Send(config Configurable) (*objects.Message, error) {
 // CopyMessage copies message
 // https://core.telegram.org/bots/api#copymessage
 func (bot *Bot) CopyMessage(config *CopyMessageConfig) (*objects.MessageID, error) {
-	// Stub here, TODO: make for every config a values function/method
 	v, err := config.Values()
 
 	if err != nil {
