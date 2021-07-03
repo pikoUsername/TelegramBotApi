@@ -66,7 +66,22 @@ func (cmc *CopyMessageConfig) Values() (*url.Values, error) {
 	v.Add("chat_id", strconv.FormatInt(cmc.ChatID, 10))
 	v.Add("from_chat_id", strconv.FormatInt(cmc.ChatID, 10))
 	v.Add("message_id", strconv.FormatInt(cmc.MessageID, 10))
-	// TODO: Make Optional fields too...
+	if cmc.Caption != "" {
+		v.Add("caption", cmc.Caption)
+	}
+	if cmc.CaptionEntities != nil {
+		v.Add("caption_entities", utils.ObjectToJson(cmc.CaptionEntities))
+	}
+	if !cmc.DisableNotifications {
+		v.Add("disable_notifications", strconv.FormatBool(cmc.DisableNotifications))
+	}
+	if cmc.ReplyToMessageId != 0 {
+		v.Add("reply_to_message_id", strconv.FormatInt(cmc.ReplyToMessageId, 10))
+	}
+	v.Add("allow_sending_with_reply", strconv.FormatBool(cmc.AllowSendingWithReply))
+	if cmc.ReplyMarkup != nil {
+		v.Add("reply_keyboards", utils.MarkupToString(cmc.ReplyMarkup))
+	}
 	return v, nil
 }
 
