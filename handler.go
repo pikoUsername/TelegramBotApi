@@ -25,13 +25,13 @@ func (ht *HandlerType) CheckForFilters(u *objects.Update) bool {
 }
 
 // Call uses for checking using filters
-func (ht *HandlerType) Call(u *objects.Update, f func(), synchronus bool) {
+func (ht *HandlerType) Call(u *objects.Update, f func(), sync bool) {
 	fr := ht.CheckForFilters(u)
 	if !fr {
 		return
 	}
 
-	if synchronus {
+	if sync {
 		f()
 	} else {
 		go f()

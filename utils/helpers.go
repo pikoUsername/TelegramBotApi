@@ -136,7 +136,7 @@ func FileToBytes(f interface{}, compress bool) ([]byte, error) {
 
 func RequestToUpdate(req *http.Request) (*objects.Update, error) {
 	if req.Method != http.MethodPost {
-		return nil, errors.New("wrong HTTP method required POST")
+		return &objects.Update{}, errors.New("wrong HTTP method required POST")
 	}
 
 	var update *objects.Update
