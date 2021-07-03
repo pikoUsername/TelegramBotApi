@@ -128,7 +128,8 @@ func (dmm *DefaultMiddlewareManager) Register(md ...MiddlewareFunc) {
 
 // Unregister a middleware
 func (dmm *DefaultMiddlewareManager) Unregister(md *MiddlewareFunc) (*MiddlewareFunc, error) {
-	// Checking for memory address
+	// Checking for memory address, its really bad idea, but variant with map, too huge
+	// variant with struct, too huge, and for middlewares store no need to use special structs
 	for i, m := range dmm.middlewares {
 		if m == md {
 			// removing from list
