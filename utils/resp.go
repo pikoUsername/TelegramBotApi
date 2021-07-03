@@ -13,8 +13,7 @@ import (
 func ResponseDecode(respBody io.ReadCloser) (*objects.TelegramResponse, error) {
 	var tgresp objects.TelegramResponse
 	// Maybe use the Unmarshal ...
-	dec := json.NewDecoder(respBody)
-	err := dec.Decode(&tgresp)
+	err := json.NewDecoder(respBody).Decode(&tgresp)
 	if err != nil {
 		return &tgresp, err
 	}

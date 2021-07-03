@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/pikoUsername/tgp"
+	"github.com/pikoUsername/tgp/fsm/storage"
 )
 
 var (
@@ -16,7 +17,7 @@ func GetDispatcher(t *testing.T) *tgp.Dispatcher {
 	if err != nil {
 		t.Error(err)
 	}
-	return &tgp.Dispatcher{Bot: b}
+	return tgp.NewDispatcher(b, storage.NewMemoryStorage(), false)
 }
 
 func TestNewDispatcher(t *testing.T) {

@@ -18,14 +18,13 @@ type MemoryStorage struct {
 func (ms *MemoryStorage) ResolveData(ChatId int64, UserId int64) *MemoryStorageRecord {
 	d := *ms.Data
 	_, ok := d[ChatId][UserId]
-
 	if !ok {
-		d[ChatId] = make(map[int64]*MemoryStorageRecord)
+		d[ChatId] = map[int64]*MemoryStorageRecord{}
 	}
 	record, ok := d[ChatId][UserId]
 
 	if !ok {
-		d[ChatId][UserId] = &MemoryStorageRecord{Data: &PackType{}}
+		d[ChatId][UserId] = &MemoryStorageRecord{}
 		record = d[ChatId][UserId]
 	}
 

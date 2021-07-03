@@ -1,7 +1,12 @@
 package tgp
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -10,6 +15,7 @@ import (
 
 	"github.com/pikoUsername/tgp/objects"
 	"github.com/pikoUsername/tgp/utils"
+	"github.com/technoweenie/multipartstreamer"
 )
 
 // HttpClient default interface for using by bot
@@ -90,7 +96,7 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	// Telegram uses application/json content type
 	request, err := http.NewRequest("POST", tgurl, strings.NewReader(params.Encode()))
 	if err != nil {
-		return nil, err
+		return &objects.TelegramResponse{}, err
 	}
 
 	request.Header.Set("Content-Type", "application/json")
@@ -100,7 +106,7 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 
 	// check for error
 	if err != nil {
-		return nil, err
+		return &objects.TelegramResponse{}, err
 	}
 	defer resp.Body.Close()
 
@@ -109,6 +115,78 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	if err != nil {
 		return tgresp, err
 	}
+	return utils.CheckResult(tgresp)
+}
+
+// UploadFile same as MakeRequest, with one defference, file, and name variable, and nothing more
+// copypaste of UploadFile go-telegram-bot
+func (b *Bot) UploadFile(method string, f interface{}, fieldname string, values map[string]string) (*objects.TelegramResponse, error) {
+	var name string
+	ms := multipartstreamer.New()
+
+	switch m := f.(type) {
+	case string:
+		name = m
+		ms.WriteFile(fieldname, m)
+	case InputFile:
+		if m.URL != "" {
+			values[fieldname] = m.URL
+
+			ms.WriteFields(values)
+		} else {
+			data, err := ioutil.ReadAll(m.File)
+			name = m.Name
+			if name == "" {
+				return &objects.TelegramResponse{}, errors.New("name field is nothing")
+			}
+			if err != nil {
+				return &objects.TelegramResponse{}, err
+			}
+
+			buf := bytes.NewBuffer(data)
+
+			ms.WriteReader(fieldname, m.Name, int64(len(data)), buf)
+		}
+	case FileableConf:
+		name = m.Name()
+
+		data, err := ioutil.ReadAll(m.GetFile().(io.Reader))
+		if err != nil {
+			return &objects.TelegramResponse{}, err
+		}
+		buf := bytes.NewBuffer(data)
+
+		ms.WriteReader(fieldname, name, int64(len(data)), buf)
+	case url.URL:
+	case *url.URL:
+		values[fieldname] = m.String()
+
+		ms.WriteFields(values)
+	default:
+		return &objects.TelegramResponse{}, errors.New("not reached")
+	}
+	// creating File url
+	tgurl := b.server.FileURL(b.Token, name)
+
+	req, err := http.NewRequest(method, tgurl, nil)
+	if err != nil {
+		return &objects.TelegramResponse{}, err
+	}
+	ms.SetupRequest(req)
+
+	// sending request
+	resp, err := b.Client.Do(req)
+	if err != nil {
+		return &objects.TelegramResponse{}, err
+	}
+	// closing body
+	b.Log("Response as bytes: ", nil, fmt.Sprintln(resp))
+	defer resp.Body.Close()
+	tgresp, err := utils.ResponseDecode(resp.Body)
+	if err != nil {
+		return tgresp, err
+	}
+	// returns response instant
 	return utils.CheckResult(tgresp)
 }
 
@@ -235,6 +313,7 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 		v.Set("parse_mode", bot.ParseMode)
 	}
 	resp, err := bot.MakeRequest(c.Method(), v)
+
 	if err != nil {
 		return &objects.Message{}, err
 	}
@@ -247,11 +326,33 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 	return &msg, nil
 }
 
+// uploadAndSend will send a Message with a new file to Telegram.
+func (bot *Bot) uploadAndSend(config FileableConf) (*objects.Message, error) {
+	params, err := config.Params()
+	if err != nil {
+		return &objects.Message{}, err
+	}
+
+	file := config.GetFile()
+	method := config.Method()
+	resp, err := bot.UploadFile(method, file, config.Name(), params)
+	if err != nil {
+		return &objects.Message{}, err
+	}
+
+	var message *objects.Message
+	json.Unmarshal(resp.Result, &message)
+
+	bot.Log(method, nil, message)
+
+	return message, nil
+}
+
 // Send ...
 func (bot *Bot) Send(config Configurable) (*objects.Message, error) {
 	switch config.(type) {
 	case FileableConf:
-		return &objects.Message{}, nil
+		return bot.uploadAndSend(config.(FileableConf))
 	default:
 		return bot.SendMessageable(config)
 	}
@@ -260,7 +361,6 @@ func (bot *Bot) Send(config Configurable) (*objects.Message, error) {
 // CopyMessage copies message
 // https://core.telegram.org/bots/api#copymessage
 func (bot *Bot) CopyMessage(config *CopyMessageConfig) (*objects.MessageID, error) {
-	// Stub here, TODO: make for every config a values function/method
 	v, err := config.Values()
 
 	if err != nil {
@@ -352,23 +452,30 @@ func (bot *Bot) SendDice(config *SendDiceConfig) (*objects.Message, error) {
 // SetMyCommands Setup command to Telegram bot
 // https://core.telegram.org/bots/api#setmycommands
 func (bot *Bot) SetMyCommands(conf *SetMyCommandsConfig) (bool, error) {
-	v, err := conf.Values() // Stub...
+	v, err := conf.Values()
 	if err != nil {
 		return false, err
 	}
-	_, err = bot.MakeRequest(conf.Method(), v)
+	resp, err := bot.MakeRequest(conf.Method(), v)
 	if err != nil {
 		return false, err
 	}
-	return true, nil
+	var ok bool
+	err = json.Unmarshal(resp.Result, &ok)
+	if err != nil {
+		return false, err
+	}
+
+	return ok, nil
 }
 
 // GetMyCommands get from bot commands command
 // https://core.telegram.org/bots/api#getmycommands
-func (bot *Bot) GetMyCommands() ([]objects.BotCommand, error) {
-	resp, err := bot.MakeRequest("getMyCommands", &url.Values{})
+func (bot *Bot) GetMyCommands(c *GetMyCommandsConfig) ([]objects.BotCommand, error) {
+	v, _ := c.Values()
+	resp, err := bot.MakeRequest(c.Method(), v)
 	if err != nil {
-		return nil, err
+		return []objects.BotCommand{}, err
 	}
 	var cmds []objects.BotCommand
 	err = json.Unmarshal(resp.Result, &cmds)
@@ -384,16 +491,16 @@ func (bot *Bot) GetMyCommands() ([]objects.BotCommand, error) {
 
 // DeleteWebhook if result is True, will be nil, if not so err
 // https://core.telegram.org/bots/api#deletewebhook
-func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) error {
+func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) (*objects.TelegramResponse, error) {
 	v, err := c.Values()
 	if err != nil {
-		return err
+		return &objects.TelegramResponse{}, err
 	}
-	_, err = bot.MakeRequest(c.Method(), v)
+	resp, err := bot.MakeRequest(c.Method(), v)
 	if err != nil {
-		return err
+		return &objects.TelegramResponse{}, err
 	}
-	return nil
+	return resp, nil
 }
 
 // GetUpdates uses for long polling
@@ -401,11 +508,11 @@ func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) error {
 func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
 	v, err := c.Values()
 	if err != nil {
-		return nil, err
+		return []*objects.Update{}, err
 	}
 	resp, err := bot.MakeRequest(c.Method(), v)
 	if err != nil {
-		return nil, &objects.TelegramApiError{
+		return []*objects.Update{}, &objects.TelegramApiError{
 			Code:               resp.ErrorCode,
 			Description:        resp.Description,
 			ResponseParameters: objects.ResponseParameters{},
@@ -425,16 +532,16 @@ func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
 // sends a message to your bot, Telegram know
 // Your bot IP and sends to your bot a Update
 // https://core.telegram.org/bots/api#setwebhook
-func (bot *Bot) SetWebhook(config *SetWebhookConfig) error {
+func (bot *Bot) SetWebhook(config *SetWebhookConfig) (*objects.TelegramResponse, error) {
 	v, err := config.Values()
 	if err != nil {
-		return err
+		return &objects.TelegramResponse{}, err
 	}
-	_, err = bot.MakeRequest(config.Method(), v)
+	resp, err := bot.MakeRequest(config.Method(), v)
 	if err != nil {
-		return err
+		return resp, err
 	}
-	return nil
+	return resp, nil
 }
 
 // GetWebhookInfo not require parametrs
@@ -540,3 +647,7 @@ func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserP
 
 	return &photos, nil
 }
+
+// ====================
+// other method
+// ====================

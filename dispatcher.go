@@ -1,9 +1,11 @@
 package tgp
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"reflect"
@@ -21,9 +23,10 @@ import (
 // Dispatcher uses as Bot starter
 // Another level of abstraction
 type Dispatcher struct {
-	Bot       *Bot `json:"bot"`
-	UpdatesCh chan *objects.Update
-	Storage   storage.Storage `json:"-"`
+	Bot      *Bot
+	Storage  storage.Storage
+	Mutex    *sync.Mutex
+	Welcome_ bool
 
 	// Handlers
 	MessageHandler       HandlerObj
@@ -39,13 +42,16 @@ type Dispatcher struct {
 	OnShutdownCallbacks []*OnStartAndShutdownFunc
 	OnStartupCallbacks  []*OnStartAndShutdownFunc
 
+	// private fields
+	updatesCh     chan *objects.Update
 	currentUpdate *objects.Update
 	synchronus    bool
-	Mutex         *sync.Mutex
+	polling       bool
+	webhook       bool
 }
 
 var (
-	ErrorTypeAssertion = errors.New("can not do type assertion to this callback")
+	ErrorTypeAssertion = errors.New("impossible to do type assertion to this callback")
 )
 
 type OnStartAndShutdownFunc func(dp *Dispatcher)
@@ -77,6 +83,23 @@ func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 	}
 }
 
+type StartWebhookConfig struct {
+	*SetWebhookConfig
+	BotURL             string
+	Address            string
+	Handler            http.Handler
+	KeyFile            interface{}
+	DropPendingUpdates bool
+	SafeExit           bool
+}
+
+func NewStartWebhookConf(url string, address string) *StartWebhookConfig {
+	return &StartWebhookConfig{
+		BotURL:  url,
+		Address: address,
+	}
+}
+
 // NewDispathcer get a new Dispatcher
 // And with autoconfiguration, need to run once
 func NewDispatcher(bot *Bot, storage storage.Storage, synchronus bool) *Dispatcher {
@@ -84,7 +107,7 @@ func NewDispatcher(bot *Bot, storage storage.Storage, synchronus bool) *Dispatch
 		Bot:        bot,
 		synchronus: synchronus,
 		Storage:    storage,
-		UpdatesCh:  make(chan *objects.Update, 0),
+		updatesCh:  make(chan *objects.Update, 1),
 	}
 
 	dp.MessageHandler = NewDHandlerObj(dp)
@@ -106,10 +129,11 @@ func (dp *Dispatcher) ResetWebhook(check bool) error {
 			return err
 		}
 		if wi.URL == "" {
-			return nil
+			return errors.New("url is nothing")
 		}
 	}
-	return dp.Bot.DeleteWebhook(&DeleteWebhookConfig{})
+	_, err := dp.Bot.DeleteWebhook(&DeleteWebhookConfig{})
+	return err
 }
 
 // RegisterMessageHandler excepts you pass to parametrs a your function
@@ -256,7 +280,7 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 		return errors.New(text)
 	}
 
-	// end of something
+	// end of adventure
 	return nil
 }
 
@@ -283,7 +307,11 @@ func (dp *Dispatcher) SetState(state *fsm.State) {
 func (dp *Dispatcher) Shutdown() {
 	for _, cb := range dp.OnShutdownCallbacks {
 		c := *cb
-		c(dp)
+		if dp.synchronus {
+			c(dp)
+		} else {
+			go c(dp)
+		}
 	}
 }
 
@@ -292,7 +320,11 @@ func (dp *Dispatcher) Shutdown() {
 func (dp *Dispatcher) StartUp() {
 	for _, cb := range dp.OnStartupCallbacks {
 		c := *cb
-		c(dp)
+		if dp.synchronus {
+			c(dp)
+		} else {
+			go c(dp)
+		}
 	}
 }
 
@@ -337,11 +369,12 @@ func (dp *Dispatcher) ShutDownDP() {
 	log.Println("Stop polling!")
 	dp.ResetWebhook(true)
 	dp.Storage.Clear()
-	if dp.synchronus {
-		dp.Shutdown()
-	} else {
-		go dp.Shutdown()
-	}
+	dp.Shutdown()
+}
+
+func (dp *Dispatcher) Welcome() {
+	dp.Bot.GetMe()
+	log.Println("Bot: ", dp.Bot.Me)
 }
 
 // GetUpdatesChan makes getUpdates request to telegram servers
@@ -358,7 +391,7 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig) {
 
 			updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
 			if err != nil {
-				log.Println(err)
+				log.Println(err.Error())
 				log.Println("Error with getting updates")
 				time.Sleep(time.Duration(c.ErrorSleep))
 
@@ -368,7 +401,7 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig) {
 			for _, update := range updates {
 				if update.UpdateID >= c.Offset {
 					c.Offset = update.UpdateID + 1
-					dp.UpdatesCh <- update
+					dp.updatesCh <- update
 				}
 			}
 		}
@@ -392,15 +425,87 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	if c.SkipUpdates {
 		dp.SkipUpdates()
 	}
-
+	if dp.Welcome_ {
+		dp.Welcome()
+	}
 	// TODO: timeout
+	dp.polling = true
 	dp.MakeUpdatesChan(c)
-	for upd := range dp.UpdatesCh {
+
+	for upd := range dp.updatesCh {
 		dp.currentUpdate = upd
 		err := dp.ProcessOneUpdate(upd)
 		if err != nil {
 			return err
 		}
 	}
-	return errors.New("how? this peace of text is not reachable")
+
+	return errors.New(":P")
+}
+
+func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig) {
+	http.HandleFunc(c.BotURL, func(wr http.ResponseWriter, req *http.Request) {
+		update, err := utils.RequestToUpdate(req)
+		if err != nil {
+			errMsg, _ := json.Marshal(map[string]string{"error": err.Error()})
+			wr.WriteHeader(http.StatusBadRequest)
+			wr.Header().Set("Content-Type", "application/json")
+			wr.Write(errMsg)
+			return
+		}
+
+		dp.updatesCh <- update
+	})
+}
+
+// StartWebhook method registers on BotUrl uri a function which handles every comming update
+// Using In Pair of SetWebhook method
+// Startup method executes after SetWebhook method
+// and adds a OnShutdown function, and no need to delete webhook with hands
+func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
+	if dp.polling {
+		return errors.New(
+			"you want to enable two conflict modes at the same time, polling and webhook",
+		)
+	}
+	dp.OnShutdown(func(dp *Dispatcher) {
+		dw := &DeleteWebhookConfig{
+			DropPendingUpdates: c.DropPendingUpdates,
+		}
+		dp.Bot.DeleteWebhook(dw)
+	})
+	_, err := dp.Bot.SetWebhook(c.SetWebhookConfig)
+	if err != nil {
+		return err
+	}
+	dp.StartUp()
+	if c.SafeExit {
+		dp.SafeExit()
+	}
+	http.HandleFunc(c.BotURL, func(wr http.ResponseWriter, req *http.Request) {
+		update, err := utils.RequestToUpdate(req)
+		if err != nil {
+			errMsg, _ := json.Marshal(map[string]string{"error": err.Error()})
+			wr.WriteHeader(http.StatusBadRequest)
+			wr.Header().Set("Content-Type", "application/json")
+			wr.Write(errMsg)
+			return
+		}
+
+		dp.currentUpdate = update
+		err = dp.ProcessOneUpdate(update)
+		if err != nil {
+			fmt.Println(err)
+		}
+	})
+	certPath, err := utils.GuessFileName(c.Certificate)
+	if err != nil {
+		return err
+	}
+	keyfile, err := utils.GuessFileName(c.KeyFile)
+	if err != nil {
+		return err
+	}
+	dp.webhook = true
+	return http.ListenAndServeTLS(c.Address, certPath, keyfile, c.Handler)
 }

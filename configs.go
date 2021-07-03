@@ -1,6 +1,7 @@
 package tgp
 
 import (
+	"io"
 	"net/url"
 	"strconv"
 
@@ -31,8 +32,9 @@ type FileableConf interface {
 // InputFile interaced by FileableConf
 // Uses as Abstract level for real file
 type InputFile struct {
+	Name string
 	URL  string
-	File interface{}
+	File io.Reader
 }
 
 type BaseFile struct {
@@ -64,7 +66,22 @@ func (cmc *CopyMessageConfig) Values() (*url.Values, error) {
 	v.Add("chat_id", strconv.FormatInt(cmc.ChatID, 10))
 	v.Add("from_chat_id", strconv.FormatInt(cmc.ChatID, 10))
 	v.Add("message_id", strconv.FormatInt(cmc.MessageID, 10))
-	// TODO: Make Optional fields too...
+	if cmc.Caption != "" {
+		v.Add("caption", cmc.Caption)
+	}
+	if cmc.CaptionEntities != nil {
+		v.Add("caption_entities", utils.ObjectToJson(cmc.CaptionEntities))
+	}
+	if !cmc.DisableNotifications {
+		v.Add("disable_notifications", strconv.FormatBool(cmc.DisableNotifications))
+	}
+	if cmc.ReplyToMessageId != 0 {
+		v.Add("reply_to_message_id", strconv.FormatInt(cmc.ReplyToMessageId, 10))
+	}
+	v.Add("allow_sending_with_reply", strconv.FormatBool(cmc.AllowSendingWithReply))
+	if cmc.ReplyMarkup != nil {
+		v.Add("reply_keyboards", utils.MarkupToString(cmc.ReplyMarkup))
+	}
 	return v, nil
 }
 
@@ -127,7 +144,7 @@ func NewSendMessage(chat_id int64, text string) *SendMessageConfig {
 // You may not fill all fields in struct
 // https://core.telegram.org/bots/api#setwebhook
 type SetWebhookConfig struct {
-	URL                *url.URL // required
+	URL                string // required
 	Certificate        interface{}
 	Offset             int
 	MaxConnections     int
@@ -138,9 +155,15 @@ type SetWebhookConfig struct {
 
 func (wc *SetWebhookConfig) Values() (*url.Values, error) {
 	result := &url.Values{}
-	// omg, why it s so bore ;(
-	result.Add("url", wc.URL.String())
-	// result.Add("certificate", wc.Certificate.URL())
+	result.Add("url", wc.URL)
+
+	if wc.Certificate == nil {
+		cert, err := utils.FileToBytes(wc.Certificate, true)
+		if err != nil {
+			return &url.Values{}, err
+		}
+		result.Add("certificate", string(cert))
+	}
 	result.Add("ip_address", wc.IP) // required field
 	if wc.MaxConnections != 0 {
 		result.Add("max_connections", strconv.Itoa(wc.MaxConnections))
@@ -155,7 +178,7 @@ func (wc *SetWebhookConfig) Method() string {
 	return "setWebhook"
 }
 
-func NewSetWebhook(url *url.URL) *SetWebhookConfig {
+func NewSetWebhook(url string) *SetWebhookConfig {
 	return &SetWebhookConfig{
 		URL: url,
 	}
@@ -481,13 +504,65 @@ func NewGetUpdateConfig(Offset int) *GetUpdatesConfig {
 	}
 }
 
+type GetMyCommandsConfig struct {
+	Scope        objects.BotCommandScope // optional
+	LanguageCode string                  // optional
+}
+
+func (gmcc *GetMyCommandsConfig) Values() (*url.Values, error) {
+	v := &url.Values{}
+	if gmcc.Scope != nil {
+		v.Add("scope", utils.ObjectToJson(gmcc.Scope))
+	}
+	if gmcc.LanguageCode != "" {
+		v.Add("language_code", gmcc.LanguageCode)
+	}
+	return v, nil
+}
+
+func (gmcc *GetMyCommandsConfig) Method() string {
+	return "getMyCommands"
+}
+
+// DeleteMyCommandsConfig ...
+type DeleteMyCommandsConfig struct {
+	Scope        objects.BotCommandScope // optional
+	LanguageCode string                  // optional
+}
+
+func (dmcc *DeleteMyCommandsConfig) Values() (*url.Values, error) {
+	v := &url.Values{}
+	v.Add("scope", utils.ObjectToJson(dmcc.Scope))
+	if dmcc.LanguageCode != "" {
+		v.Add("language_code", dmcc.LanguageCode)
+	}
+	return v, nil
+}
+
+func (dmcc *DeleteMyCommandsConfig) Method() string {
+	return "deleteMyCommands"
+}
+
+func NewDeleteMyCommandsConf() *DeleteMyCommandsConfig {
+	return &DeleteMyCommandsConfig{}
+}
+
+// SetMyCommandsConfig ...
 type SetMyCommandsConfig struct {
-	Commands []*objects.BotCommand
+	Commands     []*objects.BotCommand
+	Scope        objects.BotCommandScope
+	LanguageCode string
 }
 
 func (smcc *SetMyCommandsConfig) Values() (*url.Values, error) {
 	v := &url.Values{}
 	v.Add("commands", utils.ObjectToJson(smcc.Commands))
+	if smcc.LanguageCode != "" {
+		v.Add("language_code", smcc.LanguageCode)
+	}
+	if smcc.Scope != nil {
+		v.Add("scope", utils.ObjectToJson(smcc.Scope))
+	}
 	return v, nil
 }
 
@@ -495,12 +570,13 @@ func (smcc *SetMyCommandsConfig) Method() string {
 	return "setMyCommands"
 }
 
-func NewSetMyCommands(commands []*objects.BotCommand) *SetMyCommandsConfig {
+func NewSetMyCommands(commands ...*objects.BotCommand) *SetMyCommandsConfig {
 	return &SetMyCommandsConfig{
 		Commands: commands,
 	}
 }
 
+// DeleteWebhookConfig ...
 type DeleteWebhookConfig struct {
 	DropPendingUpdates bool
 }

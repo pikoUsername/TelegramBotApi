@@ -20,11 +20,12 @@ type KeyboardButton struct {
 // ReplyKeyboardMarkup represents ReplyKeyboardMarkup object
 // https://core.telegram.org/bots/api#replykeyboardmarkup
 type ReplyKeyboardMarkup struct {
-	Keyboard        [][]KeyboardButton
-	ResizeKeyboard  bool `json:"resize_keyboard"`
-	OneTimeKeyboard bool `json:"one_time_keyboard"`
-	Selective       bool `json:"selective"`
-	RowWidth        uint
+	Keyboard              [][]KeyboardButton
+	ResizeKeyboard        bool   `json:"resize_keyboard"`
+	OneTimeKeyboard       bool   `json:"one_time_keyboard"`
+	InputFieldPlaceHolder string `json:"input_field_placeholder"`
+	Selective             bool   `json:"selective"`
+	RowWidth              uint
 }
 
 // Add ...
