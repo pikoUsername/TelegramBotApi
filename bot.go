@@ -90,13 +90,13 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	// Creating URL
 	// fix bug with sending request,
 	// when url creates here or NewRequest not creates a correct url with url params
-	tgurl := bot.server.ApiURL(bot.Token, Method)
+	tgurl := bot.server.ApiURL(bot.Token, Method+"?"+params.Encode())
 
 	// Content Type is Application/json
 	// Telegram uses application/json content type
 	request, err := http.NewRequest("POST", tgurl, strings.NewReader(params.Encode()))
 	if err != nil {
-		return nil, err
+		return &objects.TelegramResponse{}, err
 	}
 
 	request.Header.Set("Content-Type", "application/json")
@@ -106,7 +106,7 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 
 	// check for error
 	if err != nil {
-		return nil, err
+		return &objects.TelegramResponse{}, err
 	}
 	defer resp.Body.Close()
 
@@ -313,6 +313,7 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 		v.Set("parse_mode", bot.ParseMode)
 	}
 	resp, err := bot.MakeRequest(c.Method(), v)
+
 	if err != nil {
 		return &objects.Message{}, err
 	}
@@ -349,11 +350,11 @@ func (bot *Bot) uploadAndSend(config FileableConf) (*objects.Message, error) {
 
 // Send ...
 func (bot *Bot) Send(config Configurable) (*objects.Message, error) {
-	switch c := config.(type) {
+	switch config.(type) {
 	case FileableConf:
-		return bot.uploadAndSend(c)
+		return bot.uploadAndSend(config.(FileableConf))
 	default:
-		return bot.SendMessageable(c)
+		return bot.SendMessageable(config)
 	}
 }
 
@@ -475,7 +476,7 @@ func (bot *Bot) GetMyCommands(c *GetMyCommandsConfig) ([]objects.BotCommand, err
 	v, _ := c.Values()
 	resp, err := bot.MakeRequest(c.Method(), v)
 	if err != nil {
-		return nil, err
+		return []objects.BotCommand{}, err
 	}
 	var cmds []objects.BotCommand
 	err = json.Unmarshal(resp.Result, &cmds)
@@ -491,16 +492,16 @@ func (bot *Bot) GetMyCommands(c *GetMyCommandsConfig) ([]objects.BotCommand, err
 
 // DeleteWebhook if result is True, will be nil, if not so err
 // https://core.telegram.org/bots/api#deletewebhook
-func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) error {
+func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) (*objects.TelegramResponse, error) {
 	v, err := c.Values()
 	if err != nil {
-		return err
+		return &objects.TelegramResponse{}, err
 	}
-	_, err = bot.MakeRequest(c.Method(), v)
+	resp, err := bot.MakeRequest(c.Method(), v)
 	if err != nil {
-		return err
+		return &objects.TelegramResponse{}, err
 	}
-	return nil
+	return resp, nil
 }
 
 // GetUpdates uses for long polling
@@ -508,11 +509,11 @@ func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) error {
 func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
 	v, err := c.Values()
 	if err != nil {
-		return nil, err
+		return []*objects.Update{}, err
 	}
 	resp, err := bot.MakeRequest(c.Method(), v)
 	if err != nil {
-		return nil, &objects.TelegramApiError{
+		return []*objects.Update{}, &objects.TelegramApiError{
 			Code:               resp.ErrorCode,
 			Description:        resp.Description,
 			ResponseParameters: objects.ResponseParameters{},
