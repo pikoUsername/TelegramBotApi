@@ -9,7 +9,7 @@ import (
 // Command filter, check out for prefix
 // Prefix by default is /, and prefix could be only one character
 type Command struct {
-	prefix         byte
+	prefix         string
 	cmds           []string
 	ignore_mention bool
 	ignore_caption bool
@@ -23,17 +23,13 @@ func (c *Command) Check(u *objects.Update) bool {
 	}
 	text_args := strings.Split(u.Message.Text, " ")
 	raw_text := text_args[0]
-	raw := strings.Split(raw_text, "@")
 
-	if len(raw) > 1 {
-		mention = strings.ToLower(raw[1])
-	}
-
-	command := strings.ToLower(raw[0])
-	prefix := raw_text[0]
-	if !c.ignore_caption && mention != "" || prefix != c.prefix {
+	command := strings.ToLower(raw_text)
+	prefix := raw_text[:len(c.prefix)]
+	if !c.ignore_mention && mention != "" || prefix != c.prefix {
 		return false
 	}
+	command = command[1:]
 
 	for _, cmd := range c.cmds {
 		if cmd == command {
@@ -46,7 +42,7 @@ func (c *Command) Check(u *objects.Update) bool {
 // NewCommand creates new Command object
 func NewCommand(cmd ...string) *Command {
 	return &Command{
-		prefix:         '/',
+		prefix:         "/",
 		cmds:           cmd,
 		ignore_mention: false,
 		ignore_caption: true,
