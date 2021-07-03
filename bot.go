@@ -349,11 +349,11 @@ func (bot *Bot) uploadAndSend(config FileableConf) (*objects.Message, error) {
 
 // Send ...
 func (bot *Bot) Send(config Configurable) (*objects.Message, error) {
-	switch config.(type) {
+	switch c := config.(type) {
 	case FileableConf:
-		return bot.uploadAndSend(config.(FileableConf))
+		return bot.uploadAndSend(c)
 	default:
-		return bot.SendMessageable(config)
+		return bot.SendMessageable(c)
 	}
 }
 
@@ -452,25 +452,31 @@ func (bot *Bot) SendDice(config *SendDiceConfig) (*objects.Message, error) {
 // SetMyCommands Setup command to Telegram bot
 // https://core.telegram.org/bots/api#setmycommands
 func (bot *Bot) SetMyCommands(conf *SetMyCommandsConfig) (bool, error) {
-	v, err := conf.Values() // Stub...
+	v, err := conf.Values()
 	if err != nil {
 		return false, err
 	}
-	_, err = bot.MakeRequest(conf.Method(), v)
+	resp, err := bot.MakeRequest(conf.Method(), v)
 	if err != nil {
 		return false, err
 	}
-	return true, nil
+	var ok bool
+	err = json.Unmarshal(resp.Result, &ok)
+	if err != nil {
+		return false, err
+	}
+
+	return ok, nil
 }
 
 // GetMyCommands get from bot commands command
 // https://core.telegram.org/bots/api#getmycommands
-func (bot *Bot) GetMyCommands() ([]objects.BotCommand, error) {
+func (bot *Bot) GetMyCommands() ([]*objects.BotCommand, error) {
 	resp, err := bot.MakeRequest("getMyCommands", &url.Values{})
 	if err != nil {
 		return nil, err
 	}
-	var cmds []objects.BotCommand
+	var cmds []*objects.BotCommand
 	err = json.Unmarshal(resp.Result, &cmds)
 	if err != nil {
 		return cmds, err

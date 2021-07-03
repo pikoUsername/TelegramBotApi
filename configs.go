@@ -489,13 +489,45 @@ func NewGetUpdateConfig(Offset int) *GetUpdatesConfig {
 	}
 }
 
+// DeleteMyCommandsConfig ...
+type DeleteMyCommandsConfig struct {
+	Scope        objects.BotCommandScope // optional
+	LanguageCode string                  // optional
+}
+
+func (dmcc *DeleteMyCommandsConfig) Values() (*url.Values, error) {
+	v := &url.Values{}
+	v.Add("scope", utils.ObjectToJson(dmcc.Scope))
+	if dmcc.LanguageCode != "" {
+		v.Add("language_code", dmcc.LanguageCode)
+	}
+	return v, nil
+}
+
+func (dmcc *DeleteMyCommandsConfig) Method() string {
+	return "deleteMyCommands"
+}
+
+func NewDeleteMyCommandsConf() *DeleteMyCommandsConfig {
+	return &DeleteMyCommandsConfig{}
+}
+
+// SetMyCommandsConfig ...
 type SetMyCommandsConfig struct {
-	Commands []*objects.BotCommand
+	Commands     []*objects.BotCommand
+	Scope        objects.BotCommandScope
+	LanguageCode string
 }
 
 func (smcc *SetMyCommandsConfig) Values() (*url.Values, error) {
 	v := &url.Values{}
 	v.Add("commands", utils.ObjectToJson(smcc.Commands))
+	if smcc.LanguageCode != "" {
+		v.Add("language_code", smcc.LanguageCode)
+	}
+	if smcc.Scope != nil {
+		v.Add("scope", utils.ObjectToJson(smcc.Scope))
+	}
 	return v, nil
 }
 
@@ -503,12 +535,13 @@ func (smcc *SetMyCommandsConfig) Method() string {
 	return "setMyCommands"
 }
 
-func NewSetMyCommands(commands []*objects.BotCommand) *SetMyCommandsConfig {
+func NewSetMyCommands(commands ...*objects.BotCommand) *SetMyCommandsConfig {
 	return &SetMyCommandsConfig{
 		Commands: commands,
 	}
 }
 
+// DeleteWebhookConfig ...
 type DeleteWebhookConfig struct {
 	DropPendingUpdates bool
 }
