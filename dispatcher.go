@@ -45,7 +45,6 @@ type Dispatcher struct {
 
 	// private fields
 	updatesCh     chan *objects.Update
-	errorCh       chan error
 	currentUpdate *objects.Update
 	synchronus    bool
 	polling       bool
