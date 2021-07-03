@@ -67,13 +67,14 @@ func TestSetWebhook(t *testing.T) {
 }
 
 func TestSetCommands(t *testing.T) {
+	// NOT OK, FAILS
 	b := getBot(t)
 	cmd := &objects.BotCommand{Command: "31321", Description: "ALLOO"}
-	resp, err := b.SetMyCommands(tgp.NewSetMyCommands(cmd))
+	ok, err := b.SetMyCommands(tgp.NewSetMyCommands(cmd))
 	if err != nil {
-		t.Error(err, resp)
+		t.Error(err, ok)
 	}
-	cmds, err := b.GetMyCommands()
+	cmds, err := b.GetMyCommands(&tgp.GetMyCommandsConfig{})
 	if err != nil {
 		t.Error(err, cmds)
 	}
@@ -84,5 +85,5 @@ func TestSetCommands(t *testing.T) {
 			return
 		}
 	}
-	t.Error("Command which getted from telegram, is not same as original, Original:", cmd)
+	t.Error("Command which getted from telegram, is not same as original, Original: ", cmd)
 }
