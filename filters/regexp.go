@@ -15,7 +15,7 @@ func (r *Regexp) Check(u *objects.Update) bool {
 	if u.Message != nil {
 		content = u.Message.Text
 	} else if u.CallbackQuery != nil {
-		content = u.CallbackQuery.Text
+		content = u.CallbackQuery.Message.Text
 	} else if u.Poll != nil {
 		content = u.Poll.Question
 	} else {

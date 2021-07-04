@@ -757,3 +757,102 @@ func (scac *SendChatActionConf) Values() (*url.Values, error) {
 func (scac *SendChatActionConf) Method() string {
 	return "sendChatAction"
 }
+
+type SendContactConfig struct {
+	ChatID                   interface{} // req
+	PhoneNumber              string      // req
+	FirstName                string      // req
+	LastName                 string
+	Vcard                    string
+	DisableNotifiaction      bool
+	ReplyToMessageID         int64
+	AllowSendingWithoutReply bool
+	ReplyKeyboard            interface{}
+}
+
+func (scc *SendContactConfig) Values() (*url.Values, error) {
+	v := &url.Values{}
+	switch t := scc.ChatID.(type) {
+	case int64:
+		v.Add("chat_id", strconv.FormatInt(t, 10))
+	case string:
+		v.Add("chat_id", t)
+	}
+	v.Add("phone_number", scc.PhoneNumber)
+	v.Add("first_name", scc.FirstName)
+	if scc.LastName != "" {
+		v.Add("last_name", scc.LastName)
+	}
+	if scc.Vcard != "" {
+		v.Add("vcard", scc.Vcard)
+	}
+	v.Add("disable_notification", strconv.FormatBool(!scc.DisableNotifiaction))
+	if scc.ReplyToMessageID != 0 {
+		v.Add("reply_to_message_id", strconv.FormatInt(scc.ReplyToMessageID, 10))
+	}
+	if scc.ReplyKeyboard != nil {
+		v.Add("reply_keyboard", utils.MarkupToString(scc.ReplyKeyboard))
+	}
+	return v, nil
+}
+
+func (scc *SendContactConfig) Method() string {
+	return "sendContact"
+}
+
+// SendVenueConfig ...
+type SendVenueConfig struct {
+	ChatID                   interface{} // req
+	Latitude                 float64     // req
+	Longitude                float64     // req
+	Title                    string      // req
+	Address                  string      // req
+	FoursQuareId             string
+	FoursQuareType           string
+	GooglePlaceId            string
+	GooglePlaceType          string
+	DisableNotification      bool
+	ReplyToMessageId         int64
+	AllowSendingWithoutReply bool
+	ReplyMarkup              interface{}
+}
+
+func (svc *SendVenueConfig) Values() (*url.Values, error) {
+	v := &url.Values{}
+	switch t := svc.ChatID.(type) {
+	case int64:
+		v.Add("chat_id", strconv.FormatInt(t, 10))
+	case string:
+		v.Add("chat_id", t)
+	}
+	v.Add("latitude", strconv.FormatFloat(svc.Latitude, 'f', -1, 64))
+	v.Add("longitude", strconv.FormatFloat(svc.Longitude, 'f', -1, 64))
+	v.Add("title", svc.Title)
+	v.Add("address", svc.Address)
+	v.Add("allow_sending_without_reply", strconv.FormatBool(svc.AllowSendingWithoutReply))
+	if svc.ReplyToMessageId != 0 {
+		v.Add("reply_to_message_id", strconv.FormatInt(svc.ReplyToMessageId, 10))
+	}
+	v.Add("disable_notification", strconv.FormatBool(!svc.DisableNotification))
+	if svc.GooglePlaceId != "" {
+		v.Add("google_place_id", svc.GooglePlaceId)
+	}
+	if svc.GooglePlaceType != "" {
+		v.Add("google_place_type", svc.GooglePlaceType)
+	}
+	if svc.FoursQuareId != "" {
+		v.Add("four_square_id", svc.FoursQuareId)
+	}
+	if svc.FoursQuareType != "" {
+		v.Add("four_square_type", svc.FoursQuareType)
+	}
+	if svc.ReplyMarkup != nil {
+		v.Add("reply_markup", utils.MarkupToString(svc.ReplyMarkup))
+	}
+
+	return v, nil
+}
+
+func (svc *SendVenueConfig) Method() string {
+	return "sendVenue"
+}

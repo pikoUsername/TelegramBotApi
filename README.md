@@ -44,7 +44,7 @@ func main() {
 		panic(err)
 	}
     dp.MessageHandler.Register(func(m *objects.Message) { 
-        if m.Test == "" { 
+        if m.Text == "" { 
             return
         }
 

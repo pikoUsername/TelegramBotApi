@@ -445,6 +445,14 @@ func (bot *Bot) SendDice(config *SendDiceConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
+func (bot *Bot) SendContact(config *SendContactConfig) (*objects.Message, error) {
+	return bot.Send(config)
+}
+
+func (bot *Bot) SendVenue(config *SendVenueConfig) (*objects.Message, error) {
+	return bot.Send(config)
+}
+
 // =========================
 // Commands Methods
 // =========================
@@ -635,7 +643,7 @@ func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserP
 	resp, err := bot.MakeRequest(c.Method(), v)
 
 	if err != nil {
-		return &objects.UserProfilePhotos{}, nil
+		return &objects.UserProfilePhotos{}, err
 	}
 
 	var photos objects.UserProfilePhotos
@@ -651,3 +659,22 @@ func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserP
 // ====================
 // other method
 // ====================
+
+func (bot *Bot) GetFile(file_id string) (*objects.File, error) {
+	v := &url.Values{}
+	v.Add("file_id", file_id)
+	resp, err := bot.MakeRequest("getFile", v)
+
+	if err != nil {
+		return &objects.File{}, err
+	}
+
+	var file *objects.File
+	err = json.Unmarshal(resp.Result, &file)
+
+	if err != nil {
+		return file, err
+	}
+
+	return file, nil
+}
