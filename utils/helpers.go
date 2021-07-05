@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/pikoUsername/tgp/objects"
@@ -172,4 +173,14 @@ func GuessFileName(f interface{}) (string, error) {
 	}
 
 	return s, nil
+}
+
+func UrlValuesToMapString(v *url.Values, w map[string]string) {
+	for key := range *v {
+		value := v.Get(key)
+		raw := w[key]
+		if raw == "" {
+			w[key] = value
+		}
+	}
 }

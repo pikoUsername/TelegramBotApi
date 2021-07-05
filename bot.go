@@ -47,6 +47,9 @@ type Bot struct {
 	// Client uses only for Post requests
 	Client HttpClient `json:"-"`
 
+	// ProxyURL HTTP proxy URL
+	ProxyURL *url.URL `json:"-"`
+
 	// default server must be here
 	// if you wanna create own, just create
 	// using this structure instead of NewBot function
@@ -75,7 +78,7 @@ func NewBot(token string, checkToken bool, parseMode string) (*Bot, error) {
 	}, nil
 }
 
-func (bot *Bot) Log(text string, v *url.Values, message interface{}) {
+func (bot *Bot) Log(text string, v *url.Values, message ...interface{}) {
 	if bot.Debug {
 		log.Printf("%s req : %+v\n", text, v)
 		log.Printf("%s resp: %+v\n", text, message)
@@ -103,7 +106,6 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	// Most important staff doing here
 	// Sending Request to Telegram servers
 	resp, err := bot.Client.Do(request)
-
 	// check for error
 	if err != nil {
 		return &objects.TelegramResponse{}, err
@@ -118,11 +120,45 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	return utils.CheckResult(tgresp)
 }
 
+// DownloadFile uses for download file from any URL,
+func (bot *Bot) DownloadFile(path string, w io.WriteSeeker, seek bool) error {
+	file_url := bot.server.FileURL(bot.Token, path)
+	request, err := http.NewRequest("GET", file_url, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := bot.Client.Do(request)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	bs, err := ioutil.ReadAll(w.(io.Reader))
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(bs)
+	if err != nil {
+		return err
+	}
+
+	if seek {
+		_, err := w.Seek(int64(0), 0)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // UploadFile same as MakeRequest, with one defference, file, and name variable, and nothing more
 // copypaste of UploadFile go-telegram-bot
-func (b *Bot) UploadFile(method string, f interface{}, fieldname string, values map[string]string) (*objects.TelegramResponse, error) {
+func (b *Bot) UploadFile(method string, f interface{}, fieldname string, v map[string]string) (*objects.TelegramResponse, error) {
 	var name string
 	ms := multipartstreamer.New()
+	values := make(map[string]string)
 
 	switch m := f.(type) {
 	case string:
@@ -249,7 +285,6 @@ func (bot *Bot) SetChatTitle(ChatId int64, Title string) (*objects.TelegramRespo
 	if err != nil {
 		return resp, err
 	}
-
 	return resp, nil
 }
 
@@ -540,12 +575,23 @@ func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
 // sends a message to your bot, Telegram know
 // Your bot IP and sends to your bot a Update
 // https://core.telegram.org/bots/api#setwebhook
-func (bot *Bot) SetWebhook(config *SetWebhookConfig) (*objects.TelegramResponse, error) {
-	v, err := config.Values()
+func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, error) {
+	v, err := c.Values()
+	meth := c.Method()
+
+	// checkout for certificate, webhook may use without cert
+	if c.Certificate == nil {
+		return bot.MakeRequest(meth, v)
+	}
 	if err != nil {
 		return &objects.TelegramResponse{}, err
 	}
-	resp, err := bot.MakeRequest(config.Method(), v)
+	params := make(map[string]string)
+	utils.UrlValuesToMapString(v, params)
+	// for debug
+	bot.Log("Params: ", nil, params)
+	// uploads a certificate file, with other parametrs
+	resp, err := bot.UploadFile(meth, c.Certificate, "certificate", params)
 	if err != nil {
 		return resp, err
 	}

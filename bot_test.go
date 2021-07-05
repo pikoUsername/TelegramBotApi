@@ -3,7 +3,9 @@ package tgp_test
 import (
 	"fmt"
 	"os"
+	"path"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/pikoUsername/tgp"
@@ -14,6 +16,13 @@ import (
 var (
 	ParseMode     = "HTML"
 	TestChatID, _ = strconv.ParseInt(os.Getenv("test_chat_id"), 10, 64)
+	FileDirectory = "./.other"
+	SaveFile      = path.Join(FileDirectory, "file")
+	WebhookURL    = ""
+
+	// here could be any image, file, anthing else
+	DownloadFromURL = "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.dreamstime.com%2Fphotos-images%2Fimag.html&psig=AOvVaw1T5_yBwBBJzGYLRBvYTgA3&ust=1625481461095000&source=images&cd=vfe&ved=0CAoQjRxqFwoTCPiejL6cyfECFQAAAAAdAAAAABAJ"
+	NothingInbytes  = []byte{}
 )
 
 func getBot(t *testing.T) *tgp.Bot {
@@ -32,12 +41,62 @@ func TestCheckToken(t *testing.T) {
 	}
 }
 
-func TestGetUpdates(t *testing.T) {
-	b, err := tgp.NewBot(TestToken, false, "HTML")
+func TestDownloadFile(t *testing.T) {
+	b := getBot(t)
+	dir, err := os.Open(FileDirectory)
+	if err == os.ErrNotExist {
+		os.Mkdir(FileDirectory, 0777)
+		dir, err = os.Open(FileDirectory)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	stat, err := dir.Stat()
 	if err != nil {
 		t.Error(err)
 	}
-	_, err = b.GetUpdates(&tgp.GetUpdatesConfig{})
+	if !stat.IsDir() {
+		t.Error("Sorry but -"+FileDirectory, "Is file, delete file and try again!")
+	}
+
+	f, err := os.Create(SaveFile)
+	if err != nil {
+		t.Error(err)
+	}
+	err = b.DownloadFile(DownloadFromURL, f, true)
+	if err != nil {
+		t.Error(err)
+	}
+	stat, err = f.Stat()
+	if err != nil {
+		t.Error(err)
+	}
+	bs := make([]byte, stat.Size())
+	f.Read(bs)
+	if bs == nil || strings.Compare(string(bs), "") == -1 && DownloadFromURL != "" {
+		t.Error(
+			"Cannot download file from ethernet, debug: file - ", bs,
+			", URL: ", DownloadFromURL, ", Directory: ", stat.Name(), ", Bot: ", b)
+	}
+}
+
+func TestGetMe(t *testing.T) {
+	b := getBot(t)
+	u, err := b.GetMe()
+	if err != nil {
+		t.Error(err)
+	}
+	if b.Me == nil {
+		t.Error("Me is empty pointer")
+	}
+	if b.Me.ID != u.ID {
+		t.Error("Getted User is defferent from bot user")
+	}
+}
+
+func TestGetUpdates(t *testing.T) {
+	b := getBot(t)
+	_, err := b.GetUpdates(&tgp.GetUpdatesConfig{})
 	if err != nil {
 		t.Error(err)
 	}
@@ -61,7 +120,7 @@ func TestParseMode(t *testing.T) {
 
 func TestSetWebhook(t *testing.T) {
 	b := getBot(t)
-	resp, err := b.SetWebhook(tgp.NewSetWebhook("<URL>"))
+	resp, err := b.SetWebhook(tgp.NewSetWebhook(WebhookURL))
 	if err != nil {
 		t.Error(err)
 	}
@@ -69,7 +128,7 @@ func TestSetWebhook(t *testing.T) {
 }
 
 func TestSetCommands(t *testing.T) {
-	// NOT OK, FAILS
+	// OK
 	b := getBot(t)
 	cmd := &objects.BotCommand{Command: "31321", Description: "ALLOO"}
 	ok, err := b.SetMyCommands(tgp.NewSetMyCommands(cmd))

@@ -156,14 +156,6 @@ type SetWebhookConfig struct {
 func (wc *SetWebhookConfig) Values() (*url.Values, error) {
 	result := &url.Values{}
 	result.Add("url", wc.URL)
-
-	if wc.Certificate == nil {
-		cert, err := utils.FileToBytes(wc.Certificate, true)
-		if err != nil {
-			return &url.Values{}, err
-		}
-		result.Add("certificate", string(cert))
-	}
 	result.Add("ip_address", wc.IP) // required field
 	if wc.MaxConnections != 0 {
 		result.Add("max_connections", strconv.Itoa(wc.MaxConnections))
