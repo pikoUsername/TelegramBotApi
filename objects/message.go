@@ -1,5 +1,10 @@
 package objects
 
+import (
+	"net/url"
+	"strings"
+)
+
 // Message Telegram object(a huge object)
 // https://core.telegram.org/bots/api#message
 type Message struct {
@@ -79,6 +84,44 @@ func (m *Message) GetContentType() string {
 	}
 }
 
+func (m *Message) getText() string {
+	var text string
+
+	if m.Text != "" {
+		text = m.Text
+	} else if m.Caption != "" {
+		text = m.Caption
+	}
+	return text
+}
+
+// IsCommand ...
+func (m *Message) IsCommand() bool {
+	return strings.HasPrefix(m.getText(), "/")
+}
+
+// GetArgs ...
+func (m *Message) GetArgs() []string {
+	text := m.getText()
+	if text == "" {
+		return []string{}
+	}
+	if m.IsCommand() {
+		s := strings.Split(text, " ")
+		return s[1:] // ignore command
+	}
+	return []string{}
+}
+
+// GetCommand ...
+func (m *Message) GetCommand() string {
+	return strings.Split(m.getText(), " ")[0]
+}
+
+func (m *Message) GetFullCommand() []string {
+	return strings.Split(m.getText(), " ")
+}
+
 // MessageEntity Uses in Message struct
 // https://core.telegram.org/bots/api#messageentity
 type MessageEntity struct {
@@ -90,8 +133,12 @@ type MessageEntity struct {
 	Language string `json:"language"`
 }
 
+func (m *MessageEntity) GetURL() *url.URL {
+	return &url.URL{Path: m.URL}
+}
+
 // MessageID, idk why it s need
 // https://core.telegram.org/bots/api#messageid
 type MessageID struct {
-	MessageID int32 `json:"message_id"`
+	MessageID int64 `json:"message_id"`
 }
