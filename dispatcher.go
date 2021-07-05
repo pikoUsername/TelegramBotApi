@@ -413,6 +413,11 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig) {
 // Using GetUpdates method in Bot structure
 // GetUpdates config using for getUpdates method
 func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
+	if dp.webhook {
+		return errors.New(
+			"you want to enable two conflicting modes at the same time, polling and webhook",
+		)
+	}
 	if c.SafeExit {
 		// runs goroutine for safly terminate program(bot)
 		dp.SafeExit()
@@ -465,7 +470,7 @@ func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig) {
 func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
 	if dp.polling {
 		return errors.New(
-			"you want to enable two conflict modes at the same time, polling and webhook",
+			"you want to enable two conflicting modes at the same time, polling and webhook",
 		)
 	}
 	dp.OnShutdown(func(dp *Dispatcher) {

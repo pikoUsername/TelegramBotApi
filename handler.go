@@ -8,15 +8,33 @@ import (
 type HandlerFunc interface{}
 
 // Another level of abstraction
+// Filters field is interface{}, types:
+// func(u *objects.Update) and Just Filter interface
+//
+// example: ```go
+// 	dp.MessageHandler.Register(
+//		func(m *objects.Message) {...},
+// 		func(u *objects.Update) {return u.Message.From.ID == <owner_id>},
+// 	)
+// ```
 type HandlerType struct {
 	Callback *HandlerFunc
-	Filters  []Filter
+	Filters  []interface{}
 }
 
 // CheckForFilters iterate all filters and call Check method for check
 func (ht *HandlerType) CheckForFilters(u *objects.Update) bool {
+	var b bool
+
 	for _, f := range ht.Filters {
-		b := f.Check(u)
+		switch t := f.(type) {
+		case Filter:
+			b = t.Check(u)
+		case func(u *objects.Update) bool:
+			b = t(u)
+		default:
+			continue
+		}
 		if !b {
 			return false
 		}
@@ -40,7 +58,7 @@ func (ht *HandlerType) Call(u *objects.Update, f func(), sync bool) {
 
 // Interface for creating custom HandlerObj
 type HandlerObj interface {
-	Register(handler HandlerFunc, filters ...Filter)
+	Register(handler HandlerFunc, filters ...interface{})
 	Unregister(handler *HandlerFunc)
 	RegisterMiddleware(middlewares ...MiddlewareFunc)
 	GetHandlers() []*HandlerType
@@ -61,7 +79,7 @@ func NewDHandlerObj(dp *Dispatcher) *DefaultHandlerObj {
 }
 
 // Register, append to Callbacks, e.g handler functions
-func (ho *DefaultHandlerObj) Register(f HandlerFunc, filters ...Filter) {
+func (ho *DefaultHandlerObj) Register(f HandlerFunc, filters ...interface{}) {
 	ht := HandlerType{
 		Callback: &f,
 		Filters:  filters,
