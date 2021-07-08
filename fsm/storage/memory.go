@@ -53,7 +53,15 @@ func (ms *MemoryStorage) GetState(cid int64, uid int64) string {
 	return ms.ResolveData(cid, uid).State
 }
 
+// Deletes all stored data
 func (ms *MemoryStorage) Clear() {
+	d := *ms.Data
+	for key, value := range d {
+		for key := range value {
+			delete(value, key)
+		}
+		delete(d, key)
+	}
 	ms.Data = &DataType{}
 }
 
