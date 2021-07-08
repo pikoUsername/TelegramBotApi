@@ -37,10 +37,6 @@ type ChatMember struct {
 	CanAddWebPagePreviews bool `json:"can_add_web_page_previews"`
 }
 
-func (c *Chat) IsPrivat() bool {
-	return c.Type == "private"
-}
-
 // ChatInviteLink represents ChatInvite object
 // https://core.telegram.org/bots/api#chatinvitelink
 type ChatInviteLink struct {
