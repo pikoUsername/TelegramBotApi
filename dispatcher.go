@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -39,8 +38,10 @@ type Dispatcher struct {
 
 	// If you want to add onshutdown function
 	// just append to this object, :P
-	OnShutdownCallbacks []*OnStartAndShutdownFunc
-	OnStartupCallbacks  []*OnStartAndShutdownFunc
+	OnWebhookShutdown []*OnStartAndShutdownFunc
+	OnPollingShutdown []*OnStartAndShutdownFunc
+	OnWebhookStartup  []*OnStartAndShutdownFunc
+	OnPollingStartup  []*OnStartAndShutdownFunc
 
 	// private fields
 	updatesCh     chan *objects.Update
@@ -52,9 +53,47 @@ type Dispatcher struct {
 
 var (
 	ErrorTypeAssertion = errors.New("impossible to do type assertion to this callback")
+	ErrorConflictModes = errors.New("you want to enable two conflicting modes at the same time, polling and webhook")
 )
 
 type OnStartAndShutdownFunc func(dp *Dispatcher)
+
+// OnConfig using as argument for OnStartup, OnShutdown methods
+// You can add multiple functions to startup, or shutdown mthds
+// Example of OnConfig confugiration:
+// c := &OnConfig{}
+// // could be added a multiple callback functions in one time
+// c.Add(func(...) {})
+// dp.OnStartup(c)
+type OnConfig struct {
+	cb      []*OnStartAndShutdownFunc
+	Webhook bool
+	Polling bool
+}
+
+func (oc *OnConfig) Add(cb OnStartAndShutdownFunc) {
+	oc.cb = append(oc.cb, &cb)
+}
+
+func NewOnConf(cb OnStartAndShutdownFunc) *OnConfig {
+	cbs := []*OnStartAndShutdownFunc{}
+	return &OnConfig{
+		cb:      append(cbs, &cb),
+		Webhook: true,
+		Polling: true,
+	}
+}
+
+func callListFuncs(funcs []*OnStartAndShutdownFunc, dp *Dispatcher) {
+	for _, cb_ := range funcs {
+		cb := *cb_
+		if dp.synchronus {
+			cb(dp)
+		} else {
+			go cb(dp)
+		}
+	}
+}
 
 // Config for start polling method
 // idk where to put this config, configs or dispatcher?
@@ -159,7 +198,7 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 
 			err = dp.MessageHandler.TriggerMiddleware(update, PROCESSMIDDLEWARE)
 			if err != nil {
-				log.Println(err)
+				dp.Bot.Logger.Println(err)
 				continue
 			}
 
@@ -177,7 +216,7 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 			}
 			err = dp.CallbackQueryHandler.TriggerMiddleware(update, PROCESSMIDDLEWARE)
 			if err != nil {
-				log.Println(err)
+				dp.Bot.Logger.Println(err)
 				continue
 			}
 
@@ -195,7 +234,7 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 			}
 			err = dp.ChannelPostHandler.TriggerMiddleware(update, PROCESSMIDDLEWARE)
 			if err != nil {
-				log.Println(err)
+				dp.Bot.Logger.Println(err)
 				continue
 			}
 
@@ -213,7 +252,7 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 			}
 			err = dp.PollHandler.TriggerMiddleware(update, PROCESSMIDDLEWARE)
 			if err != nil {
-				log.Println(err)
+				dp.Bot.Logger.Println(err)
 				continue
 			}
 
@@ -231,7 +270,7 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 			}
 			err = dp.PollAnswerHandler.TriggerMiddleware(update, PROCESSMIDDLEWARE)
 			if err != nil {
-				log.Println(err)
+				dp.Bot.Logger.Println(err)
 				continue
 			}
 
@@ -249,7 +288,7 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 			}
 			err = dp.ChatMemberHandler.TriggerMiddleware(update, PROCESSMIDDLEWARE)
 			if err != nil {
-				log.Println(err)
+				dp.Bot.Logger.Println(err)
 				continue
 			}
 
@@ -267,7 +306,7 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 			}
 			err = dp.MyChatMemberHandler.TriggerMiddleware(update, PROCESSMIDDLEWARE)
 			if err != nil {
-				log.Println(err)
+				dp.Bot.Logger.Println(err)
 				continue
 			}
 
@@ -303,54 +342,58 @@ func (dp *Dispatcher) SetState(state *fsm.State) {
 // ========================================
 
 // Shutdown calls when you enter ^C(which means SIGINT)
-// And SafeExit trap it, before you exit
-func (dp *Dispatcher) Shutdown() {
-	for _, cb := range dp.OnShutdownCallbacks {
-		c := *cb
-		if dp.synchronus {
-			c(dp)
-		} else {
-			go c(dp)
-		}
-	}
+// And SafeExit catch it, before you exit
+func (dp *Dispatcher) shutdownPolling() {
+	callListFuncs(dp.OnPollingShutdown, dp)
 }
 
-// StartUp function, iterate over a callbacks from OnStartupCallbacks
+// startUpPolling function, iterate over a callbacks from OnStartupCallbacks
 // Calls in StartPolling function
-func (dp *Dispatcher) StartUp() {
-	for _, cb := range dp.OnStartupCallbacks {
-		c := *cb
-		if dp.synchronus {
-			c(dp)
-		} else {
-			go c(dp)
-		}
-	}
+func (dp *Dispatcher) startupPolling() {
+	callListFuncs(dp.OnPollingStartup, dp)
+	dp.Welcome()
+}
+
+// shutdownWebhook method, iterate over a callbacks from OnWebhookShutdown
+func (dp *Dispatcher) shutdownWebhook() {
+	callListFuncs(dp.OnWebhookShutdown, dp)
+}
+
+// startupPolling method, iterate over a callbacks from OnWebhookStartup
+func (dp *Dispatcher) startupWebhook() {
+	callListFuncs(dp.OnWebhookStartup, dp)
+	dp.Welcome()
 }
 
 // Onstartup method append to OnStartupCallbaks a callbacks
 // Using pointers bc cant unregister function using copy of object
 // And golang doesnot support generics, and type equals
-func (dp *Dispatcher) OnStartup(f ...OnStartAndShutdownFunc) {
-	var objs []*OnStartAndShutdownFunc
-
-	for _, cb := range f {
-		objs = append(objs, &cb)
+func (dp *Dispatcher) OnStartup(c *OnConfig) {
+	if !c.Webhook && !c.Polling {
+		fmt.Println("this expression have not got any effect")
 	}
 
-	dp.OnStartupCallbacks = append(dp.OnStartupCallbacks, objs...)
+	if c.Webhook {
+		dp.OnWebhookStartup = append(dp.OnWebhookStartup, c.cb...)
+	}
+	if c.Polling {
+		dp.OnPollingStartup = append(dp.OnPollingStartup, c.cb...)
+	}
 }
 
 // OnShutdown method using for register OnShutdown callbacks
 // Same code like OnStartup
-func (dp *Dispatcher) OnShutdown(f ...OnStartAndShutdownFunc) {
-	var objs []*OnStartAndShutdownFunc
-
-	for _, cb := range f {
-		objs = append(objs, &cb)
+func (dp *Dispatcher) OnShutdown(c *OnConfig) {
+	if !c.Webhook && !c.Polling {
+		fmt.Println("this expression have not got any effect")
 	}
 
-	dp.OnShutdownCallbacks = append(dp.OnShutdownCallbacks, objs...)
+	if c.Webhook {
+		dp.OnWebhookShutdown = append(dp.OnWebhookShutdown, c.cb...)
+	}
+	if c.Polling {
+		dp.OnPollingShutdown = append(dp.OnPollingShutdown, c.cb...)
+	}
 }
 
 // Thanks: https://stackoverflow.com/questions/11268943/is-it-possible-to-capture-a-ctrlc-signal-and-run-a-cleanup-function-in-a-defe
@@ -366,15 +409,22 @@ func (dp *Dispatcher) SafeExit() {
 
 // ShutDownDP calls ResetWebhook for reset webhook in telegram servers, if yes
 func (dp *Dispatcher) ShutDownDP() {
-	log.Println("Stop polling!")
+	dp.Bot.Logger.Println("Stop polling!")
 	dp.ResetWebhook(true)
 	dp.Storage.Clear()
-	dp.Shutdown()
+	if dp.webhook {
+		dp.shutdownWebhook()
+	}
+	if dp.polling {
+		dp.shutdownPolling()
+	}
 }
 
 func (dp *Dispatcher) Welcome() {
-	dp.Bot.GetMe()
-	log.Println("Bot: ", dp.Bot.Me)
+	if dp.Welcome_ {
+		dp.Bot.GetMe()
+		dp.Bot.Logger.Println("Bot: ", dp.Bot.Me)
+	}
 }
 
 // GetUpdatesChan makes getUpdates request to telegram servers
@@ -391,8 +441,8 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig) {
 
 			updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
 			if err != nil {
-				log.Println(err.Error())
-				log.Println("Error with getting updates")
+				dp.Bot.Logger.Println(err.Error())
+				dp.Bot.Logger.Println("Error with getting updates")
 				time.Sleep(time.Duration(c.ErrorSleep))
 
 				continue
@@ -414,26 +464,20 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig) {
 // GetUpdates config using for getUpdates method
 func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	if dp.webhook {
-		return errors.New(
-			"you want to enable two conflicting modes at the same time, polling and webhook",
-		)
+		return ErrorConflictModes
 	}
 	if c.SafeExit {
 		// runs goroutine for safly terminate program(bot)
 		dp.SafeExit()
 	}
 
-	dp.StartUp()
+	dp.startupPolling()
 	if c.ResetWebhook {
 		dp.ResetWebhook(true)
 	}
 	if c.SkipUpdates {
 		dp.SkipUpdates()
 	}
-	if dp.Welcome_ {
-		dp.Welcome()
-	}
-	// TODO: timeout
 	dp.polling = true
 	dp.MakeUpdatesChan(c)
 
@@ -466,24 +510,17 @@ func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig) {
 // StartWebhook method registers on BotUrl uri a function which handles every comming update
 // Using In Pair of SetWebhook method
 // Startup method executes after SetWebhook method
-// and adds a OnShutdown function, and no need to delete webhook with hands
+//
+// NOTE: you should to add a webhook close callback function, using OnShutdown
 func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
 	if dp.polling {
-		return errors.New(
-			"you want to enable two conflicting modes at the same time, polling and webhook",
-		)
+		return ErrorConflictModes
 	}
-	dp.OnShutdown(func(dp *Dispatcher) {
-		dw := &DeleteWebhookConfig{
-			DropPendingUpdates: c.DropPendingUpdates,
-		}
-		dp.Bot.DeleteWebhook(dw)
-	})
 	_, err := dp.Bot.SetWebhook(c.SetWebhookConfig)
 	if err != nil {
 		return err
 	}
-	dp.StartUp()
+	dp.startupWebhook()
 	if c.SafeExit {
 		dp.SafeExit()
 	}

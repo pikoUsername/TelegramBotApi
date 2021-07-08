@@ -10,13 +10,30 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pikoUsername/tgp/objects"
 	"github.com/pikoUsername/tgp/utils"
 	"github.com/technoweenie/multipartstreamer"
 )
+
+// StdLogger taken from logrus
+type StdLogger interface {
+	Print(...interface{})
+	Printf(string, ...interface{})
+	Println(...interface{})
+
+	Fatal(...interface{})
+	Fatalf(string, ...interface{})
+	Fatalln(...interface{})
+
+	Panic(...interface{})
+	Panicf(string, ...interface{})
+	Panicln(...interface{})
+}
 
 // HttpClient default interface for using by bot
 type HttpClient interface {
@@ -24,7 +41,14 @@ type HttpClient interface {
 }
 
 // Bot can be created using Json config,
-// Copy paste from go-telegram-bot-api ;D
+// Copy pasted from go-telegram-bot-api ;D
+//
+// Client field have timeout, and default timeout is 5 second
+// we can NOT change timeout if you using default client,
+//
+// Logger field is too default, and we can change logger any way we can
+//
+// ProxyURL is not used
 type Bot struct {
 	// Token uses for authonificate using URL
 	// Url template {api_url}/bot{bot_token}/{method}?{args}
@@ -57,12 +81,15 @@ type Bot struct {
 
 	// For DebugLog in console
 	Debug bool `json:"debug"`
+
+	// Logger used instead
+	Logger StdLogger
 }
 
 // NewBot get a new Bot
 // This Fucntion checks a token
 // for spaces and etc.
-func NewBot(token string, checkToken bool, parseMode string) (*Bot, error) {
+func NewBot(token string, checkToken bool, parseMode string, timeout time.Duration) (*Bot, error) {
 	if checkToken {
 		// Check out for correct token
 		err := utils.CheckToken(token)
@@ -70,20 +97,29 @@ func NewBot(token string, checkToken bool, parseMode string) (*Bot, error) {
 			return nil, err
 		}
 	}
+
 	return &Bot{
 		Token:     token,
 		ParseMode: parseMode,
 		server:    DefaultTelegramServer,
-		Client:    &http.Client{},
+		Logger:    log.New(os.Stderr, "", log.LstdFlags),
+		// Client have default timeout 5 second
+		Client: &http.Client{
+			Timeout: 5 * time.Second,
+		},
 	}, nil
 }
 
 func (bot *Bot) Log(text string, v *url.Values, message ...interface{}) {
 	if bot.Debug {
-		log.Printf("%s req : %+v\n", text, v)
-		log.Printf("%s resp: %+v\n", text, message)
+		bot.Logger.Printf("%s req : %+v\n", text, v)
+		bot.Logger.Printf("%s resp: %+v\n", text, message)
 	}
 }
+
+// ===================
+// sending requests
+// ===================
 
 // MakeRequest to telegram servers
 // and result parses to TelegramResponse
@@ -101,12 +137,10 @@ func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.Telegra
 	if err != nil {
 		return &objects.TelegramResponse{}, err
 	}
-
 	request.Header.Set("Content-Type", "application/json")
 	// Most important staff doing here
 	// Sending Request to Telegram servers
 	resp, err := bot.Client.Do(request)
-	// check for error
 	if err != nil {
 		return &objects.TelegramResponse{}, err
 	}
@@ -285,6 +319,7 @@ func (bot *Bot) SetChatTitle(ChatId int64, Title string) (*objects.TelegramRespo
 	if err != nil {
 		return resp, err
 	}
+
 	return resp, nil
 }
 
@@ -384,13 +419,14 @@ func (bot *Bot) uploadAndSend(config FileableConf) (*objects.Message, error) {
 }
 
 // Send ...
-func (bot *Bot) Send(config Configurable) (*objects.Message, error) {
-	switch config.(type) {
+func (bot *Bot) Send(config interface{}) (*objects.Message, error) {
+	switch c := config.(type) {
 	case FileableConf:
-		return bot.uploadAndSend(config.(FileableConf))
-	default:
-		return bot.SendMessageable(config)
+		return bot.uploadAndSend(c)
+	case Configurable:
+		return bot.SendMessageable(c)
 	}
+	return &objects.Message{}, errors.New("config is not correct")
 }
 
 // CopyMessage copies message

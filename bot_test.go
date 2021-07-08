@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pikoUsername/tgp"
 	"github.com/pikoUsername/tgp/objects"
@@ -23,10 +24,11 @@ var (
 	// here could be any image, file, anthing else
 	DownloadFromURL = "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.dreamstime.com%2Fphotos-images%2Fimag.html&psig=AOvVaw1T5_yBwBBJzGYLRBvYTgA3&ust=1625481461095000&source=images&cd=vfe&ved=0CAoQjRxqFwoTCPiejL6cyfECFQAAAAAdAAAAABAJ"
 	NothingInbytes  = []byte{}
+	Timeout         = 2 * time.Second
 )
 
 func getBot(t *testing.T) *tgp.Bot {
-	b, err := tgp.NewBot(TestToken, true, ParseMode)
+	b, err := tgp.NewBot(TestToken, true, ParseMode, Timeout)
 	if err != nil {
 		t.Error(err)
 	}
@@ -35,7 +37,7 @@ func getBot(t *testing.T) *tgp.Bot {
 }
 
 func TestCheckToken(t *testing.T) {
-	b, err := tgp.NewBot("bla:bla", true, "HTML")
+	b, err := tgp.NewBot("bla:bla", true, "HTML", Timeout)
 	if err != nil && b == nil {
 		t.Error(err)
 	}

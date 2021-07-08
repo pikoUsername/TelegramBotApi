@@ -13,7 +13,7 @@ var (
 )
 
 func GetDispatcher(t *testing.T) *tgp.Dispatcher {
-	b, err := tgp.NewBot(TestToken, true, "HTML")
+	b, err := tgp.NewBot(TestToken, true, "HTML", Timeout)
 	if err != nil {
 		t.Error(err)
 	}
@@ -24,5 +24,22 @@ func TestNewDispatcher(t *testing.T) {
 	dp := GetDispatcher(t)
 	if dp == nil {
 		t.Error("Oh no, Dispatcher didnt create, fix it")
+	}
+}
+
+func TestOnStartup(t *testing.T) {
+	dp := GetDispatcher(t)
+	a := false
+	dp.OnStartup(
+		tgp.NewOnConf(
+			func(dp *tgp.Dispatcher) {
+				a = true
+				dp.ShutDownDP()
+			},
+		),
+	)
+	dp.StartPolling(&tgp.StartPollingConfig{})
+	if !a {
+		t.Error("A didnt change, fix it!")
 	}
 }
