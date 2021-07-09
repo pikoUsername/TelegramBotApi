@@ -331,10 +331,22 @@ func (dp *Dispatcher) SkipUpdates() {
 	})
 }
 
+// SetState set a state which passed for a current user in current chat
+// works only in handler, or in middleware, nor outside
 func (dp *Dispatcher) SetState(state *fsm.State) {
 	u := dp.currentUpdate
-	cid, uid := utils.GetUidAndCidFromUpd(u)
-	dp.Storage.SetState(cid, uid, state.GetFullState())
+	if u != nil {
+		cid, uid := utils.GetUidAndCidFromUpd(u)
+		dp.Storage.SetState(cid, uid, state.GetFullState())
+	}
+}
+
+// ResetState reset state for current user, and current chat
+func (dp *Dispatcher) ResetState() {
+	if dp.currentUpdate != nil {
+		cid, uid := utils.GetUidAndCidFromUpd(dp.currentUpdate)
+		dp.Storage.SetState(cid, uid, fsm.DefaultState.GetFullState())
+	}
 }
 
 // ========================================
@@ -370,7 +382,7 @@ func (dp *Dispatcher) startupWebhook() {
 // And golang doesnot support generics, and type equals
 func (dp *Dispatcher) OnStartup(c *OnConfig) {
 	if !c.Webhook && !c.Polling {
-		fmt.Println("this expression have not got any effect")
+		dp.Bot.Logger.Println("this expression have not got any effect")
 	}
 
 	if c.Webhook {
@@ -385,7 +397,7 @@ func (dp *Dispatcher) OnStartup(c *OnConfig) {
 // Same code like OnStartup
 func (dp *Dispatcher) OnShutdown(c *OnConfig) {
 	if !c.Webhook && !c.Polling {
-		fmt.Println("this expression have not got any effect")
+		dp.Bot.Logger.Println("this expression have not got any effect")
 	}
 
 	if c.Webhook {
