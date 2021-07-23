@@ -105,7 +105,7 @@ func NewBot(token string, checkToken bool, parseMode string, timeout time.Durati
 		Logger:    log.New(os.Stderr, "", log.LstdFlags),
 		// Client have default timeout 5 second
 		Client: &http.Client{
-			Timeout: 5 * time.Second,
+			Timeout: timeout,
 		},
 	}, nil
 }

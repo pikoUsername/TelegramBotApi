@@ -23,7 +23,7 @@ type PostMiddleware func(objects.Update)
 
 // Middleware is interface, default realization is DefaultMiddleware
 type MiddlewareManager interface {
-	Trigger(update *objects.Update, typ string) error
+	Trigger(bot *Bot, update *objects.Update, typ string) error
 	Register(middlewares ...MiddlewareFunc) // for many middleware add
 	Unregister(middleware *MiddlewareFunc) (*MiddlewareFunc, error)
 }
@@ -51,7 +51,7 @@ func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
 // Trigger triggers special type of middlewares
 // have three middleware types: pre, process, post
 // We can register a middleware using Register Middleware
-func (dmm *DefaultMiddlewareManager) Trigger(upd *objects.Update, typ string) error {
+func (dmm *DefaultMiddlewareManager) Trigger(bot *Bot, upd *objects.Update, typ string) error {
 	for _, cb := range dmm.middlewares {
 		c := *cb
 
@@ -79,10 +79,10 @@ func (dmm *DefaultMiddlewareManager) Trigger(upd *objects.Update, typ string) er
 
 				continue
 			} else {
-				process_middleware_cb, ok := c.(func(*objects.Update) bool)
+				process_middleware_cb, ok := c.(func(*Bot, *objects.Update) bool)
 
 				if ok {
-					b := process_middleware_cb(upd)
+					b := process_middleware_cb(bot, upd)
 					if !b {
 						return errors.New("false")
 					}

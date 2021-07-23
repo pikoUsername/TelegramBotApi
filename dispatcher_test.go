@@ -38,8 +38,7 @@ func TestOnStartup(t *testing.T) {
 			},
 		),
 	)
-	dp.StartPolling(&tgp.StartPollingConfig{})
 	if !a {
-		t.Error("A didnt change, fix it!")
+		t.Error("A variable, didnt change, fix it!")
 	}
 }

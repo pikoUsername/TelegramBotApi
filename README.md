@@ -33,6 +33,20 @@ import (
     "github.com/pikoUsername/tgp/objects"
 )
 
+func handler(bot *tgp.Bot, m *objects.Message) { 
+    if m.Text == "" { 
+        return
+    }
+
+    _, err := bot_.SendMessage(&tgp.SendMessageConfig{
+        ChatID: m.Chat.ID, 
+        Text: m.Text, 
+    })
+    if err != nil { 
+        fmt.Println(err)
+    }
+}
+
 func main() {
 	bot, err := tgp.NewBot("<token>", true, utils.ModeHTML)
 	if err != nil {
@@ -43,19 +57,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-    dp.MessageHandler.Register(func(m *objects.Message) { 
-        if m.Text == "" { 
-            return
-        }
-
-        _, err := bot.SendMessage(&tgp.SendMessageConfig{
-            ChatID: m.Chat.ID, 
-            Text: m.Text, 
-        })
-        if err != nil { 
-            fmt.Println(err)
-        }
-    })
+    dp.MessageHandler.Register(handler)
     dp.StartPolling(tgp.NewStartPollingConfig(true))
 }
 ```

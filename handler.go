@@ -62,7 +62,7 @@ type HandlerObj interface {
 	Unregister(handler *HandlerFunc)
 	RegisterMiddleware(middlewares ...MiddlewareFunc)
 	GetHandlers() []*HandlerType
-	TriggerMiddleware(update *objects.Update, typ string) error
+	TriggerMiddleware(bot *Bot, update *objects.Update, typ string) error
 }
 
 // HandlerObj uses for save Callback
@@ -118,6 +118,6 @@ func (ho *DefaultHandlerObj) GetHandlers() []*HandlerType {
 	return ho.handlers
 }
 
-func (ho *DefaultHandlerObj) TriggerMiddleware(update *objects.Update, typ string) error {
-	return ho.Middleware.Trigger(update, typ)
+func (ho *DefaultHandlerObj) TriggerMiddleware(bot *Bot, update *objects.Update, typ string) error {
+	return ho.Middleware.Trigger(bot, update, typ)
 }
