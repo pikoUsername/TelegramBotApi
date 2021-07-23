@@ -58,3 +58,12 @@ type ChatMemberUpdated struct {
 	NewChatMember *ChatMember     `json:"new_chat_member"`
 	InviteLink    *ChatInviteLink `json:"invite_link"`
 }
+
+// ChatPhoto object represents photo of chat
+// https://core.telegram.org/bots/api#chatphoto
+type ChatPhoto struct {
+	SmallFileID       string `json:"small_file_id"`
+	SmallFileUniqueID string `json:"small_file_unique_id"`
+	BigFileID         string `json:"big_file_id"`
+	BigFileUniqueID   string `json:"big_file_unique_id"`
+}

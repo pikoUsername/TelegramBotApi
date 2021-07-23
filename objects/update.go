@@ -1,5 +1,7 @@
 package objects
 
+import "time"
+
 // Update Represents telegram Update object
 // https://core.telegram.org/bots/api#update
 type Update struct {
@@ -16,8 +18,8 @@ type Update struct {
 	*PollAnswer        `json:"poll_answer"`
 	MyChatMember       *ChatMemberUpdated `json:"my_chat_member"`
 	ChatMember         *ChatMember        `json:"chat_member"`
-	Date               int                `json:"date"`
+	Date               time.Duration      `json:"date"`
 	ForwardFrom        *User              `json:"forward_from"`
-	ForwardDate        int                `json:"forward_date"`
+	ForwardDate        time.Duration      `json:"forward_date"`
 	Dice               *Dice              `json:"dice"`
 }
