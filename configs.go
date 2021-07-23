@@ -26,7 +26,7 @@ type FileableConf interface {
 	Params() (map[string]string, error)
 	Name() string
 	Path() string
-	GetFile() interface{}
+	GetFile() io.Reader
 }
 
 // InputFile interaced by FileableConf
