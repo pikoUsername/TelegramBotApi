@@ -1,7 +1,5 @@
 # other stuff 
-test.go
-main.go
-.other
+.sandbox/ 
 
 # Binaries for programs and plugins
 *.exe
