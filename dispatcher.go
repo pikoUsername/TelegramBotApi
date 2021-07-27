@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"reflect"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/pikoUsername/tgp/fsm"
@@ -410,7 +411,7 @@ func (dp *Dispatcher) OnShutdown(c *OnConfig) {
 // Thanks: https://stackoverflow.com/questions/11268943/is-it-possible-to-capture-a-ctrlc-signal-and-run-a-cleanup-function-in-a-defe
 func (dp *Dispatcher) SafeExit() {
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, os.Kill)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
 		dp.ShutDownDP()

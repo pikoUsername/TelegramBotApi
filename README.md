@@ -5,7 +5,7 @@ This package is on alpha version,
 and any update can broke backward capability
 </h1>
 
-NOTE: Please dont try use this package 
+NOTE: Please, don't try to use this in serious projects 
 
 ## version 0.1.1
 <br>
