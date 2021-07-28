@@ -28,7 +28,11 @@ func (sf *StateFilter) GetState(u *objects.Update) string {
 		uid = u.ReplyToMessage.From.ID
 	}
 
-	return sf.Storage.GetState(cid, uid)
+	state, err := sf.Storage.GetState(cid, uid)
+	if err != nil {
+		return ""
+	}
+	return state
 }
 
 func (sf *StateFilter) Check(u *objects.Update) bool {

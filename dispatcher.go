@@ -333,20 +333,22 @@ func (dp *Dispatcher) SkipUpdates() {
 
 // SetState set a state which passed for a current user in current chat
 // works only in handler, or in middleware, nor outside
-func (dp *Dispatcher) SetState(state *fsm.State) {
+func (dp *Dispatcher) SetState(state *fsm.State) error {
 	u := dp.currentUpdate
 	if u != nil {
 		cid, uid := utils.GetUidAndCidFromUpd(u)
-		dp.Storage.SetState(cid, uid, state.GetFullState())
+		return dp.Storage.SetState(cid, uid, state.GetFullState())
 	}
+	return nil
 }
 
 // ResetState reset state for current user, and current chat
-func (dp *Dispatcher) ResetState() {
+func (dp *Dispatcher) ResetState() error {
 	if dp.currentUpdate != nil {
 		cid, uid := utils.GetUidAndCidFromUpd(dp.currentUpdate)
-		dp.Storage.SetState(cid, uid, fsm.DefaultState.GetFullState())
+		return dp.Storage.SetState(cid, uid, fsm.DefaultState.GetFullState())
 	}
+	return nil
 }
 
 // ========================================
@@ -423,7 +425,7 @@ func (dp *Dispatcher) SafeExit() {
 func (dp *Dispatcher) ShutDownDP() {
 	dp.Bot.Logger.Println("Stop polling!")
 	dp.ResetWebhook(true)
-	dp.Storage.Clear()
+	dp.Storage.Close()
 	if dp.webhook {
 		dp.shutdownWebhook()
 	}
