@@ -110,7 +110,7 @@ func NewBot(token string, checkToken bool, parseMode string, timeout time.Durati
 	}, nil
 }
 
-func (bot *Bot) Log(text string, v *url.Values, message ...interface{}) {
+func (bot *Bot) Log(text string, v url.Values, message ...interface{}) {
 	if bot.Debug {
 		bot.Logger.Printf("%s req : %+v\n", text, v)
 		bot.Logger.Printf("%s resp: %+v\n", text, message)
@@ -123,7 +123,7 @@ func (bot *Bot) Log(text string, v *url.Values, message ...interface{}) {
 
 // MakeRequest to telegram servers
 // and result parses to TelegramResponse
-func (bot *Bot) MakeRequest(Method string, params *url.Values) (*objects.TelegramResponse, error) {
+func (bot *Bot) MakeRequest(Method string, params url.Values) (*objects.TelegramResponse, error) {
 	// Bad Code, but working, huh
 
 	// Creating URL
@@ -266,7 +266,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 	if bot.Me != nil {
 		return bot.Me, nil
 	}
-	resp, err := bot.MakeRequest("getMe", &url.Values{})
+	resp, err := bot.MakeRequest("getMe", url.Values{})
 	if err != nil {
 		return new(objects.User), err
 	}
@@ -283,7 +283,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 // Logout your bot from telegram
 // https://core.telegram.org/bots/api#logout
 func (bot *Bot) Logout() (*objects.TelegramResponse, error) {
-	return bot.MakeRequest("logout", &url.Values{})
+	return bot.MakeRequest("logout", url.Values{})
 } // Indeed
 
 // ===============================
@@ -293,7 +293,7 @@ func (bot *Bot) Logout() (*objects.TelegramResponse, error) {
 // DeleteChatPhoto represents deleteChatPhoto method
 // https://core.telegram.org/bots/api#deletechatphoto
 func (bot *Bot) DeleteChatPhoto(ChatId int64) (*objects.TelegramResponse, error) {
-	v := &url.Values{}
+	v := url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 
@@ -309,7 +309,7 @@ func (bot *Bot) DeleteChatPhoto(ChatId int64) (*objects.TelegramResponse, error)
 // SetchatTitle respresents setChatTitle method
 // https://core.telegram.org/bots/api#setChatTitle
 func (bot *Bot) SetChatTitle(ChatId int64, Title string) (*objects.TelegramResponse, error) {
-	v := &url.Values{}
+	v := url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("title", Title)
@@ -326,7 +326,7 @@ func (bot *Bot) SetChatTitle(ChatId int64, Title string) (*objects.TelegramRespo
 // SetChatDescription respresents setChatDescription method
 // https://core.telegram.org/bots/api#setChatDescription
 func (bot *Bot) SetChatDescription(ChatId int64, Description string) (*objects.TelegramResponse, error) {
-	v := &url.Values{}
+	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("description", Description)
 	resp, err := bot.MakeRequest("setChatDescription", v)
@@ -343,7 +343,7 @@ func (bot *Bot) PinChatMessage(
 	MessageId int64,
 	DisableNotifiaction bool,
 ) (*objects.TelegramResponse, error) {
-	v := &url.Values{}
+	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("message_id", strconv.FormatInt(MessageId, 10))
 	v.Add("disable_notifications", strconv.FormatBool(DisableNotifiaction))
@@ -358,7 +358,7 @@ func (bot *Bot) PinChatMessage(
 // UnpinAllChatMessage respresents unpinAllChatMessages method
 // https://core.telegram.org/bots/api#unpinAllChatMessages
 func (bot *Bot) UnpinAllChatMessages(ChatId int64) (*objects.TelegramResponse, error) {
-	v := &url.Values{}
+	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	resp, err := bot.MakeRequest("unpinAllChatMessages", v)
 	if err != nil {
@@ -637,7 +637,7 @@ func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, erro
 // GetWebhookInfo not require parametrs
 // https://core.telegram.org/bots/api#getwebhookinfo
 func (bot *Bot) GetWebhookInfo() (*objects.WebhookInfo, error) {
-	resp, err := bot.MakeRequest("getWebhookInfo", &url.Values{})
+	resp, err := bot.MakeRequest("getWebhookInfo", url.Values{})
 	if err != nil {
 		return &objects.WebhookInfo{}, err
 	}
@@ -679,7 +679,7 @@ func (bot *Bot) SendChatAction(c SendChatActionConf) (bool, error) {
 // DeleteChatStickerSet represents deleteChatStickerSet method
 // https://core.telegram.org/bots/api#deletechatstickerset
 func (bot *Bot) DeleteChatStickerSet(chat_id int64) (bool, error) {
-	v := &url.Values{}
+	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
 	resp, err := bot.MakeRequest("deleteChatStickerSet", v)
 	if err != nil {
@@ -695,7 +695,7 @@ func (bot *Bot) DeleteChatStickerSet(chat_id int64) (bool, error) {
 
 // GetChat ...
 func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
-	v := &url.Values{}
+	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
 
 	resp, err := bot.MakeRequest("getChat", v)
@@ -743,7 +743,7 @@ func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserP
 // ====================
 
 func (bot *Bot) GetFile(file_id string) (*objects.File, error) {
-	v := &url.Values{}
+	v := url.Values{}
 	v.Add("file_id", file_id)
 	resp, err := bot.MakeRequest("getFile", v)
 

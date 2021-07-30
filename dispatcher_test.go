@@ -21,19 +21,3 @@ func TestNewDispatcher(t *testing.T) {
 		t.Error("Oh no, Dispatcher didnt create, fix it")
 	}
 }
-
-func TestOnStartup(t *testing.T) {
-	dp := GetDispatcher(t)
-	a := false
-	dp.OnStartup(
-		tgp.NewOnConf(
-			func(dp *tgp.Dispatcher) {
-				a = true
-				dp.ShutDownDP()
-			},
-		),
-	)
-	if !a {
-		t.Error("A variable, didnt change, fix it!")
-	}
-}

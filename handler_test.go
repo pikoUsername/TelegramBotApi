@@ -39,7 +39,7 @@ func TestMiddlwareRegister(t *testing.T) {
 		dp.Storage.SetData(
 			u.Chat.ID,
 			u.From.ID,
-			&storage.PackType{"AAAAAAAAAAA": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa"},
+			storage.PackType{"AAAAAAAAAAA": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa"},
 		)
 	})
 }
