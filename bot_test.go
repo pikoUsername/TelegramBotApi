@@ -17,9 +17,10 @@ import (
 var (
 	ParseMode     = "HTML"
 	TestChatID, _ = strconv.ParseInt(os.Getenv("test_chat_id"), 10, 64)
-	FileDirectory = "./.other"
+	FileDirectory = "./.sandbox"
 	SaveFile      = path.Join(FileDirectory, "file")
 	WebhookURL    = ""
+	TestToken     = os.Getenv("TEST_TOKEN")
 
 	// here could be any image, file, anthing else
 	DownloadFromURL = "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.dreamstime.com%2Fphotos-images%2Fimag.html&psig=AOvVaw1T5_yBwBBJzGYLRBvYTgA3&ust=1625481461095000&source=images&cd=vfe&ved=0CAoQjRxqFwoTCPiejL6cyfECFQAAAAAdAAAAABAJ"
@@ -87,12 +88,15 @@ func TestGetMe(t *testing.T) {
 	u, err := b.GetMe()
 	if err != nil {
 		t.Error(err)
+		t.Fail()
 	}
 	if b.Me == nil {
 		t.Error("Me is empty pointer")
+		t.Fail()
 	}
 	if b.Me.ID != u.ID {
 		t.Error("Getted User is defferent from bot user")
+		t.Fail()
 	}
 }
 

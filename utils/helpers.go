@@ -165,7 +165,7 @@ func GuessFileName(f interface{}) (string, error) {
 			return "", err
 		}
 		if info.IsDir() {
-			return "", errors.New("file is directory")
+			return "", errors.New("path is directory")
 		}
 		s = info.Name()
 	default:
@@ -175,12 +175,10 @@ func GuessFileName(f interface{}) (string, error) {
 	return s, nil
 }
 
-func UrlValuesToMapString(v *url.Values, w map[string]string) {
-	for key := range *v {
-		value := v.Get(key)
-		raw := w[key]
-		if raw == "" {
-			w[key] = value
+func UrlValuesToMapString(v url.Values, w map[string]string) {
+	for key, value := range v {
+		if len(v[key]) > 0 {
+			w[key] = value[0]
 		}
 	}
 }

@@ -1,15 +1,10 @@
 package tgp_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/pikoUsername/tgp"
 	"github.com/pikoUsername/tgp/fsm/storage"
-)
-
-var (
-	TestToken = os.Getenv("TEST_TOKEN")
 )
 
 func GetDispatcher(t *testing.T) *tgp.Dispatcher {
