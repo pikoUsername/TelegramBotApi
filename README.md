@@ -5,7 +5,7 @@ This package is on alpha version,
 and any update can broke backward capability
 </h1>
 
-NOTE: Please, don't try to use this in serious projects 
+NOTE: Please, don't try to use this package in serious projects 
 
 ## version 0.1.1
 <br>
@@ -14,9 +14,7 @@ NOTE: Please, don't try to use this in serious projects
 <br>
  (WIP) for first time, you can read the code 
 
-Download This package using this command `go get -v github.com/pikoUsername/tgp` 
-Ignore a warning about no files in root directory, if you want download a new version of this package 
-Then delete a past version in folder where saved on.
+Download This package using `go get -v github.com/pikoUsername/tgp` command 
 
 This package based/expired/copy_pasted on go-telegram-bot, and aiogram
 
