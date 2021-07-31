@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 )
 
+// BaseFile is metadata for telegram file
+// every telegram file object have this fields
 type BaseFile struct {
 	FileId       string `json:"file_id"`
 	FileUniqueId string `json:"file_unique_id"`
@@ -11,7 +13,7 @@ type BaseFile struct {
 	FileName     string `json:"file_name"`
 }
 
-// maybe most important peace of code
+// TelegramResponse ...
 type TelegramResponse struct {
 	Ok          bool                `json:"ok"`
 	Result      json.RawMessage     `json:"result"`
