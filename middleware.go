@@ -2,7 +2,6 @@ package tgp
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 
 	"github.com/pikoUsername/tgp/objects"
@@ -19,7 +18,10 @@ import (
 type MiddlewareFunc interface{}
 
 type PreMiddleware func(*objects.Update)
-type PostMiddleware func(objects.Update)
+type PostMiddleware func(*objects.Update)
+type ProcessMiddleware func(*Bot, *objects.Update) error
+
+type triggerType map[string]func(c interface{}, upd *objects.Update, bot *Bot) error
 
 // Middleware is interface, default realization is DefaultMiddleware
 type MiddlewareManager interface {
@@ -28,16 +30,22 @@ type MiddlewareManager interface {
 	Unregister(middleware *MiddlewareFunc) (*MiddlewareFunc, error)
 }
 
-type DefaultMiddlewareManager struct {
-	middlewares []*MiddlewareFunc
-	dp          *Dispatcher
-}
-
-var (
+const (
 	PREMIDDLEWARE     = "pre"
 	PROCESSMIDDLEWARE = "process"
 	POSTMIDDLEWARE    = "post"
 )
+
+// errors
+var (
+	MiddlewareTypeInvalid = errors.New("typ parameter of variable not in ['post', 'pre', 'process']")
+	MiddleawreNotFound    = errors.New("passed middleware not found")
+)
+
+type DefaultMiddlewareManager struct {
+	middlewares []*MiddlewareFunc
+	dp          *Dispatcher
+}
 
 // NewDMiddlewareManager creates a DefaultMiddlewareManager, and return
 func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
@@ -48,64 +56,61 @@ func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
 	return dmm
 }
 
+// getConvertErr creates err in the fly with template:
+// "failed convert this {value which failed to convert} to {tried to convert}"
+func getConvertErr(it interface{}, ito interface{}) error {
+	ts := reflect.TypeOf(it).String()
+	tos := reflect.TypeOf(ito).String()
+	return errors.New("failed convert this " + ts + " to " + tos)
+}
+
+// preTriggerProcess ...
+func preTriggerProcess(c interface{}, upd *objects.Update, bot *Bot) error {
+	if cb, ok := c.(PreMiddleware); ok {
+		cb(upd)
+	}
+	return getConvertErr(c, (*PreMiddleware)(nil))
+}
+
+// processTrigger ...
+func processTrigger(c interface{}, upd *objects.Update, bot *Bot) error {
+	if process_middleware_cb, ok := c.(ProcessMiddleware); ok {
+		err := process_middleware_cb(bot, upd)
+		if err != nil {
+			return err
+		}
+	}
+	return getConvertErr(c, (ProcessMiddleware)(nil))
+}
+
+// postTrigger ...
+func postTrigger(c interface{}, upd *objects.Update, bot *Bot) error {
+	if post_middleware_cb, ok := c.(PostMiddleware); ok {
+		post_middleware_cb(upd)
+	}
+	return getConvertErr(c, (*PostMiddleware)(nil))
+}
+
 // Trigger triggers special type of middlewares
 // have three middleware types: pre, process, post
 // We can register a middleware using Register Middleware
 func (dmm *DefaultMiddlewareManager) Trigger(bot *Bot, upd *objects.Update, typ string) error {
+	trigger_map := triggerType{
+		PREMIDDLEWARE:     preTriggerProcess,
+		PROCESSMIDDLEWARE: processTrigger,
+		POSTMIDDLEWARE:    postTrigger,
+	}
+
 	for _, cb := range dmm.middlewares {
 		c := *cb
 
-		switch typ {
-		case "pre":
-			pre_middlewre_cb, ok := c.(PreMiddleware)
-
-			if ok {
-				pre_middlewre_cb(upd)
-
-				continue
-			} else {
-				err_mes := "func(*objects.Update)"
-				return errors.New("Failed convert this " + fmt.Sprintln(reflect.TypeOf(c)) + " to " + err_mes)
+		if val, ok := trigger_map[typ]; ok {
+			err := val(c, upd, bot)
+			if err != nil {
+				return err
 			}
-
-		case "process":
-			process_middleware_cb, ok := c.(func(*objects.Update) error)
-
-			if ok {
-				err := process_middleware_cb(upd)
-				if err != nil {
-					return err
-				}
-
-				continue
-			} else {
-				process_middleware_cb, ok := c.(func(*Bot, *objects.Update) bool)
-
-				if ok {
-					b := process_middleware_cb(bot, upd)
-					if !b {
-						return errors.New("false")
-					}
-
-					continue
-				} else {
-					err_mes := "func(*objects.Update) error / bool"
-					return errors.New("Failed convert this " + fmt.Sprintln(reflect.TypeOf(c)) + " to " + err_mes)
-				}
-			}
-		case "post":
-			post_middleware_cb, ok := c.(PostMiddleware)
-
-			if ok {
-				post_middleware_cb(*upd)
-
-				continue
-			} else {
-				err_mes := "func(objects.Update)"
-				return errors.New("Failed convert this " + fmt.Sprintln(reflect.TypeOf(c)) + " to " + err_mes)
-			}
-		default:
-			return errors.New("typ variable not in ['post', 'pre', 'process']")
+		} else {
+			return MiddlewareTypeInvalid
 		}
 	}
 
@@ -137,7 +142,7 @@ func (dmm *DefaultMiddlewareManager) Unregister(md *MiddlewareFunc) (*Middleware
 			return m, nil
 		}
 	}
-	return nil, errors.New("this function not in middlewares")
+	return nil, MiddleawreNotFound
 }
 
 func (dmm *DefaultMiddlewareManager) UnregisterByIndex(i uint) {

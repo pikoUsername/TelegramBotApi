@@ -352,7 +352,7 @@ func (dp *Dispatcher) ResetState() error {
 }
 
 // ========================================
-// On Startup and Shutdown related methods
+//   Startup and Shutdown related methods
 // ========================================
 
 // Shutdown calls when you enter ^C(which means SIGINT)
@@ -440,6 +440,10 @@ func (dp *Dispatcher) Welcome() {
 		dp.Bot.Logger.Println("Bot: ", dp.Bot.Me)
 	}
 }
+
+// =========================================
+//    Polling and webhook related methods
+// =========================================
 
 // GetUpdatesChan makes getUpdates request to telegram servers
 // sends update to updates channel

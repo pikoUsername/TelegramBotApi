@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/go-redis/redis/v8"
@@ -11,34 +10,36 @@ import (
 
 // RedisStorage uses as connector to redis server
 type RedisStorage struct {
-	client *redis.Client
+	client  *redis.Client
+	Context context.Context
 }
 
 // NewRedisStorage ...
 func NewRedisStorage(cl *redis.Client) *RedisStorage {
 	return &RedisStorage{
-		client: cl,
+		client:  cl,
+		Context: context.Background(),
 	}
 }
 
+// Close ...
 func (rs *RedisStorage) Close() {
 	rs.client.Close()
 }
 
-func (rs *RedisStorage) ResolveKey(parts ...interface{}) string {
-	map_f := func(f func(interface{}) string, val []interface{}) []string {
-		s := []string{}
-		for _, v := range val {
-			b := f(v)
-			s = append(s, b)
-		}
-		return s
+// ResolveKey ...
+func (rs *RedisStorage) ResolveKey(raw_parts ...interface{}) string {
+	var parts []string
+
+	for _, r_part := range raw_parts {
+		b, _ := json.Marshal(r_part)
+		parts = append(parts, (string)(b))
 	}
-	part := map_f(func(i interface{}) string { return fmt.Sprintln(i) }, parts)
-	s := strings.Join(part, ":")
-	return s
+
+	return strings.Join(parts, ":")
 }
 
+// SetData ...
 func (rs *RedisStorage) SetData(cid, uid int64, pt PackType) error {
 	state, err := rs.GetState(cid, uid)
 	if err != nil {
@@ -48,9 +49,10 @@ func (rs *RedisStorage) SetData(cid, uid int64, pt PackType) error {
 		Data:  pt,
 		State: state,
 	}
-	return rs.client.Set(context.Background(), rs.ResolveKey(cid, uid), v, 0).Err()
+	return rs.client.Set(rs.Context, rs.ResolveKey(cid, uid), v, 0).Err()
 }
 
+// SetState ...
 func (rs *RedisStorage) SetState(cid, uid int64, state string) error {
 	data, err := rs.GetData(cid, uid)
 	if err != nil {
@@ -60,17 +62,19 @@ func (rs *RedisStorage) SetState(cid, uid int64, state string) error {
 		Data:  data,
 		State: state,
 	}
-	return rs.client.Set(context.Background(), rs.ResolveKey(cid, uid), v, 0).Err()
+	return rs.client.Set(rs.Context, rs.ResolveKey(cid, uid), v, 0).Err()
 }
 
+// GetData ...
 func (rs *RedisStorage) GetData(cid, uid int64) (PackType, error) {
 	sr, err := rs.GetValue(cid, uid)
 	if err != nil {
-		return PackType{}, err
+		return (PackType)(nil), err
 	}
 	return sr.Data, nil
 }
 
+// GetState
 func (rs *RedisStorage) GetState(cid, uid int64) (string, error) {
 	sr, err := rs.GetValue(cid, uid)
 	if err != nil {
@@ -79,18 +83,15 @@ func (rs *RedisStorage) GetState(cid, uid int64) (string, error) {
 	return sr.State, nil
 }
 
+// GetValue ...
 func (rs *RedisStorage) GetValue(cid, uid int64) (*StorageRecord, error) {
-	val := rs.client.Get(context.Background(), rs.ResolveKey(cid, uid))
-	v, err := val.Bytes()
+	val := rs.client.Get(rs.Context, rs.ResolveKey(cid, uid))
+	v, err := val.Result()
 	if err != nil {
-		return nil, err
-	}
-	err = val.Err()
-	if err != nil {
-		return nil, err
+		return (*StorageRecord)(nil), err
 	}
 	var res *StorageRecord
-	err = json.Unmarshal(v, res)
+	err = json.Unmarshal(([]byte)(v), res)
 	if err != nil {
 		return res, err
 	}

@@ -11,6 +11,7 @@ func GetDispatcher(t *testing.T) *tgp.Dispatcher {
 	b, err := tgp.NewBot(TestToken, true, "HTML", Timeout)
 	if err != nil {
 		t.Error(err)
+		t.Fail()
 	}
 	return tgp.NewDispatcher(b, storage.NewMemoryStorage(), false)
 }
@@ -19,5 +20,6 @@ func TestNewDispatcher(t *testing.T) {
 	dp := GetDispatcher(t)
 	if dp == nil {
 		t.Error("Oh no, Dispatcher didnt create, fix it")
+		t.Fail()
 	}
 }

@@ -13,16 +13,16 @@ type ITelegramServer interface {
 // make easier use custom telegram api server
 type TelegramApiServer struct {
 	// Base telegram, sendMessage and etc.
-	Base string
+	Base string `json:"base"`
 
 	// Url for file transfer, CDN and etc.
-	File string
+	File string `json:"file"`
 }
 
 // NewTelegramApiServer ...
 func NewTelegramApiServer(Base string) *TelegramApiServer {
 	template := "/bot%s/%s"
-	// /bot%s/%s means /bot<TOKEN>/<METHOD>
+	// /bot%s/%s is /bot<TOKEN>/<METHOD>
 	return &TelegramApiServer{
 		Base: fmt.Sprint(Base, template),
 		File: fmt.Sprint(Base, "/file", template),
