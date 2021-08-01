@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/pikoUsername/tgp/objects"
-	"github.com/pikoUsername/tgp/utils"
 )
 
 // This file stores ALL method configs
@@ -44,7 +43,7 @@ func (f *InputFile) Read(p []byte) (n int, err error) {
 	if f.File != nil && f.URL == "" {
 		return f.File.Read(p)
 	}
-	bs, err := utils.FileToBytes(f.Name, true)
+	bs, err := fileToBytes(f.Name, true)
 	if err != nil {
 		return 0, err
 	}
@@ -81,7 +80,7 @@ func (c *BaseChat) Values() (url.Values, error) {
 	}
 
 	if c.ReplyMarkup != nil {
-		v.Add("reply_markup", utils.MarkupToString(c.ReplyMarkup))
+		v.Add("reply_markup", MarkupToString(c.ReplyMarkup))
 	}
 
 	v.Add("disable_notification", strconv.FormatBool(c.DisableNotification))
@@ -150,7 +149,7 @@ func (cmc *CopyMessageConfig) Values() (url.Values, error) {
 		v.Add("caption", cmc.Caption)
 	}
 	if cmc.CaptionEntities != nil {
-		v.Add("caption_entities", utils.ObjectToJson(cmc.CaptionEntities))
+		v.Add("caption_entities", ObjectToJson(cmc.CaptionEntities))
 	}
 	if !cmc.DisableNotifications {
 		v.Add("disable_notifications", strconv.FormatBool(cmc.DisableNotifications))
@@ -160,7 +159,7 @@ func (cmc *CopyMessageConfig) Values() (url.Values, error) {
 	}
 	v.Add("allow_sending_with_reply", strconv.FormatBool(cmc.AllowSendingWithReply))
 	if cmc.ReplyMarkup != nil {
-		v.Add("reply_keyboards", utils.MarkupToString(cmc.ReplyMarkup))
+		v.Add("reply_keyboards", MarkupToString(cmc.ReplyMarkup))
 	}
 	return v, nil
 }
@@ -201,10 +200,10 @@ func (smc *SendMessageConfig) Values() (url.Values, error) {
 		result.Add("parse_mode", smc.ParseMode)
 	}
 
-	result.Add("reply_markup", utils.MarkupToString(smc.ReplyKeyboard))
+	result.Add("reply_markup", MarkupToString(smc.ReplyKeyboard))
 	result.Add("disable_web_page_preview", strconv.FormatBool(smc.DisableWebPagePreview))
 	// Must be work!
-	result.Add("entities", utils.ObjectToJson(smc.Entities))
+	result.Add("entities", ObjectToJson(smc.Entities))
 
 	return result, nil
 }
@@ -286,21 +285,32 @@ func (sac *SendAudioConfig) Values() (url.Values, error) {
 
 	v.Add("chat_id", strconv.FormatInt(sac.ChatID, 10))
 
-	v.Add("caption", sac.Caption)
-	if sac.ParseMode != "" {
-		v.Add("parse_mode", sac.ParseMode)
+	if sac.Caption != "" {
+		v.Add("caption", sac.Caption)
+		if sac.ParseMode != "" {
+			v.Add("parse_mode", sac.ParseMode)
+		}
 	}
 	v.Add("duration", strconv.FormatUint(uint64(sac.Duration), 10))
 	v.Add("performer", sac.Performer)
 	if sac.Title != "" {
 		v.Add("title", sac.Title)
 	}
-	v.Add("caption_entities", utils.ObjectToJson(sac.CaptionEntities))
+	v.Add("caption_entities", ObjectToJson(sac.CaptionEntities))
 	return v, nil
 }
 
 func (sac *SendAudioConfig) Method() string {
 	return "sendAudio"
+}
+
+func NewSendAudio(chatId int64, file *InputFile) *SendAudioConfig {
+	return &SendAudioConfig{
+		BaseFile: BaseFile{
+			BaseChat:    BaseChat{ChatID: chatId},
+			File:        file,
+			UseExisting: false},
+	}
 }
 
 // SendDocumentConfig represents sendDoucument method fields
@@ -322,7 +332,7 @@ func (sdc *SendDocumentConfig) Values() (v url.Values, err error) {
 	v = url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(sdc.ChatID, 10))
-	bs, err := ReadFromInputFile(sdc.Document, true)
+	bs, err := readFromInputFile(sdc.Document, true)
 	if err != nil {
 		return v, err
 	}
@@ -333,7 +343,7 @@ func (sdc *SendDocumentConfig) Values() (v url.Values, err error) {
 			v.Add("parse_mode", sdc.ParseMode)
 		}
 		if sdc.CaptionEntities != nil {
-			v.Add("caption_entities", utils.ObjectToJson(sdc.CaptionEntities))
+			v.Add("caption_entities", ObjectToJson(sdc.CaptionEntities))
 		}
 	}
 	v.Add("disable_notification", strconv.FormatBool(sdc.DisableNotifiaction))
@@ -342,7 +352,7 @@ func (sdc *SendDocumentConfig) Values() (v url.Values, err error) {
 	}
 	v.Add("allow_sending_without_reply", strconv.FormatBool(sdc.AllowSendingWithoutReply))
 	if sdc.ReplyMarkup != nil {
-		v.Add("reply_markup", utils.MarkupToString(sdc.ReplyMarkup))
+		v.Add("reply_markup", MarkupToString(sdc.ReplyMarkup))
 	}
 	return v, nil
 }
@@ -366,7 +376,7 @@ func (sdc *SendDocumentConfig) Params() (map[string]string, error) {
 	params := make(map[string]string)
 
 	v, _ := sdc.Values()
-	utils.UrlValuesToMapString(v, params)
+	urlValuesToMapString(v, params)
 
 	return params, nil
 }
@@ -476,7 +486,7 @@ func (svc *SendVoiceConfig) Values() (url.Values, error) {
 		v.Add("reply_to_message_id", strconv.FormatInt(svc.ReplyToMessageID, 10))
 	}
 
-	v.Add("caption_entities", utils.ObjectToJson(svc.CaptionEntities))
+	v.Add("caption_entities", ObjectToJson(svc.CaptionEntities))
 	// TODO: reply Markup parsing function
 
 	return v, nil
@@ -661,7 +671,7 @@ type GetMyCommandsConfig struct {
 func (gmcc *GetMyCommandsConfig) Values() (url.Values, error) {
 	v := url.Values{}
 	if gmcc.Scope != nil {
-		v.Add("scope", utils.ObjectToJson(gmcc.Scope))
+		v.Add("scope", ObjectToJson(gmcc.Scope))
 	}
 	if gmcc.LanguageCode != "" {
 		v.Add("language_code", gmcc.LanguageCode)
@@ -681,7 +691,7 @@ type DeleteMyCommandsConfig struct {
 
 func (dmcc *DeleteMyCommandsConfig) Values() (url.Values, error) {
 	v := url.Values{}
-	v.Add("scope", utils.ObjectToJson(dmcc.Scope))
+	v.Add("scope", ObjectToJson(dmcc.Scope))
 	if dmcc.LanguageCode != "" {
 		v.Add("language_code", dmcc.LanguageCode)
 	}
@@ -705,12 +715,12 @@ type SetMyCommandsConfig struct {
 
 func (smcc *SetMyCommandsConfig) Values() (url.Values, error) {
 	v := url.Values{}
-	v.Add("commands", utils.ObjectToJson(smcc.Commands))
+	v.Add("commands", ObjectToJson(smcc.Commands))
 	if smcc.LanguageCode != "" {
 		v.Add("language_code", smcc.LanguageCode)
 	}
 	if smcc.Scope != nil {
-		v.Add("scope", utils.ObjectToJson(smcc.Scope))
+		v.Add("scope", ObjectToJson(smcc.Scope))
 	}
 	return v, nil
 }
@@ -769,7 +779,7 @@ func (sdc *SendDiceConfig) Values() (url.Values, error) {
 	}
 	v.Add("allow_sending_without_reply", strconv.FormatBool(sdc.AllowSendingWithoutReply))
 	if sdc.ReplyMarkup != nil {
-		v.Add("reply_markup", utils.MarkupToString(sdc.ReplyMarkup))
+		v.Add("reply_markup", MarkupToString(sdc.ReplyMarkup))
 	}
 	return v, nil
 }
@@ -832,7 +842,7 @@ func (spc *SendPollConfig) Values() (url.Values, error) {
 		v.Add("explanation_parse_mode", spc.ExpalnationParseMode)
 	}
 	if spc.ExplnationEntites != nil {
-		v.Add("explanation_entities", utils.ObjectToJson(spc.ExplnationEntites))
+		v.Add("explanation_entities", ObjectToJson(spc.ExplnationEntites))
 	}
 	v.Add("open_period", strconv.FormatInt(spc.OpenPeriod, 10))
 	v.Add("close_date", strconv.FormatInt(spc.CloseDate, 10))
@@ -943,7 +953,7 @@ func (scc *SendContactConfig) Values() (url.Values, error) {
 		v.Add("reply_to_message_id", strconv.FormatInt(scc.ReplyToMessageID, 10))
 	}
 	if scc.ReplyKeyboard != nil {
-		v.Add("reply_keyboard", utils.MarkupToString(scc.ReplyKeyboard))
+		v.Add("reply_keyboard", MarkupToString(scc.ReplyKeyboard))
 	}
 	return v, nil
 }
@@ -999,7 +1009,7 @@ func (svc *SendVenueConfig) Values() (url.Values, error) {
 		v.Add("four_square_type", svc.FoursQuareType)
 	}
 	if svc.ReplyMarkup != nil {
-		v.Add("reply_markup", utils.MarkupToString(svc.ReplyMarkup))
+		v.Add("reply_markup", MarkupToString(svc.ReplyMarkup))
 	}
 
 	return v, nil

@@ -22,7 +22,7 @@ run-exe:
 # =============================
 
 run-package-tests: 
-	go test -timeout $(test_timeout) ${package}
+	go test -timeout $(test_timeout) ${package} -v
 
 run-tests: 
 	$(MAKE) run-package-tests package="."

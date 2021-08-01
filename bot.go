@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/pikoUsername/tgp/objects"
-	"github.com/pikoUsername/tgp/utils"
 	"github.com/technoweenie/multipartstreamer"
 )
 
@@ -65,37 +64,35 @@ type Bot struct {
 	// caches there, and you can take that
 	// value in any moment.
 	// Using Lazy method, instead of one moment
-	Me *objects.User `json:"-"`
+	Me *objects.User `json:"me"`
 
 	// client if you need this, here
 	// Client uses only for Post requests
 	Client HttpClient `json:"-"`
 
 	// ProxyURL HTTP proxy URL
-	ProxyURL *url.URL `json:"-"`
+	ProxyURL *url.URL `json:"proxy_url"`
 
 	// default server must be here
 	// if you wanna create own, just create
 	// using this structure instead of NewBot function
-	server *TelegramApiServer `json:"-"`
+	server *TelegramApiServer
 
 	// For DebugLog in console
 	Debug bool `json:"debug"`
 
 	// Logger used instead
-	Logger StdLogger
+	Logger StdLogger `json:"-"`
 }
 
 // NewBot get a new Bot
 // This Fucntion checks a token
 // for spaces and etc.
-func NewBot(token string, checkToken bool, parseMode string, timeout time.Duration) (*Bot, error) {
-	if checkToken {
-		// Check out for correct token
-		err := utils.CheckToken(token)
-		if err != nil {
-			return nil, err
-		}
+func NewBot(token string, parseMode string, timeout time.Duration) (*Bot, error) {
+	// Check out for correct token
+	err := checkToken(token)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Bot{
@@ -110,7 +107,7 @@ func NewBot(token string, checkToken bool, parseMode string, timeout time.Durati
 	}, nil
 }
 
-func (bot *Bot) Log(text string, v url.Values, message ...interface{}) {
+func (bot *Bot) log(text string, v url.Values, message ...interface{}) {
 	if bot.Debug {
 		bot.Logger.Printf("%s req : %+v\n", text, v)
 		bot.Logger.Printf("%s resp: %+v\n", text, message)
@@ -147,11 +144,11 @@ func (bot *Bot) MakeRequest(Method string, params url.Values) (*objects.Telegram
 	defer resp.Body.Close()
 
 	// make eatable
-	tgresp, err := utils.ResponseDecode(resp.Body)
+	tgresp, err := responseDecode(resp.Body)
 	if err != nil {
 		return tgresp, err
 	}
-	return utils.CheckResult(tgresp)
+	return checkResult(tgresp)
 }
 
 // DownloadFile uses for download file from any URL,
@@ -179,7 +176,7 @@ func (bot *Bot) DownloadFile(path string, w io.WriteSeeker, seek bool) error {
 	}
 
 	if seek {
-		_, err := w.Seek(int64(0), 0)
+		_, err := w.Seek((int64)(0), 0)
 		if err != nil {
 			return err
 		}
@@ -250,14 +247,14 @@ func (b *Bot) UploadFile(method string, f interface{}, fieldname string, v map[s
 		return &objects.TelegramResponse{}, err
 	}
 	// closing body
-	b.Log("Response as bytes: ", nil, fmt.Sprintln(resp))
+	b.log("Response as bytes: ", nil, fmt.Sprintln(resp))
 	defer resp.Body.Close()
-	tgresp, err := utils.ResponseDecode(resp.Body)
+	tgresp, err := responseDecode(resp.Body)
 	if err != nil {
 		return tgresp, err
 	}
 	// returns response instant
-	return utils.CheckResult(tgresp)
+	return checkResult(tgresp)
 }
 
 // GetMe reporesents telegram method
@@ -389,7 +386,7 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 	}
 	var msg objects.Message
 	err = json.Unmarshal(resp.Result, &msg)
-	bot.Log("SendMessageable function activated:", v, &msg)
+	bot.log("SendMessageable function activated:", v, &msg)
 	if err != nil {
 		return &msg, err
 	}
@@ -413,7 +410,7 @@ func (bot *Bot) uploadAndSend(config FileableConf) (*objects.Message, error) {
 	var message *objects.Message
 	json.Unmarshal(resp.Result, &message)
 
-	bot.Log(method, nil, message)
+	bot.log(method, nil, message)
 
 	return message, nil
 }
@@ -623,9 +620,9 @@ func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, erro
 		return &objects.TelegramResponse{}, err
 	}
 	params := make(map[string]string)
-	utils.UrlValuesToMapString(v, params)
+	urlValuesToMapString(v, params)
 	// for debug
-	bot.Log("Params: ", nil, params)
+	bot.log("Params: ", nil, params)
 	// uploads a certificate file, with other parametrs
 	resp, err := bot.UploadFile(meth, c.Certificate, "certificate", params)
 	if err != nil {

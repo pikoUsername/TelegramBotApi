@@ -1,5 +1,10 @@
 package objects
 
+import (
+	"errors"
+	"fmt"
+)
+
 // Represents Telegram ResponseParameters object
 // https://core.telegram.org/bots/api#responseparameters
 type ResponseParameters struct {
@@ -19,5 +24,25 @@ type TelegramApiError struct {
 }
 
 func (e *TelegramApiError) Error() string {
-	return e.Description
+	return fmt.Sprintf("telegram: %s", e.Description)
 }
+
+// ErrorPrefix get to user/client
+// a error with prefix and splited up with separator
+// used in errors variable, lol
+type ErrorPrefix struct {
+	prefix    string
+	separator string
+}
+
+func (eg *ErrorPrefix) New(text string) error {
+	return errors.New(eg.prefix + eg.separator + text)
+}
+
+func NewErrorPrefix(prefix, sep string) *ErrorPrefix {
+	return &ErrorPrefix{prefix: prefix, separator: sep}
+}
+
+var (
+	Errors = NewErrorPrefix("tgp", ": ")
+)

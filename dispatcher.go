@@ -8,14 +8,12 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
-	"sync"
 	"syscall"
 	"time"
 
 	"github.com/pikoUsername/tgp/fsm"
 	"github.com/pikoUsername/tgp/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
-	"github.com/pikoUsername/tgp/utils"
 )
 
 // Dispatcher purpose is run bot, and comfortable execution
@@ -23,10 +21,9 @@ import (
 // Dispatcher uses as Bot starter
 // Another level of abstraction
 type Dispatcher struct {
-	Bot      *Bot
-	Storage  storage.Storage
-	Mutex    *sync.Mutex
-	Welcome_ bool
+	Bot     *Bot
+	Storage storage.Storage
+	Welcome bool
 
 	// Handlers
 	MessageHandler       HandlerObj
@@ -45,7 +42,6 @@ type Dispatcher struct {
 	OnPollingStartup  []*OnStartAndShutdownFunc
 
 	// private fields
-	updatesCh     chan *objects.Update
 	currentUpdate *objects.Update
 	synchronus    bool
 	polling       bool
@@ -146,16 +142,15 @@ func NewDispatcher(bot *Bot, storage storage.Storage, synchronus bool) *Dispatch
 		Bot:        bot,
 		synchronus: synchronus,
 		Storage:    storage,
-		updatesCh:  make(chan *objects.Update, 1),
 	}
 
-	dp.MessageHandler = NewDHandlerObj(dp)
-	dp.CallbackQueryHandler = NewDHandlerObj(dp)
-	dp.ChannelPostHandler = NewDHandlerObj(dp)
-	dp.ChatMemberHandler = NewDHandlerObj(dp)
-	dp.PollHandler = NewDHandlerObj(dp)
-	dp.PollAnswerHandler = NewDHandlerObj(dp)
-	dp.ChannelPostHandler = NewDHandlerObj(dp)
+	dp.MessageHandler = NewHandlerObj(dp)
+	dp.CallbackQueryHandler = NewHandlerObj(dp)
+	dp.ChannelPostHandler = NewHandlerObj(dp)
+	dp.ChatMemberHandler = NewHandlerObj(dp)
+	dp.PollHandler = NewHandlerObj(dp)
+	dp.PollAnswerHandler = NewHandlerObj(dp)
+	dp.ChannelPostHandler = NewHandlerObj(dp)
 
 	return dp
 }
@@ -336,7 +331,7 @@ func (dp *Dispatcher) SkipUpdates() {
 func (dp *Dispatcher) SetState(state *fsm.State) error {
 	u := dp.currentUpdate
 	if u != nil {
-		cid, uid := utils.GetUidAndCidFromUpd(u)
+		cid, uid := getUidAndCidFromUpd(u)
 		return dp.Storage.SetState(cid, uid, state.GetFullState())
 	}
 	return nil
@@ -345,7 +340,7 @@ func (dp *Dispatcher) SetState(state *fsm.State) error {
 // ResetState reset state for current user, and current chat
 func (dp *Dispatcher) ResetState() error {
 	if dp.currentUpdate != nil {
-		cid, uid := utils.GetUidAndCidFromUpd(dp.currentUpdate)
+		cid, uid := getUidAndCidFromUpd(dp.currentUpdate)
 		return dp.Storage.SetState(cid, uid, fsm.DefaultState.GetFullState())
 	}
 	return nil
@@ -365,7 +360,7 @@ func (dp *Dispatcher) shutdownPolling() {
 // Calls in StartPolling function
 func (dp *Dispatcher) startupPolling() {
 	callListFuncs(dp.OnPollingStartup, dp)
-	dp.Welcome()
+	dp.welcome()
 }
 
 // shutdownWebhook method, iterate over a callbacks from OnWebhookShutdown
@@ -376,7 +371,7 @@ func (dp *Dispatcher) shutdownWebhook() {
 // startupPolling method, iterate over a callbacks from OnWebhookStartup
 func (dp *Dispatcher) startupWebhook() {
 	callListFuncs(dp.OnWebhookStartup, dp)
-	dp.Welcome()
+	dp.welcome()
 }
 
 // Onstartup method append to OnStartupCallbaks a callbacks
@@ -412,7 +407,7 @@ func (dp *Dispatcher) OnShutdown(c *OnConfig) {
 
 // Thanks: https://stackoverflow.com/questions/11268943/is-it-possible-to-capture-a-ctrlc-signal-and-run-a-cleanup-function-in-a-defe
 func (dp *Dispatcher) SafeExit() {
-	c := make(chan os.Signal, 1)
+	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
@@ -434,8 +429,8 @@ func (dp *Dispatcher) ShutDownDP() {
 	}
 }
 
-func (dp *Dispatcher) Welcome() {
-	if dp.Welcome_ {
+func (dp *Dispatcher) welcome() {
+	if dp.Welcome {
 		dp.Bot.GetMe()
 		dp.Bot.Logger.Println("Bot: ", dp.Bot.Me)
 	}
@@ -449,8 +444,8 @@ func (dp *Dispatcher) Welcome() {
 // sends update to updates channel
 // Time.Sleep here for stop goroutine for a c.Relax time
 //
-// yeah it bad, and works only on crutches, but works, idk how
-func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig) {
+// yeah it bad, and works only on crutches, but works
+func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Update) {
 	go func() {
 		for {
 			if c.Relax != 0 {
@@ -469,11 +464,23 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig) {
 			for _, update := range updates {
 				if update.UpdateID >= c.Offset {
 					c.Offset = update.UpdateID + 1
-					dp.updatesCh <- update
+					ch <- update
 				}
 			}
 		}
 	}()
+}
+
+func (dp *Dispatcher) ProcessChannelUpdates(ch <-chan *objects.Update) error {
+	for upd := range ch {
+		dp.currentUpdate = upd
+		err := dp.ProcessOneUpdate(upd)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // StartPolling check out to comming updates
@@ -496,23 +503,17 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	if c.SkipUpdates {
 		dp.SkipUpdates()
 	}
+	ch := make(chan *objects.Update)
 	dp.polling = true
-	dp.MakeUpdatesChan(c)
-
-	for upd := range dp.updatesCh {
-		dp.currentUpdate = upd
-		err := dp.ProcessOneUpdate(upd)
-		if err != nil {
-			return err
-		}
-	}
+	dp.MakeUpdatesChan(c, ch)
+	dp.ProcessChannelUpdates(ch)
 
 	return errors.New(":P")
 }
 
-func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig) {
+func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig, ch chan *objects.Update) {
 	http.HandleFunc(c.BotURL, func(wr http.ResponseWriter, req *http.Request) {
-		update, err := utils.RequestToUpdate(req)
+		update, err := requestToUpdate(req)
 		if err != nil {
 			errMsg, _ := json.Marshal(map[string]string{"error": err.Error()})
 			wr.WriteHeader(http.StatusBadRequest)
@@ -521,7 +522,7 @@ func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig) {
 			return
 		}
 
-		dp.updatesCh <- update
+		ch <- update
 	})
 }
 
@@ -543,7 +544,7 @@ func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
 		dp.SafeExit()
 	}
 	http.HandleFunc(c.BotURL, func(wr http.ResponseWriter, req *http.Request) {
-		update, err := utils.RequestToUpdate(req)
+		update, err := requestToUpdate(req)
 		if err != nil {
 			errMsg, _ := json.Marshal(map[string]string{"error": err.Error()})
 			wr.WriteHeader(http.StatusBadRequest)
@@ -558,11 +559,11 @@ func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
 			fmt.Println(err)
 		}
 	})
-	certPath, err := utils.GuessFileName(c.Certificate)
+	certPath, err := guessFileName(c.Certificate)
 	if err != nil {
 		return err
 	}
-	keyfile, err := utils.GuessFileName(c.KeyFile)
+	keyfile, err := guessFileName(c.KeyFile)
 	if err != nil {
 		return err
 	}

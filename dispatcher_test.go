@@ -8,7 +8,7 @@ import (
 )
 
 func GetDispatcher(t *testing.T) *tgp.Dispatcher {
-	b, err := tgp.NewBot(TestToken, true, "HTML", Timeout)
+	b, err := tgp.NewBot(TestToken, "HTML", Timeout)
 	if err != nil {
 		t.Error(err)
 		t.Fail()

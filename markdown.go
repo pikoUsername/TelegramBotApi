@@ -1,9 +1,10 @@
-package utils
+package tgp
 
 import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 var (
@@ -54,7 +55,11 @@ func (hm *HTMLMarkdown) PreCode(code string, language string) string {
 }
 
 func (hm *HTMLMarkdown) Bold(text ...string) string {
-	return "<b>" + fmt.Sprintln(text) + "</b>"
+	return "<b>" + strings.Join(text, " ") + "</b>"
+}
+
+func (hm *HTMLMarkdown) tag(tag string, text ...string) string {
+	return tag + strings.Join(text, " ") + tag
 }
 
 func NewHTMLMarkdown() *HTMLMarkdown {

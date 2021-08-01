@@ -11,7 +11,6 @@ import (
 
 	"github.com/pikoUsername/tgp"
 	"github.com/pikoUsername/tgp/objects"
-	"github.com/pikoUsername/tgp/utils"
 )
 
 var (
@@ -29,18 +28,20 @@ var (
 )
 
 func getBot(t *testing.T) *tgp.Bot {
-	b, err := tgp.NewBot(TestToken, true, ParseMode, Timeout)
+	b, err := tgp.NewBot(TestToken, ParseMode, Timeout)
 	if err != nil {
 		t.Error(err)
+		t.Fail()
 	}
 	b.Debug = true
 	return b
 }
 
 func TestCheckToken(t *testing.T) {
-	b, err := tgp.NewBot("bla:bla", true, "HTML", Timeout)
+	b, err := tgp.NewBot("bla:bla", "HTML", Timeout)
 	if err != nil && b == nil {
 		t.Error(err)
+		t.Fail()
 	}
 }
 
@@ -57,22 +58,28 @@ func TestDownloadFile(t *testing.T) {
 	stat, err := dir.Stat()
 	if err != nil {
 		t.Error(err)
+		t.Fail()
 	}
 	if !stat.IsDir() {
 		t.Error("Sorry but -"+FileDirectory, "Is file, delete file and try again!")
+		t.Fail()
+
 	}
 
 	f, err := os.Create(SaveFile)
 	if err != nil {
 		t.Error(err)
+		t.Fail()
 	}
 	err = b.DownloadFile(DownloadFromURL, f, true)
 	if err != nil {
 		t.Error(err)
+		t.Fail()
 	}
 	stat, err = f.Stat()
 	if err != nil {
 		t.Error(err)
+		t.Fail()
 	}
 	bs := make([]byte, stat.Size())
 	f.Read(bs)
@@ -80,6 +87,7 @@ func TestDownloadFile(t *testing.T) {
 		t.Error(
 			"Cannot download file from ethernet, debug: file - ", bs,
 			", URL: ", DownloadFromURL, ", Directory: ", stat.Name(), ", Bot: ", b)
+		t.Fail()
 	}
 }
 
@@ -110,7 +118,7 @@ func TestGetUpdates(t *testing.T) {
 
 func TestParseMode(t *testing.T) {
 	b := getBot(t)
-	line, err := utils.NewHTMLMarkdown().Link("https://www.google.com", "lol")
+	line, err := tgp.NewHTMLMarkdown().Link("https://www.google.com", "lol")
 	if err != nil {
 		t.Error(err)
 	}

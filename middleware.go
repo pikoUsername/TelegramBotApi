@@ -1,7 +1,6 @@
 package tgp
 
 import (
-	"errors"
 	"reflect"
 
 	"github.com/pikoUsername/tgp/objects"
@@ -38,8 +37,8 @@ const (
 
 // errors
 var (
-	MiddlewareTypeInvalid = errors.New("typ parameter of variable not in ['post', 'pre', 'process']")
-	MiddleawreNotFound    = errors.New("passed middleware not found")
+	MiddlewareTypeInvalid = objects.Errors.New("typ parameter of variable not in ['post', 'pre', 'process']")
+	MiddleawreNotFound    = objects.Errors.New("passed middleware not found")
 )
 
 type DefaultMiddlewareManager struct {
@@ -56,12 +55,12 @@ func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
 	return dmm
 }
 
-// getConvertErr creates err in the fly with template:
+// convertErr creates err in the fly with template:
 // "failed convert this {value which failed to convert} to {tried to convert}"
-func getConvertErr(it interface{}, ito interface{}) error {
+func convertErr(it interface{}, ito interface{}) error {
 	ts := reflect.TypeOf(it).String()
 	tos := reflect.TypeOf(ito).String()
-	return errors.New("failed convert this " + ts + " to " + tos)
+	return objects.Errors.New("failed convert this " + ts + " to " + tos)
 }
 
 // preTriggerProcess ...
@@ -69,7 +68,7 @@ func preTriggerProcess(c interface{}, upd *objects.Update, bot *Bot) error {
 	if cb, ok := c.(PreMiddleware); ok {
 		cb(upd)
 	}
-	return getConvertErr(c, (*PreMiddleware)(nil))
+	return convertErr(c, (*PreMiddleware)(nil))
 }
 
 // processTrigger ...
@@ -80,7 +79,7 @@ func processTrigger(c interface{}, upd *objects.Update, bot *Bot) error {
 			return err
 		}
 	}
-	return getConvertErr(c, (ProcessMiddleware)(nil))
+	return convertErr(c, (ProcessMiddleware)(nil))
 }
 
 // postTrigger ...
@@ -88,7 +87,7 @@ func postTrigger(c interface{}, upd *objects.Update, bot *Bot) error {
 	if post_middleware_cb, ok := c.(PostMiddleware); ok {
 		post_middleware_cb(upd)
 	}
-	return getConvertErr(c, (*PostMiddleware)(nil))
+	return convertErr(c, (*PostMiddleware)(nil))
 }
 
 // Trigger triggers special type of middlewares

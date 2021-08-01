@@ -1,4 +1,4 @@
-package utils
+package tgp
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 )
 
 // CheckToken Check out for a Space containing, and correct token
-func CheckToken(token string) error {
+func checkToken(token string) error {
 	// Checks for space in token
 	if strings.Contains(token, " ") {
 		return errors.New("token is invalid! token contains space")
@@ -25,7 +25,7 @@ func CheckToken(token string) error {
 }
 
 // Checks Statuscode and if Error then creates new Error with Error Description
-func CheckResult(resp *objects.TelegramResponse) (*objects.TelegramResponse, error) {
+func checkResult(resp *objects.TelegramResponse) (*objects.TelegramResponse, error) {
 	// Check for Status, When StatusCode is 0 is default value
 	// and Check is complete, and why so?
 	// Telegram sends OK instead StatusCode 200
