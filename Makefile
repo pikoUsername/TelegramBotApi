@@ -15,7 +15,7 @@ build-run:
 	$(MAKE) run-exe args=""
 
 run-exe: 
-	cd .sandbox/ && . .sandbox ${args}
+	cd .sandbox/ && ./.sandbox ${args}
 		
 # =============================
 # 			TESTS 
