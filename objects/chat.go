@@ -67,3 +67,7 @@ type ChatPhoto struct {
 	BigFileID         string `json:"big_file_id"`
 	BigFileUniqueID   string `json:"big_file_unique_id"`
 }
+
+type ChatMemberPermissions struct {
+	CanSendMessages bool `json:"can_send_messages"`
+}

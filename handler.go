@@ -1,6 +1,8 @@
 package tgp
 
 import (
+	"reflect"
+
 	"github.com/pikoUsername/tgp/objects"
 )
 
@@ -18,7 +20,7 @@ type HandlerFunc interface{}
 // 	)
 // ```
 type HandlerType struct {
-	Callback *HandlerFunc
+	Callback HandlerFunc
 	Filters  []interface{}
 }
 
@@ -56,30 +58,26 @@ func (ht *HandlerType) Call(u *objects.Update, f func(), sync bool) {
 	}
 }
 
-// Interface for creating custom HandlerObj
-type HandlerObj interface {
-	Register(handler HandlerFunc, filters ...interface{})
-	Unregister(handler *HandlerFunc)
-	RegisterMiddleware(middlewares ...MiddlewareFunc)
-	GetHandlers() []*HandlerType
-	TriggerMiddleware(bot *Bot, update *objects.Update, typ string) error
-}
-
 // HandlerObj uses for save Callback
-type DefaultHandlerObj struct {
+type HandlerObj struct {
 	handlers   []*HandlerType
 	Middleware MiddlewareManager
 }
 
-// NEwDHandlerObj creates new DefaultHandlerObj
-func NewDHandlerObj(dp *Dispatcher) *DefaultHandlerObj {
-	return &DefaultHandlerObj{
+// NewHandlerObj creates new DefaultHandlerObj
+func NewHandlerObj(dp *Dispatcher) *HandlerObj {
+	return &HandlerObj{
 		Middleware: NewMiddlewareManager(dp),
 	}
 }
 
 // Register, append to Callbacks, e.g handler functions
-func (ho *DefaultHandlerObj) Register(f HandlerFunc, filters ...interface{}) {
+func (ho *HandlerObj) Register(f HandlerFunc, filters ...interface{}) {
+	t := reflect.TypeOf(f)
+	if t.Kind() != reflect.Func {
+		return
+	}
+
 	ht := HandlerType{
 		Callback: &f,
 		Filters:  filters,
@@ -90,7 +88,7 @@ func (ho *DefaultHandlerObj) Register(f HandlerFunc, filters ...interface{}) {
 
 // Unregister checkout to memory address
 // and cut up it if find something, with same address
-func (ho *DefaultHandlerObj) Unregister(handler *HandlerFunc) {
+func (ho *HandlerObj) Unregister(handler *HandlerFunc) {
 	var index int
 	for i, h := range ho.handlers {
 		if h.Callback == handler {
@@ -110,14 +108,10 @@ func (ho *DefaultHandlerObj) Unregister(handler *HandlerFunc) {
 // Or maybe want to make throttling middleware, just Registers middleware
 //
 // Example of middlware see in handler_test.go
-func (ho *DefaultHandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
+func (ho *HandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
 	ho.Middleware.Register(f...)
 }
 
-func (ho *DefaultHandlerObj) GetHandlers() []*HandlerType {
-	return ho.handlers
-}
-
-func (ho *DefaultHandlerObj) TriggerMiddleware(bot *Bot, update *objects.Update, typ string) error {
+func (ho *HandlerObj) TriggerMiddleware(bot *Bot, update *objects.Update, typ string) error {
 	return ho.Middleware.Trigger(bot, update, typ)
 }

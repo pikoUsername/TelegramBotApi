@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/pikoUsername/tgp/objects"
 )
@@ -15,21 +16,21 @@ import (
 
 // Configurable is interface for using by method
 type Configurable interface {
-	Values() (url.Values, error)
-	Method() string
+	values() (url.Values, error)
+	method() string
 }
 
 // FileableConf config using for Files storing
 type FileableConf interface {
 	Configurable
-	Params() (map[string]string, error)
-	Name() string
-	Path() string
-	GetFile() io.Reader
+	params() (map[string]string, error)
+	name() string
+	path() string
+	getFile() io.Reader
 }
 
 // InputFile interaced by FileableConf
-// Uses as Abstract level for real file
+// Uses as File holder
 type InputFile struct {
 	Name   string
 	URL    string
@@ -60,14 +61,14 @@ type BaseChat struct {
 	DisableNotification bool
 }
 
-func (chat *BaseChat) Params() (map[string]string, error) {
+func (chat *BaseChat) params() (map[string]string, error) {
 	params := make(map[string]string)
 
 	return params, nil
 }
 
 // values returns url.Values representation of BaseChat
-func (c *BaseChat) Values() (url.Values, error) {
+func (c *BaseChat) values() (url.Values, error) {
 	v := url.Values{}
 	if c.ChannelUsername != "" {
 		v.Add("chat_id", c.ChannelUsername)
@@ -98,13 +99,27 @@ type BaseFile struct {
 	FileSize    int
 }
 
-func (bf *BaseFile) Params() (v map[string]string, err error) {
+func (bf *BaseFile) params() (v map[string]string, err error) {
 	v = make(map[string]string)
+
+	if bf.FileID != "" {
+		v["file_id"] = bf.FileID
+	}
+	v["use_existing"] = strconv.FormatBool(bf.UseExisting)
+	if bf.MimeType != "" {
+		v["mime_type"] = bf.MimeType
+	}
+	if bf.FileSize != 0 {
+		v["file_size"] = strconv.Itoa(bf.FileSize)
+	}
+
+	cv, _ := bf.values()
+	urlValuesToMapString(cv, v)
 
 	return v, nil
 }
 
-func (bf *BaseFile) Path() string {
+func (bf *BaseFile) path() string {
 	var path string
 	if bf.File.Name != "" {
 		path = bf.File.Name
@@ -115,11 +130,11 @@ func (bf *BaseFile) Path() string {
 	return path
 }
 
-func (bf *BaseFile) Name() string {
+func (bf *BaseFile) name() string {
 	return bf.File.Name
 }
 
-func (bf *BaseFile) GetFile() io.Reader {
+func (bf *BaseFile) getFile() io.Reader {
 	return bf.File
 }
 
@@ -140,7 +155,7 @@ type CopyMessageConfig struct {
 	ReplyMarkup interface{}
 }
 
-func (cmc *CopyMessageConfig) Values() (url.Values, error) {
+func (cmc *CopyMessageConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(cmc.ChatID, 10))
 	v.Add("from_chat_id", strconv.FormatInt(cmc.ChatID, 10))
@@ -151,9 +166,7 @@ func (cmc *CopyMessageConfig) Values() (url.Values, error) {
 	if cmc.CaptionEntities != nil {
 		v.Add("caption_entities", ObjectToJson(cmc.CaptionEntities))
 	}
-	if !cmc.DisableNotifications {
-		v.Add("disable_notifications", strconv.FormatBool(cmc.DisableNotifications))
-	}
+	v.Add("disable_notifications", strconv.FormatBool(cmc.DisableNotifications))
 	if cmc.ReplyToMessageId != 0 {
 		v.Add("reply_to_message_id", strconv.FormatInt(cmc.ReplyToMessageId, 10))
 	}
@@ -164,7 +177,7 @@ func (cmc *CopyMessageConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (cmc *CopyMessageConfig) Method() string {
+func (cmc *CopyMessageConfig) method() string {
 	return "copyMessage"
 }
 
@@ -190,7 +203,7 @@ type SendMessageConfig struct {
 }
 
 // values ...
-func (smc *SendMessageConfig) Values() (url.Values, error) {
+func (smc *SendMessageConfig) values() (url.Values, error) {
 	result := url.Values{}
 	result.Add("chat_id", strconv.FormatInt(smc.ChatID, 10))
 
@@ -208,7 +221,7 @@ func (smc *SendMessageConfig) Values() (url.Values, error) {
 	return result, nil
 }
 
-func (smc *SendMessageConfig) Method() string {
+func (smc *SendMessageConfig) method() string {
 	return "sendMessage"
 }
 
@@ -219,7 +232,7 @@ func NewSendMessage(chat_id int64, text string) *SendMessageConfig {
 	}
 }
 
-// WebhookConfig uses for Using as arguemnt
+// SetWebhookConfig uses for Using as arguemnt
 // You may not fill all fields in struct
 // https://core.telegram.org/bots/api#setwebhook
 type SetWebhookConfig struct {
@@ -232,20 +245,20 @@ type SetWebhookConfig struct {
 	IP                 string // if you need u can use it ;)
 }
 
-func (wc *SetWebhookConfig) Values() (url.Values, error) {
-	result := url.Values{}
-	result.Add("url", wc.URL)
-	result.Add("ip_address", wc.IP) // required field
+func (wc *SetWebhookConfig) values() (url.Values, error) {
+	v := url.Values{}
+	v.Add("url", wc.URL)
+	v.Add("ip_address", wc.IP) // required field
 	if wc.MaxConnections != 0 {
-		result.Add("max_connections", strconv.Itoa(wc.MaxConnections))
+		v.Add("max_connections", strconv.Itoa(wc.MaxConnections))
 	}
-	result.Add("allowed_updates", strconv.FormatBool(wc.AllowedUpdates))
-	result.Add("drop_pending_updates", strconv.FormatBool(wc.DropPendingUpdates))
+	v.Add("allowed_updates", strconv.FormatBool(wc.AllowedUpdates))
+	v.Add("drop_pending_updates", strconv.FormatBool(wc.DropPendingUpdates))
 
-	return result, nil
+	return v, nil
 }
 
-func (wc *SetWebhookConfig) Method() string {
+func (wc *SetWebhookConfig) method() string {
 	return "setWebhook"
 }
 
@@ -255,18 +268,19 @@ func NewSetWebhook(url string) *SetWebhookConfig {
 	}
 }
 
-// Here starts a stubs
 // SendPhotoConfig ...
 type SendPhotoConfig struct {
 }
 
-func (spc *SendPhotoConfig) Values() (url.Values, error) {
+func (spc *SendPhotoConfig) values() (url.Values, error) {
 	return url.Values{}, nil
 }
 
-func (spc *SendPhotoConfig) Method() string {
+func (spc *SendPhotoConfig) method() string {
 	return "sendPhoto"
 }
+
+func NewSendPhoto()
 
 // represents a sendAudio fields
 type SendAudioConfig struct {
@@ -280,8 +294,8 @@ type SendAudioConfig struct {
 	Thumb           *InputFile
 }
 
-func (sac *SendAudioConfig) Values() (url.Values, error) {
-	v, _ := sac.BaseFile.Values()
+func (sac *SendAudioConfig) values() (url.Values, error) {
+	v, _ := sac.BaseFile.values()
 
 	v.Add("chat_id", strconv.FormatInt(sac.ChatID, 10))
 
@@ -300,7 +314,7 @@ func (sac *SendAudioConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (sac *SendAudioConfig) Method() string {
+func (sac *SendAudioConfig) method() string {
 	return "sendAudio"
 }
 
@@ -309,7 +323,8 @@ func NewSendAudio(chatId int64, file *InputFile) *SendAudioConfig {
 		BaseFile: BaseFile{
 			BaseChat:    BaseChat{ChatID: chatId},
 			File:        file,
-			UseExisting: false},
+			UseExisting: false,
+		},
 	}
 }
 
@@ -328,7 +343,7 @@ type SendDocumentConfig struct {
 	ReplyMarkup                 interface{}
 }
 
-func (sdc *SendDocumentConfig) Values() (v url.Values, err error) {
+func (sdc *SendDocumentConfig) values() (v url.Values, err error) {
 	v = url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(sdc.ChatID, 10))
@@ -372,16 +387,16 @@ func (sdc *SendDocumentConfig) Path() string {
 	return sdc.Thumb.Name
 }
 
-func (sdc *SendDocumentConfig) Params() (map[string]string, error) {
+func (sdc *SendDocumentConfig) params() (map[string]string, error) {
 	params := make(map[string]string)
 
-	v, _ := sdc.Values()
+	v, _ := sdc.values()
 	urlValuesToMapString(v, params)
 
 	return params, nil
 }
 
-func (sdc *SendDocumentConfig) Method() string {
+func (sdc *SendDocumentConfig) method() string {
 	return "sendDocument"
 }
 
@@ -402,8 +417,8 @@ type SendVideoConfig struct {
 	Thumb    *InputFile
 }
 
-func (svc *SendVideoConfig) Values() (url.Values, error) {
-	v, _ := svc.BaseFile.Values()
+func (svc *SendVideoConfig) values() (url.Values, error) {
+	v, _ := svc.BaseFile.values()
 	if svc.Duration != 0 {
 		v.Add("duration", strconv.FormatUint((uint64)(svc.Duration), 10))
 	}
@@ -418,7 +433,7 @@ func (svc *SendVideoConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (svc *SendVideoConfig) Method() string {
+func (svc *SendVideoConfig) method() string {
 	return "sendVideo"
 }
 
@@ -439,7 +454,7 @@ type SendAnimationConfig struct {
 	ParseMode string
 }
 
-func (sac *SendAnimationConfig) Values() (url.Values, error) {
+func (sac *SendAnimationConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(sac.ChatId, 10))
 	v.Add("duration", strconv.FormatUint(uint64(sac.Duration), 10))
@@ -455,7 +470,7 @@ func (sac *SendAnimationConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (sac *SendAnimationConfig) Method() string {
+func (sac *SendAnimationConfig) method() string {
 	return "sendAnimation"
 }
 
@@ -474,7 +489,7 @@ type SendVoiceConfig struct {
 	ReplyMarkup *objects.InlineKeyboardMarkup
 }
 
-func (svc *SendVoiceConfig) Values() (url.Values, error) {
+func (svc *SendVoiceConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(svc.ChatId, 10))
 	v.Add("caption", svc.Caption)
@@ -492,7 +507,7 @@ func (svc *SendVoiceConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (svc *SendVoiceConfig) Method() string {
+func (svc *SendVoiceConfig) method() string {
 	return "sendVoice"
 }
 
@@ -500,11 +515,11 @@ type SendVideoNoteConfig struct {
 	BaseFile
 }
 
-func (svnc *SendVideoNoteConfig) Values() (url.Values, error) {
+func (svnc *SendVideoNoteConfig) values() (url.Values, error) {
 	return url.Values{}, nil
 }
 
-func (svnc *SendVideoNoteConfig) Method() string {
+func (svnc *SendVideoNoteConfig) method() string {
 	return "sendVideoName"
 }
 
@@ -519,7 +534,7 @@ type SendMediaGroupConfig struct {
 	AllowSendingWithoutReply bool
 }
 
-func (smgc *SendMediaGroupConfig) Values() (url.Values, error) {
+func (smgc *SendMediaGroupConfig) values() (url.Values, error) {
 	v := url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(smgc.ChatID, 10))
@@ -536,7 +551,7 @@ func (smgc *SendMediaGroupConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (smgc *SendMediaGroupConfig) Method() string {
+func (smgc *SendMediaGroupConfig) method() string {
 	return "sendMediaGroup"
 }
 
@@ -560,7 +575,7 @@ type SendLocationConfig struct {
 	AllowSendingWithoutReply bool
 }
 
-func (slc *SendLocationConfig) Values() (url.Values, error) {
+func (slc *SendLocationConfig) values() (url.Values, error) {
 	v := url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(slc.ChatID, 10))
@@ -598,7 +613,7 @@ func NewSendLocationConf(chat_id int64, latitude float32, longitude float32) *Se
 	}
 }
 
-func (slc *SendLocationConfig) Method() string {
+func (slc *SendLocationConfig) method() string {
 	return "sendLocation"
 }
 
@@ -612,12 +627,12 @@ type EditMessageLLConf struct { // too long name anyway
 }
 
 // Values is stub!!
-func (llc *EditMessageLLConf) Values() (url.Values, error) {
+func (llc *EditMessageLLConf) values() (url.Values, error) {
 	v := url.Values{}
 	return v, nil // stub
 }
 
-func (llc *EditMessageLLConf) Method() string {
+func (llc *EditMessageLLConf) method() string {
 	return "editMessageLiveLocation"
 }
 
@@ -631,6 +646,13 @@ func NewEditMessageLL(longitude float32, latit float32, chat_id int64, message_i
 	}
 }
 
+type StopMessageLiveLocation struct {
+	ChatID          int64
+	MessageID       int64
+	InlineMessageID int64
+	ReplyMarkup     objects.InlineKeyboardMarkup
+}
+
 // GetUpdate method fields
 type GetUpdatesConfig struct {
 	Offset         int
@@ -639,7 +661,7 @@ type GetUpdatesConfig struct {
 	AllowedUpdates []string
 }
 
-func (guc *GetUpdatesConfig) Values() (url.Values, error) {
+func (guc *GetUpdatesConfig) values() (url.Values, error) {
 	v := url.Values{}
 	if guc.Offset != 0 {
 		v.Add("offset", strconv.Itoa(guc.Offset))
@@ -650,7 +672,7 @@ func (guc *GetUpdatesConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (guc *GetUpdatesConfig) Method() string {
+func (guc *GetUpdatesConfig) method() string {
 	return "getUpdates"
 }
 
@@ -668,7 +690,7 @@ type GetMyCommandsConfig struct {
 	LanguageCode string                  // optional
 }
 
-func (gmcc *GetMyCommandsConfig) Values() (url.Values, error) {
+func (gmcc *GetMyCommandsConfig) values() (url.Values, error) {
 	v := url.Values{}
 	if gmcc.Scope != nil {
 		v.Add("scope", ObjectToJson(gmcc.Scope))
@@ -679,7 +701,7 @@ func (gmcc *GetMyCommandsConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (gmcc *GetMyCommandsConfig) Method() string {
+func (gmcc *GetMyCommandsConfig) method() string {
 	return "getMyCommands"
 }
 
@@ -689,7 +711,7 @@ type DeleteMyCommandsConfig struct {
 	LanguageCode string                  // optional
 }
 
-func (dmcc *DeleteMyCommandsConfig) Values() (url.Values, error) {
+func (dmcc *DeleteMyCommandsConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("scope", ObjectToJson(dmcc.Scope))
 	if dmcc.LanguageCode != "" {
@@ -698,7 +720,7 @@ func (dmcc *DeleteMyCommandsConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (dmcc *DeleteMyCommandsConfig) Method() string {
+func (dmcc *DeleteMyCommandsConfig) method() string {
 	return "deleteMyCommands"
 }
 
@@ -713,7 +735,7 @@ type SetMyCommandsConfig struct {
 	LanguageCode string
 }
 
-func (smcc *SetMyCommandsConfig) Values() (url.Values, error) {
+func (smcc *SetMyCommandsConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("commands", ObjectToJson(smcc.Commands))
 	if smcc.LanguageCode != "" {
@@ -725,7 +747,7 @@ func (smcc *SetMyCommandsConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (smcc *SetMyCommandsConfig) Method() string {
+func (smcc *SetMyCommandsConfig) method() string {
 	return "setMyCommands"
 }
 
@@ -740,13 +762,13 @@ type DeleteWebhookConfig struct {
 	DropPendingUpdates bool
 }
 
-func (dwc *DeleteWebhookConfig) Values() (url.Values, error) {
+func (dwc *DeleteWebhookConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("drop_pending_updates", strconv.FormatBool(dwc.DropPendingUpdates))
 	return v, nil
 }
 
-func (dwc *DeleteWebhookConfig) Method() string {
+func (dwc *DeleteWebhookConfig) method() string {
 	return "deleteWebhook"
 }
 
@@ -767,7 +789,7 @@ type SendDiceConfig struct {
 	ReplyMarkup interface{}
 }
 
-func (sdc *SendDiceConfig) Values() (url.Values, error) {
+func (sdc *SendDiceConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(sdc.ChatID, 10))
 	if sdc.Emoji != "" {
@@ -784,7 +806,7 @@ func (sdc *SendDiceConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (sdc *SendDiceConfig) Method() string {
+func (sdc *SendDiceConfig) method() string {
 	return "sendDice"
 }
 
@@ -824,7 +846,7 @@ type SendPollConfig struct {
 	// ReplyMarkup              *objects.KeyboardMarkup
 }
 
-func (spc *SendPollConfig) Values() (url.Values, error) {
+func (spc *SendPollConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(spc.ChatID, 10))
 	v.Add("question", spc.Question)
@@ -854,7 +876,7 @@ func (spc *SendPollConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (spc *SendPollConfig) Method() string {
+func (spc *SendPollConfig) method() string {
 	return "sendPoll"
 }
 
@@ -870,13 +892,13 @@ type GetChat struct {
 	ChatID int64
 }
 
-func (gc *GetChat) Values() (url.Values, error) {
+func (gc *GetChat) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(gc.ChatID, 10))
 	return v, nil
 }
 
-func (gc *GetChat) Method() string {
+func (gc *GetChat) method() string {
 	return "NONE"
 }
 
@@ -888,7 +910,7 @@ type GetUserProfilePhotosConf struct {
 	Limit  int
 }
 
-func (guppc *GetUserProfilePhotosConf) Values() (url.Values, error) {
+func (guppc *GetUserProfilePhotosConf) values() (url.Values, error) {
 	v := url.Values{}
 
 	v.Add("user_id", strconv.FormatInt(guppc.UserId, 10))
@@ -898,7 +920,7 @@ func (guppc *GetUserProfilePhotosConf) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (guppc *GetUserProfilePhotosConf) Method() string {
+func (guppc *GetUserProfilePhotosConf) method() string {
 	return "getUserProfilePhotos"
 }
 
@@ -907,7 +929,7 @@ type SendChatActionConf struct {
 	Action string // see utils for actions type
 }
 
-func (scac *SendChatActionConf) Values() (url.Values, error) {
+func (scac *SendChatActionConf) values() (url.Values, error) {
 	v := url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(scac.ChatID, 10))
@@ -916,7 +938,7 @@ func (scac *SendChatActionConf) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (scac *SendChatActionConf) Method() string {
+func (scac *SendChatActionConf) method() string {
 	return "sendChatAction"
 }
 
@@ -932,7 +954,7 @@ type SendContactConfig struct {
 	ReplyKeyboard            interface{}
 }
 
-func (scc *SendContactConfig) Values() (url.Values, error) {
+func (scc *SendContactConfig) values() (url.Values, error) {
 	v := url.Values{}
 	switch t := scc.ChatID.(type) {
 	case int64:
@@ -958,7 +980,7 @@ func (scc *SendContactConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (scc *SendContactConfig) Method() string {
+func (scc *SendContactConfig) method() string {
 	return "sendContact"
 }
 
@@ -979,7 +1001,7 @@ type SendVenueConfig struct {
 	ReplyMarkup              interface{}
 }
 
-func (svc *SendVenueConfig) Values() (url.Values, error) {
+func (svc *SendVenueConfig) values() (url.Values, error) {
 	v := url.Values{}
 	switch t := svc.ChatID.(type) {
 	case int64:
@@ -1015,6 +1037,39 @@ func (svc *SendVenueConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (svc *SendVenueConfig) Method() string {
+func (svc *SendVenueConfig) method() string {
 	return "sendVenue"
+}
+
+// BanChatMemberConfig ...
+type BanChatMemberConfig struct {
+	ChatID         int64
+	UserID         int64
+	UntilDate      time.Duration
+	RevokeMessages bool
+}
+
+func (bcm *BanChatMemberConfig) values() (url.Values, error) {
+	v := url.Values{}
+
+	v.Add("chat_id", strconv.FormatInt(bcm.ChatID, 10))
+	v.Add("user_id", strconv.FormatInt(bcm.UserID, 10))
+
+	if bcm.UntilDate != 0 {
+		v.Add("until_date", strconv.FormatInt((int64)(bcm.UntilDate), 10))
+	}
+	v.Add("revoke_messages", strconv.FormatBool(bcm.RevokeMessages))
+
+	return v, nil
+}
+
+func (bcm *BanChatMemberConfig) method() string {
+	return "banChatMember"
+}
+
+func NewBanChatMember(chat_id int64, user_id int64) *BanChatMemberConfig {
+	return &BanChatMemberConfig{
+		ChatID: chat_id,
+		UserID: user_id,
+	}
 }

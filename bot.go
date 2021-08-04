@@ -81,13 +81,12 @@ type Bot struct {
 	// For DebugLog in console
 	Debug bool `json:"debug"`
 
-	// Logger used instead
-	Logger StdLogger `json:"-"`
+	// logger is one for dispatcher and Bot
+	logger StdLogger `json:"-"`
 }
 
-// NewBot get a new Bot
-// This Fucntion checks a token
-// for spaces and etc.
+// NewBot returns a New bot which need to contact with Telegram Bot API
+// Bot structure should provide only Telegram bot API methods
 func NewBot(token string, parseMode string, timeout time.Duration) (*Bot, error) {
 	// Check out for correct token
 	err := checkToken(token)
@@ -99,7 +98,7 @@ func NewBot(token string, parseMode string, timeout time.Duration) (*Bot, error)
 		Token:     token,
 		ParseMode: parseMode,
 		server:    DefaultTelegramServer,
-		Logger:    log.New(os.Stderr, "", log.LstdFlags),
+		logger:    log.New(os.Stderr, "", log.LstdFlags),
 		// Client have default timeout 5 second
 		Client: &http.Client{
 			Timeout: timeout,
@@ -109,8 +108,8 @@ func NewBot(token string, parseMode string, timeout time.Duration) (*Bot, error)
 
 func (bot *Bot) log(text string, v url.Values, message ...interface{}) {
 	if bot.Debug {
-		bot.Logger.Printf("%s req : %+v\n", text, v)
-		bot.Logger.Printf("%s resp: %+v\n", text, message)
+		bot.logger.Printf("%s req : %+v\n", text, v)
+		bot.logger.Printf("%s resp: %+v\n", text, message)
 	}
 }
 
@@ -118,9 +117,9 @@ func (bot *Bot) log(text string, v url.Values, message ...interface{}) {
 // sending requests
 // ===================
 
-// MakeRequest to telegram servers
+// Request to telegram servers
 // and result parses to TelegramResponse
-func (bot *Bot) MakeRequest(Method string, params url.Values) (*objects.TelegramResponse, error) {
+func (bot *Bot) Request(Method string, params url.Values) (*objects.TelegramResponse, error) {
 	// Bad Code, but working, huh
 
 	// Creating URL
@@ -195,6 +194,7 @@ func (b *Bot) UploadFile(method string, f interface{}, fieldname string, v map[s
 	case string:
 		name = m
 		ms.WriteFile(fieldname, m)
+	case *InputFile:
 	case InputFile:
 		if m.URL != "" {
 			values[fieldname] = m.URL
@@ -215,15 +215,15 @@ func (b *Bot) UploadFile(method string, f interface{}, fieldname string, v map[s
 			ms.WriteReader(fieldname, m.Name, int64(len(data)), buf)
 		}
 	case FileableConf:
-		name = m.Name()
+		name = m.name()
 
-		data, err := ioutil.ReadAll(m.GetFile().(io.Reader))
+		data, err := ioutil.ReadAll(m.getFile())
 		if err != nil {
 			return &objects.TelegramResponse{}, err
 		}
 		buf := bytes.NewBuffer(data)
 
-		ms.WriteReader(fieldname, name, int64(len(data)), buf)
+		ms.WriteReader(fieldname, name, (int64)(len(data)), buf)
 	case url.URL:
 	case *url.URL:
 		values[fieldname] = m.String()
@@ -263,7 +263,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 	if bot.Me != nil {
 		return bot.Me, nil
 	}
-	resp, err := bot.MakeRequest("getMe", url.Values{})
+	resp, err := bot.Request("getMe", url.Values{})
 	if err != nil {
 		return new(objects.User), err
 	}
@@ -280,7 +280,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 // Logout your bot from telegram
 // https://core.telegram.org/bots/api#logout
 func (bot *Bot) Logout() (*objects.TelegramResponse, error) {
-	return bot.MakeRequest("logout", url.Values{})
+	return bot.Request("logout", url.Values{})
 } // Indeed
 
 // ===============================
@@ -294,7 +294,7 @@ func (bot *Bot) DeleteChatPhoto(ChatId int64) (*objects.TelegramResponse, error)
 
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 
-	resp, err := bot.MakeRequest("deleteChatPhoto", v)
+	resp, err := bot.Request("deleteChatPhoto", v)
 
 	if err != nil {
 		return resp, err
@@ -311,7 +311,7 @@ func (bot *Bot) SetChatTitle(ChatId int64, Title string) (*objects.TelegramRespo
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("title", Title)
 
-	resp, err := bot.MakeRequest("setChatTitle", v)
+	resp, err := bot.Request("setChatTitle", v)
 
 	if err != nil {
 		return resp, err
@@ -326,7 +326,7 @@ func (bot *Bot) SetChatDescription(ChatId int64, Description string) (*objects.T
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("description", Description)
-	resp, err := bot.MakeRequest("setChatDescription", v)
+	resp, err := bot.Request("setChatDescription", v)
 	if err != nil {
 		return resp, err
 	}
@@ -344,7 +344,7 @@ func (bot *Bot) PinChatMessage(
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("message_id", strconv.FormatInt(MessageId, 10))
 	v.Add("disable_notifications", strconv.FormatBool(DisableNotifiaction))
-	resp, err := bot.MakeRequest("pinChatMessage", v)
+	resp, err := bot.Request("pinChatMessage", v)
 	if err != nil {
 		return resp, err
 	}
@@ -357,7 +357,7 @@ func (bot *Bot) PinChatMessage(
 func (bot *Bot) UnpinAllChatMessages(ChatId int64) (*objects.TelegramResponse, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
-	resp, err := bot.MakeRequest("unpinAllChatMessages", v)
+	resp, err := bot.Request("unpinAllChatMessages", v)
 	if err != nil {
 		return resp, err
 	}
@@ -371,7 +371,7 @@ func (bot *Bot) UnpinAllChatMessages(ChatId int64) (*objects.TelegramResponse, e
 
 // Send uses as sender for almost all stuff
 func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
-	v, err := c.Values()
+	v, err := c.values()
 	if err != nil {
 		return &objects.Message{}, err
 	}
@@ -379,7 +379,7 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 	if v.Get("parse_mode") == "" {
 		v.Set("parse_mode", bot.ParseMode)
 	}
-	resp, err := bot.MakeRequest(c.Method(), v)
+	resp, err := bot.Request(c.method(), v)
 
 	if err != nil {
 		return &objects.Message{}, err
@@ -394,15 +394,15 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 }
 
 // uploadAndSend will send a Message with a new file to Telegram.
-func (bot *Bot) uploadAndSend(config FileableConf) (*objects.Message, error) {
-	params, err := config.Params()
+func (bot *Bot) UploadAndSend(config FileableConf) (*objects.Message, error) {
+	params, err := config.params()
 	if err != nil {
 		return &objects.Message{}, err
 	}
 
-	file := config.GetFile()
-	method := config.Method()
-	resp, err := bot.UploadFile(method, file, config.Name(), params)
+	file := config.getFile()
+	method := config.method()
+	resp, err := bot.UploadFile(method, file, config.name(), params)
 	if err != nil {
 		return &objects.Message{}, err
 	}
@@ -419,7 +419,7 @@ func (bot *Bot) uploadAndSend(config FileableConf) (*objects.Message, error) {
 func (bot *Bot) Send(config interface{}) (*objects.Message, error) {
 	switch c := config.(type) {
 	case FileableConf:
-		return bot.uploadAndSend(c)
+		return bot.UploadAndSend(c)
 	case Configurable:
 		return bot.SendMessageable(c)
 	}
@@ -429,12 +429,12 @@ func (bot *Bot) Send(config interface{}) (*objects.Message, error) {
 // CopyMessage copies message
 // https://core.telegram.org/bots/api#copymessage
 func (bot *Bot) CopyMessage(config *CopyMessageConfig) (*objects.MessageID, error) {
-	v, err := config.Values()
+	v, err := config.values()
 
 	if err != nil {
 		return &objects.MessageID{}, err
 	}
-	resp, err := bot.MakeRequest(config.Method(), v)
+	resp, err := bot.Request(config.method(), v)
 	if err != nil {
 		return &objects.MessageID{}, err
 	}
@@ -528,11 +528,11 @@ func (bot *Bot) SendVenue(config *SendVenueConfig) (*objects.Message, error) {
 // SetMyCommands Setup command to Telegram bot
 // https://core.telegram.org/bots/api#setmycommands
 func (bot *Bot) SetMyCommands(conf *SetMyCommandsConfig) (bool, error) {
-	v, err := conf.Values()
+	v, err := conf.values()
 	if err != nil {
 		return false, err
 	}
-	resp, err := bot.MakeRequest(conf.Method(), v)
+	resp, err := bot.Request(conf.method(), v)
 	if err != nil {
 		return false, err
 	}
@@ -548,8 +548,8 @@ func (bot *Bot) SetMyCommands(conf *SetMyCommandsConfig) (bool, error) {
 // GetMyCommands get from bot commands command
 // https://core.telegram.org/bots/api#getmycommands
 func (bot *Bot) GetMyCommands(c *GetMyCommandsConfig) ([]objects.BotCommand, error) {
-	v, _ := c.Values()
-	resp, err := bot.MakeRequest(c.Method(), v)
+	v, _ := c.values()
+	resp, err := bot.Request(c.method(), v)
 	if err != nil {
 		return []objects.BotCommand{}, err
 	}
@@ -568,11 +568,11 @@ func (bot *Bot) GetMyCommands(c *GetMyCommandsConfig) ([]objects.BotCommand, err
 // DeleteWebhook if result is True, will be nil, if not so err
 // https://core.telegram.org/bots/api#deletewebhook
 func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) (*objects.TelegramResponse, error) {
-	v, err := c.Values()
+	v, err := c.values()
 	if err != nil {
 		return &objects.TelegramResponse{}, err
 	}
-	resp, err := bot.MakeRequest(c.Method(), v)
+	resp, err := bot.Request(c.method(), v)
 	if err != nil {
 		return &objects.TelegramResponse{}, err
 	}
@@ -582,11 +582,11 @@ func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) (*objects.TelegramResponse
 // GetUpdates uses for long polling
 // https://core.telegram.org/bots/api#getupdates
 func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
-	v, err := c.Values()
+	v, err := c.values()
 	if err != nil {
 		return []*objects.Update{}, err
 	}
-	resp, err := bot.MakeRequest(c.Method(), v)
+	resp, err := bot.Request(c.method(), v)
 	if err != nil {
 		return []*objects.Update{}, &objects.TelegramApiError{
 			Code:               resp.ErrorCode,
@@ -609,12 +609,12 @@ func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
 // Your bot IP and sends to your bot a Update
 // https://core.telegram.org/bots/api#setwebhook
 func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, error) {
-	v, err := c.Values()
-	meth := c.Method()
+	v, err := c.values()
+	meth := c.method()
 
 	// checkout for certificate, webhook may use without cert
 	if c.Certificate == nil {
-		return bot.MakeRequest(meth, v)
+		return bot.Request(meth, v)
 	}
 	if err != nil {
 		return &objects.TelegramResponse{}, err
@@ -634,7 +634,7 @@ func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, erro
 // GetWebhookInfo not require parametrs
 // https://core.telegram.org/bots/api#getwebhookinfo
 func (bot *Bot) GetWebhookInfo() (*objects.WebhookInfo, error) {
-	resp, err := bot.MakeRequest("getWebhookInfo", url.Values{})
+	resp, err := bot.Request("getWebhookInfo", url.Values{})
 	if err != nil {
 		return &objects.WebhookInfo{}, err
 	}
@@ -657,11 +657,11 @@ func (bot *Bot) GetWebhookInfo() (*objects.WebhookInfo, error) {
 // (when a message arrives from your bot, Telegram clients clear its typing status).
 // Returns True on success.
 func (bot *Bot) SendChatAction(c SendChatActionConf) (bool, error) {
-	v, err := c.Values()
+	v, err := c.values()
 	if err != nil {
 		return false, err
 	}
-	resp, err := bot.MakeRequest(c.Method(), v)
+	resp, err := bot.Request(c.method(), v)
 	if err != nil {
 		return false, nil
 	}
@@ -678,7 +678,7 @@ func (bot *Bot) SendChatAction(c SendChatActionConf) (bool, error) {
 func (bot *Bot) DeleteChatStickerSet(chat_id int64) (bool, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
-	resp, err := bot.MakeRequest("deleteChatStickerSet", v)
+	resp, err := bot.Request("deleteChatStickerSet", v)
 	if err != nil {
 		return false, err
 	}
@@ -695,7 +695,7 @@ func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
 
-	resp, err := bot.MakeRequest("getChat", v)
+	resp, err := bot.Request("getChat", v)
 
 	if err != nil {
 		return &objects.Chat{}, err
@@ -718,8 +718,8 @@ func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
 // GetUserProfilePhotos resresents getUserProfilePhotos method
 // https://core.telegram.org/bots/api#getuserprofilephotos
 func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserProfilePhotos, error) {
-	v, _ := c.Values()
-	resp, err := bot.MakeRequest(c.Method(), v)
+	v, _ := c.values()
+	resp, err := bot.Request(c.method(), v)
 
 	if err != nil {
 		return &objects.UserProfilePhotos{}, err
@@ -736,13 +736,13 @@ func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserP
 }
 
 // ====================
-// other method
+// other methods
 // ====================
 
 func (bot *Bot) GetFile(file_id string) (*objects.File, error) {
 	v := url.Values{}
 	v.Add("file_id", file_id)
-	resp, err := bot.MakeRequest("getFile", v)
+	resp, err := bot.Request("getFile", v)
 
 	if err != nil {
 		return &objects.File{}, err

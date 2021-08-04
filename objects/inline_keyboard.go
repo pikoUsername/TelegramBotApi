@@ -1,5 +1,7 @@
 package objects
 
+import "encoding/json"
+
 // https://github.com/aiogram/aiogram/blob/dev-2.x/aiogram/types/inline_keyboard.py
 
 // InlineKeyboardMarkup represents InlineKeyboardMarkup telegram object
@@ -35,6 +37,11 @@ func (ikm *InlineKeyboardMarkup) Add(btns ...InlineKeyboardButton) *InlineKeyboa
 	return ikm
 }
 
+func (self *InlineKeyboardMarkup) String() (string, error) {
+	v, err := json.Marshal(self.InlineKeyboard)
+	return (string)(v), err
+}
+
 // InlineKeyboardButton represnts InlineKeyboardButton telegram object
 // https://core.telegram.org/bots/api#inlinekeyboardbutton
 type InlineKeyboardButton struct {
@@ -58,7 +65,9 @@ func NewInlineKeyboardButton(text string, cd string) InlineKeyboardButton {
 func NewInlineKeyboardMarkup(row_width uint, btns ...InlineKeyboardButton) InlineKeyboardMarkup {
 	ikm := InlineKeyboardMarkup{RowWidth: row_width}
 
-	ikm.Add(btns...)
+	if len(btns) > 1 {
+		ikm.Add(btns...)
+	}
 
 	return ikm
 }

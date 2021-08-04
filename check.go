@@ -1,7 +1,6 @@
 package tgp
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/pikoUsername/tgp/objects"
@@ -11,15 +10,15 @@ import (
 func checkToken(token string) error {
 	// Checks for space in token
 	if strings.Contains(token, " ") {
-		return errors.New("token is invalid! token contains space")
+		return Errors.New("token is invalid! token contains space")
 	}
 	token_parts := strings.Split(token, ":")
 	if len(token_parts) != 2 {
-		return errors.New("token contains more than 2 parts")
+		return Errors.New("token contains more than 2 parts")
 	}
 	// Checks for empty token
 	if token_parts[0] == "" || token_parts[1] == "" {
-		return errors.New("token is empty")
+		return Errors.New("token is empty")
 	}
 	return nil
 }

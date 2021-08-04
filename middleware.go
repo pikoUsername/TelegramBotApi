@@ -37,8 +37,9 @@ const (
 
 // errors
 var (
-	MiddlewareTypeInvalid = objects.Errors.New("typ parameter of variable not in ['post', 'pre', 'process']")
-	MiddleawreNotFound    = objects.Errors.New("passed middleware not found")
+	MiddlewareTypeInvalid = Errors.New("typ parameter of variable not in ['post', 'pre', 'process']")
+	MiddlewareNotFound    = Errors.New("passed middleware not found")
+	MiddlewareIncorrect   = Errors.New("passed function is not function type")
 )
 
 type DefaultMiddlewareManager struct {
@@ -60,7 +61,7 @@ func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
 func convertErr(it interface{}, ito interface{}) error {
 	ts := reflect.TypeOf(it).String()
 	tos := reflect.TypeOf(ito).String()
-	return objects.Errors.New("failed convert this " + ts + " to " + tos)
+	return Errors.New("failed convert this " + ts + " to " + tos)
 }
 
 // preTriggerProcess ...
@@ -123,8 +124,12 @@ func (dmm *DefaultMiddlewareManager) Register(md ...MiddlewareFunc) {
 	// and maybe in golang libs exists func to make same, but more efficient
 	var obj []*MiddlewareFunc
 
-	for _, o := range md {
-		obj = append(obj, &o)
+	for _, middleware := range md {
+		t := reflect.TypeOf(middleware).Kind()
+		if t != reflect.Func && t == reflect.Ptr {
+			return
+		}
+		obj = append(obj, &middleware)
 	}
 
 	dmm.middlewares = append(dmm.middlewares, obj...)
@@ -132,6 +137,11 @@ func (dmm *DefaultMiddlewareManager) Register(md ...MiddlewareFunc) {
 
 // Unregister a middleware
 func (dmm *DefaultMiddlewareManager) Unregister(md *MiddlewareFunc) (*MiddlewareFunc, error) {
+	t := reflect.TypeOf(md)
+	if t.Kind() != reflect.Func {
+		return (*MiddlewareFunc)(nil), MiddlewareIncorrect
+	}
+
 	// Checking for memory address, its really bad idea, but variant with map, too huge
 	// variant with struct, too huge, and for middlewares store no need to use special structs
 	for i, m := range dmm.middlewares {
@@ -141,7 +151,7 @@ func (dmm *DefaultMiddlewareManager) Unregister(md *MiddlewareFunc) (*Middleware
 			return m, nil
 		}
 	}
-	return nil, MiddleawreNotFound
+	return nil, MiddlewareNotFound
 }
 
 func (dmm *DefaultMiddlewareManager) UnregisterByIndex(i uint) {
