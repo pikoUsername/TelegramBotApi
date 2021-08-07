@@ -491,6 +491,7 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	if c.ResetWebhook {
 		dp.ResetWebhook(true)
 	}
+
 	if c.SkipUpdates {
 		dp.SkipUpdates()
 	}
@@ -499,7 +500,7 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	dp.MakeUpdatesChan(c, ch)
 	dp.ProcessUpdates(ch)
 
-	return errors.New(":P")
+	return nil
 }
 
 func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig, ch chan *objects.Update) {
