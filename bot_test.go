@@ -22,7 +22,7 @@ var (
 	TestToken     = os.Getenv("TEST_TOKEN")
 
 	// here could be any image, file, anthing else
-	DownloadFromURL = "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.dreamstime.com%2Fphotos-images%2Fimag.html&psig=AOvVaw1T5_yBwBBJzGYLRBvYTgA3&ust=1625481461095000&source=images&cd=vfe&ved=0CAoQjRxqFwoTCPiejL6cyfECFQAAAAAdAAAAABAJ"
+	DownloadFromURL = "https://random.imagecdn.app/500/150"
 	NothingInbytes  = []byte{}
 	Timeout         = 2 * time.Second
 )
@@ -63,10 +63,9 @@ func TestDownloadFile(t *testing.T) {
 	if !stat.IsDir() {
 		t.Error("Sorry but -"+FileDirectory, "Is file, delete file and try again!")
 		t.Fail()
-
 	}
 
-	f, err := os.Create(SaveFile)
+	f, err := os.OpenFile(SaveFile, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		t.Error(err)
 		t.Fail()

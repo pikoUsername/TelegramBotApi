@@ -152,8 +152,7 @@ func (bot *Bot) Request(Method string, params url.Values) (*objects.TelegramResp
 
 // DownloadFile uses for download file from any URL,
 func (bot *Bot) DownloadFile(path string, w io.WriteSeeker, seek bool) error {
-	file_url := bot.server.FileURL(bot.Token, path)
-	request, err := http.NewRequest("GET", file_url, nil)
+	request, err := http.NewRequest("GET", path, nil)
 	if err != nil {
 		return err
 	}
@@ -165,7 +164,7 @@ func (bot *Bot) DownloadFile(path string, w io.WriteSeeker, seek bool) error {
 
 	defer resp.Body.Close()
 
-	bs, err := ioutil.ReadAll(w.(io.Reader))
+	bs, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
