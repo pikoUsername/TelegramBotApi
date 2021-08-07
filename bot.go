@@ -191,7 +191,6 @@ func (b *Bot) UploadFile(method string, f interface{}, fieldname string, v map[s
 
 	switch m := f.(type) {
 	case string:
-		name = m
 		ms.WriteFile(fieldname, m)
 	case *InputFile:
 	case InputFile:
@@ -201,7 +200,6 @@ func (b *Bot) UploadFile(method string, f interface{}, fieldname string, v map[s
 			ms.WriteFields(values)
 		} else {
 			data, err := ioutil.ReadAll(m.File)
-			name = m.Name
 			if name == "" {
 				return &objects.TelegramResponse{}, errors.New("name field is nothing")
 			}
@@ -708,6 +706,39 @@ func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
 	}
 
 	return &chat, nil
+}
+
+// BanChatMember ...
+func (bot *Bot) BanChatMember(c *BanChatMemberConfig) (bool, error) {
+	v, _ := c.values()
+	res, err := bot.Request(c.method(), v)
+	if err != nil {
+		return false, err
+	}
+	var ok bool
+	err = json.Unmarshal(res.Result, &ok)
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
+// UnbanChatMember ...
+func (bot *Bot) UnbanChatMember(chat_id int64, user_id int64, only_if_banned bool) (bool, error) {
+	v := make(url.Values)
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+	v.Add("user_id", strconv.FormatInt(user_id, 10))
+	v.Add("only_if_banned", strconv.FormatBool(only_if_banned))
+	res, err := bot.Request("unbanChatMember", v)
+	if err != nil {
+		return false, err
+	}
+	var ok bool
+	err = json.Unmarshal(res.Result, &ok)
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
 }
 
 // ================

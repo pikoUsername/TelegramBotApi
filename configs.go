@@ -268,19 +268,33 @@ func NewSetWebhook(url string) *SetWebhookConfig {
 	}
 }
 
-// SendPhotoConfig ...
+// SendPhotoConfig represnts telegram api method fields
+// https://core.telegram.org/bots/api#sendphoto
 type SendPhotoConfig struct {
+	BaseFile
+	Caption string
 }
 
 func (spc *SendPhotoConfig) values() (url.Values, error) {
-	return url.Values{}, nil
+	v, _ := spc.BaseChat.values()
+	if spc.Caption != "" {
+		v.Add("caption", spc.Caption)
+	}
+	return v, nil
 }
 
 func (spc *SendPhotoConfig) method() string {
 	return "sendPhoto"
 }
 
-func NewSendPhoto()
+func NewSendPhoto(chat_id int64, photo *InputFile) *SendPhotoConfig {
+	return &SendPhotoConfig{
+		BaseFile: BaseFile{
+			BaseChat: BaseChat{ChatID: chat_id},
+			File:     photo,
+		},
+	}
+}
 
 // represents a sendAudio fields
 type SendAudioConfig struct {
@@ -291,7 +305,7 @@ type SendAudioConfig struct {
 	Duration        uint
 	Performer       string
 	Title           string
-	Thumb           *InputFile
+	// Thumb           *InputFile
 }
 
 func (sac *SendAudioConfig) values() (url.Values, error) {
@@ -304,13 +318,19 @@ func (sac *SendAudioConfig) values() (url.Values, error) {
 		if sac.ParseMode != "" {
 			v.Add("parse_mode", sac.ParseMode)
 		}
+		if sac.CaptionEntities != nil {
+			v.Add("caption_entities", ObjectToJson(sac.CaptionEntities))
+		}
 	}
-	v.Add("duration", strconv.FormatUint(uint64(sac.Duration), 10))
-	v.Add("performer", sac.Performer)
+	if sac.Duration != 0 {
+		v.Add("duration", strconv.FormatUint(uint64(sac.Duration), 10))
+	}
+	if sac.Performer != "" {
+		v.Add("performer", sac.Performer)
+	}
 	if sac.Title != "" {
 		v.Add("title", sac.Title)
 	}
-	v.Add("caption_entities", ObjectToJson(sac.CaptionEntities))
 	return v, nil
 }
 
@@ -372,15 +392,15 @@ func (sdc *SendDocumentConfig) values() (v url.Values, err error) {
 	return v, nil
 }
 
-func (sdc *SendDocumentConfig) Name() string {
+func (sdc *SendDocumentConfig) name() string {
 	return sdc.Document.Name
 }
 
-func (sdc *SendDocumentConfig) GetFile() io.Reader {
+func (sdc *SendDocumentConfig) getFile() io.Reader {
 	return sdc.Document
 }
 
-func (sdc *SendDocumentConfig) Path() string {
+func (sdc *SendDocumentConfig) path() string {
 	if sdc.Document != nil {
 		return sdc.Document.Name
 	}
@@ -414,7 +434,7 @@ type SendVideoConfig struct {
 	Duration uint32
 	Width    uint16
 	Height   uint16
-	Thumb    *InputFile
+	// Thumb    *InputFile
 }
 
 func (svc *SendVideoConfig) values() (url.Values, error) {
@@ -449,7 +469,7 @@ type SendAnimationConfig struct {
 	Width    uint32 // Animation Width, what?
 	Height   uint32
 
-	Thumb     *InputFile
+	// Thumb     *InputFile
 	Caption   string
 	ParseMode string
 }
