@@ -5,21 +5,49 @@ import (
 
 	"github.com/pikoUsername/tgp"
 	"github.com/pikoUsername/tgp/fsm/storage"
+	"github.com/pikoUsername/tgp/objects"
 )
 
-func GetDispatcher(t *testing.T) *tgp.Dispatcher {
-	b, err := tgp.NewBot(TestToken, "HTML", Timeout)
-	if err != nil {
-		t.Error(err)
-		t.Fail()
+func GetDispatcher(check_token bool) (*tgp.Dispatcher, error) {
+	var err error
+	var b *tgp.Bot
+
+	if check_token {
+		b, err = tgp.NewBot(TestToken, "HTML")
+	} else {
+		b = &tgp.Bot{}
 	}
-	return tgp.NewDispatcher(b, storage.NewMemoryStorage(), false)
+	if err != nil {
+		return &tgp.Dispatcher{}, err
+	}
+	return tgp.NewDispatcher(b, storage.NewMemoryStorage(), false), nil
 }
 
 func TestNewDispatcher(t *testing.T) {
-	dp := GetDispatcher(t)
+	dp, _ := GetDispatcher(false)
 	if dp == nil {
 		t.Error("Oh no, Dispatcher didnt create, fix it")
 		t.Fail()
+	}
+}
+
+func BenchmarkProcessOneUpdate(b *testing.B) {
+	dp, err := GetDispatcher(false)
+	if err != nil {
+		b.Error(err)
+		b.Fail()
+	}
+	dp.MessageHandler.Register(func(m *objects.Message) {})
+	dp.MessageHandler.RegisterMiddleware(func(u *objects.Update) {})
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		upd := &objects.Update{
+			UpdateID: i,
+			Message:  &objects.Message{},
+		}
+		b.StartTimer()
+		dp.ProcessOneUpdate(upd)
 	}
 }

@@ -61,14 +61,13 @@ func (ht *HandlerType) Call(u *objects.Update, f func(), sync bool) {
 // HandlerObj uses for save Callback
 type HandlerObj struct {
 	handlers   []*HandlerType
-	Middleware MiddlewareManager
+	Middleware *DefaultMiddlewareManager
 }
 
 // NewHandlerObj creates new DefaultHandlerObj
 func NewHandlerObj(dp *Dispatcher) *HandlerObj {
-	return &HandlerObj{
-		Middleware: NewMiddlewareManager(dp),
-	}
+	md := NewMiddlewareManager(dp)
+	return &HandlerObj{Middleware: md}
 }
 
 // Register, append to Callbacks, e.g handler functions
@@ -97,7 +96,7 @@ func (ho *HandlerObj) Unregister(handler *HandlerFunc) {
 			if index < 0 {
 				index = 0
 			}
-			ho.handlers = append(ho.handlers[:index], ho.handlers[i:]...)
+			ho.handlers = append(ho.handlers[:index], ho.handlers[index:]...)
 		}
 	}
 }
@@ -106,8 +105,6 @@ func (ho *HandlerObj) Unregister(handler *HandlerFunc) {
 // for example, you want to register every user which writed to you bot
 // You can registerMiddleware for MessageHandler, not for all handlers
 // Or maybe want to make throttling middleware, just Registers middleware
-//
-// Example of middlware see in handler_test.go
 func (ho *HandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
 	ho.Middleware.Register(f...)
 }

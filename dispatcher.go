@@ -17,7 +17,7 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
-// Dispatcher purpose is run bot, and comfortable execution
+// Dispatcher's purpose is run bot, and comfortable pipeline
 // Bot struct uses as API wrapper
 // Dispatcher uses as Bot starter
 // Another level of abstraction
@@ -26,6 +26,7 @@ type Dispatcher struct {
 	Storage storage.Storage
 	Welcome bool
 	mu      sync.Mutex
+	wg      sync.WaitGroup
 
 	// Handlers
 	MessageHandler       *HandlerObj
@@ -38,10 +39,10 @@ type Dispatcher struct {
 
 	// If you want to add onshutdown function
 	// just append to this object, :P
-	OnWebhookShutdown []*OnStartAndShutdownFunc
-	OnPollingShutdown []*OnStartAndShutdownFunc
-	OnWebhookStartup  []*OnStartAndShutdownFunc
-	OnPollingStartup  []*OnStartAndShutdownFunc
+	OnWebhookShutdown []OnStartAndShutdownFunc
+	OnPollingShutdown []OnStartAndShutdownFunc
+	OnWebhookStartup  []OnStartAndShutdownFunc
+	OnPollingStartup  []OnStartAndShutdownFunc
 
 	// private fields
 	currentUpdate *objects.Update
@@ -57,6 +58,27 @@ var (
 
 type OnStartAndShutdownFunc func(dp *Dispatcher)
 
+// NewDispathcer get a new Dispatcher
+func NewDispatcher(bot *Bot, storage storage.Storage, synchronus bool) *Dispatcher {
+	dp := &Dispatcher{
+		Bot:        bot,
+		synchronus: synchronus,
+		Storage:    storage,
+		Welcome:    true,
+		wg:         sync.WaitGroup{},
+	}
+
+	dp.MessageHandler = NewHandlerObj(dp)
+	dp.CallbackQueryHandler = NewHandlerObj(dp)
+	dp.ChannelPostHandler = NewHandlerObj(dp)
+	dp.ChatMemberHandler = NewHandlerObj(dp)
+	dp.PollHandler = NewHandlerObj(dp)
+	dp.PollAnswerHandler = NewHandlerObj(dp)
+	dp.ChannelPostHandler = NewHandlerObj(dp)
+
+	return dp
+}
+
 // OnConfig using as argument for OnStartup, OnShutdown methods
 // You can add multiple functions to startup, or shutdown mthds
 // Example of OnConfig confugiration:
@@ -65,26 +87,25 @@ type OnStartAndShutdownFunc func(dp *Dispatcher)
 // c.Add(func(...) {})
 // dp.OnStartup(c)
 type OnConfig struct {
-	cb      []*OnStartAndShutdownFunc
+	cb      []OnStartAndShutdownFunc
 	Webhook bool
 	Polling bool
 }
 
 func (oc *OnConfig) Add(cb OnStartAndShutdownFunc) {
-	oc.cb = append(oc.cb, &cb)
+	oc.cb = append(oc.cb, cb)
 }
 
 func NewOnConf(cb OnStartAndShutdownFunc) *OnConfig {
 	return &OnConfig{
-		cb:      []*OnStartAndShutdownFunc{&cb},
+		cb:      []OnStartAndShutdownFunc{cb},
 		Webhook: true,
 		Polling: true,
 	}
 }
 
-func callListFuncs(funcs []*OnStartAndShutdownFunc, dp *Dispatcher) {
-	for _, cb_ := range funcs {
-		cb := *cb_
+func callListFuncs(funcs []OnStartAndShutdownFunc, dp *Dispatcher) {
+	for _, cb := range funcs {
 		if dp.synchronus {
 			cb(dp)
 		} else {
@@ -135,26 +156,6 @@ func NewStartWebhookConf(url string, address string) *StartWebhookConfig {
 		BotURL:  url,
 		Address: address,
 	}
-}
-
-// NewDispathcer get a new Dispatcher
-// And with autoconfiguration, need to run once
-func NewDispatcher(bot *Bot, storage storage.Storage, synchronus bool) *Dispatcher {
-	dp := &Dispatcher{
-		Bot:        bot,
-		synchronus: synchronus,
-		Storage:    storage,
-	}
-
-	dp.MessageHandler = NewHandlerObj(dp)
-	dp.CallbackQueryHandler = NewHandlerObj(dp)
-	dp.ChannelPostHandler = NewHandlerObj(dp)
-	dp.ChatMemberHandler = NewHandlerObj(dp)
-	dp.PollHandler = NewHandlerObj(dp)
-	dp.PollAnswerHandler = NewHandlerObj(dp)
-	dp.ChannelPostHandler = NewHandlerObj(dp)
-
-	return dp
 }
 
 // ResetWebhook uses for reset webhook for telegram
@@ -283,9 +284,9 @@ func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
 		dp.ChatMemberHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
 
 	} else if update.MyChatMember != nil {
+
 		dp.MyChatMemberHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
 		for _, h := range dp.MyChatMemberHandler.handlers {
-
 			cb, ok := h.Callback.(func(*Bot, *objects.ChatMemberUpdated))
 			if !ok {
 				return Errors.New("MyChatMember handler type assertion error, need type func(*Bot, *ChatMemberUpdated), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
@@ -396,28 +397,61 @@ func (dp *Dispatcher) OnShutdown(c *OnConfig) {
 	}
 }
 
+func (dp *Dispatcher) Start() {
+	if dp.polling {
+		dp.startupPolling()
+	}
+	if dp.webhook {
+		dp.startupWebhook()
+	}
+}
+
+func (dp *Dispatcher) Shutdown() {
+	if dp.polling {
+		dp.shutdownPolling()
+	}
+	if dp.webhook {
+		dp.shutdownWebhook()
+	}
+}
+
+func (dp *Dispatcher) RunRunner(f func(), safe_exit bool) {
+	if dp.polling && dp.webhook {
+		panic(ErrorConflictModes)
+	}
+	dp.Start()
+	if safe_exit {
+		dp.SafeExit()
+	}
+	if dp.synchronus {
+		f()
+	} else {
+		dp.wg.Add(1)
+		go func() {
+			defer dp.wg.Done()
+			f()
+		}()
+		dp.wg.Wait()
+	}
+}
+
 // Thanks: https://stackoverflow.com/questions/11268943/is-it-possible-to-capture-a-ctrlc-signal-and-run-a-cleanup-function-in-a-defe
 func (dp *Dispatcher) SafeExit() {
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		dp.ShutDownDP()
+		dp.shutDown()
 		os.Exit(0)
 	}()
 }
 
 // ShutDownDP calls ResetWebhook for reset webhook in telegram servers, if yes
-func (dp *Dispatcher) ShutDownDP() {
+func (dp *Dispatcher) shutDown() {
 	dp.Bot.logger.Println("Stop polling!")
 	dp.ResetWebhook(true)
 	dp.Storage.Close()
-	if dp.webhook {
-		dp.shutdownWebhook()
-	}
-	if dp.polling {
-		dp.shutdownPolling()
-	}
+	dp.Shutdown()
 }
 
 func (dp *Dispatcher) welcome() {
@@ -479,15 +513,6 @@ func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 // Using GetUpdates method in Bot structure
 // GetUpdates config using for getUpdates method
 func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
-	if dp.webhook {
-		return ErrorConflictModes
-	}
-	if c.SafeExit {
-		// runs goroutine for safly terminate program(bot)
-		dp.SafeExit()
-	}
-
-	dp.startupPolling()
 	if c.ResetWebhook {
 		dp.ResetWebhook(true)
 	}
@@ -495,10 +520,13 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	if c.SkipUpdates {
 		dp.SkipUpdates()
 	}
-	ch := make(chan *objects.Update)
 	dp.polling = true
-	dp.MakeUpdatesChan(c, ch)
-	dp.ProcessUpdates(ch)
+	dp.RunRunner(func() {
+		ch := make(chan *objects.Update)
+
+		dp.MakeUpdatesChan(c, ch)
+		dp.ProcessUpdates(ch)
+	}, c.SafeExit)
 
 	return nil
 }

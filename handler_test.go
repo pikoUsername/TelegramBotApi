@@ -11,7 +11,8 @@ import (
 )
 
 func TestRegister(t *testing.T) {
-	dp := GetDispatcher(t)
+	dp, err := GetDispatcher(false)
+	FailIfErr(t, err)
 	// Simple echo handler
 	dp.MessageHandler.Register(func(m *objects.Message) {
 		bot := dp.Bot
@@ -27,7 +28,11 @@ func TestRegister(t *testing.T) {
 }
 
 func TestMiddlwareRegister(t *testing.T) {
-	dp := GetDispatcher(t)
+	dp, err := GetDispatcher(false)
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+	}
 
 	// this middleware will be a pre-process middleware
 	// func(u *objects.Update) error/bool {...} will be a process middleware
