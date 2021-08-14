@@ -144,13 +144,13 @@ func NewDispatcher(bot *Bot, storage storage.Storage, synchronus bool) *Dispatch
 		Storage:    storage,
 	}
 
-	dp.MessageHandler = NewHandlerObj(dp)
-	dp.CallbackQueryHandler = NewHandlerObj(dp)
-	dp.ChannelPostHandler = NewHandlerObj(dp)
-	dp.ChatMemberHandler = NewHandlerObj(dp)
-	dp.PollHandler = NewHandlerObj(dp)
-	dp.PollAnswerHandler = NewHandlerObj(dp)
-	dp.ChannelPostHandler = NewHandlerObj(dp)
+	dp.MessageHandler = NewDHandlerObj(dp)
+	dp.CallbackQueryHandler = NewDHandlerObj(dp)
+	dp.ChannelPostHandler = NewDHandlerObj(dp)
+	dp.ChatMemberHandler = NewDHandlerObj(dp)
+	dp.PollHandler = NewDHandlerObj(dp)
+	dp.PollAnswerHandler = NewDHandlerObj(dp)
+	dp.ChannelPostHandler = NewDHandlerObj(dp)
 
 	return dp
 }
