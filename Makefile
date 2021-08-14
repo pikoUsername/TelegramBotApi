@@ -26,3 +26,6 @@ run-package-tests:
 
 run-tests: 
 	$(MAKE) run-package-tests package="."
+
+run-benchmarks: 
+	go test -bench=. -benchmem -v 
