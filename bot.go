@@ -34,11 +34,6 @@ type StdLogger interface {
 	Panicln(...interface{})
 }
 
-// HttpClient default interface for using by bot
-type HttpClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
 // Bot can be created using Json config,
 // Copy pasted from go-telegram-bot-api ;D
 //
@@ -68,7 +63,7 @@ type Bot struct {
 
 	// client if you need this, here
 	// Client uses only for Post requests
-	Client HttpClient `json:"-"`
+	Client *http.Client `json:"-"`
 
 	// ProxyURL HTTP proxy URL
 	ProxyURL *url.URL `json:"proxy_url"`
@@ -87,7 +82,7 @@ type Bot struct {
 
 // NewBot returns a New bot which need to contact with Telegram Bot API
 // Bot structure should provide only Telegram bot API methods
-func NewBot(token string, parseMode string, timeout time.Duration) (*Bot, error) {
+func NewBot(token string, parseMode string) (*Bot, error) {
 	// Check out for correct token
 	err := checkToken(token)
 	if err != nil {
@@ -101,9 +96,17 @@ func NewBot(token string, parseMode string, timeout time.Duration) (*Bot, error)
 		logger:    log.New(os.Stderr, "", log.LstdFlags),
 		// Client have default timeout 5 second
 		Client: &http.Client{
-			Timeout: timeout,
+			Timeout: 5 * time.Second,
 		},
 	}, nil
+}
+
+func (bot *Bot) SetTimeout(t time.Duration) {
+	if bot.Client.Timeout == t {
+		return
+	}
+
+	bot.Client.Timeout = t
 }
 
 func (bot *Bot) log(text string, v url.Values, message ...interface{}) {

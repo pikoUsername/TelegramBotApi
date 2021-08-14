@@ -27,8 +27,21 @@ var (
 	Timeout         = 2 * time.Second
 )
 
+func FailIfErr(t *testing.T, err error) {
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+	}
+}
+
+func PanicIfErr(t *testing.T, err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 func getBot(t *testing.T) *tgp.Bot {
-	b, err := tgp.NewBot(TestToken, ParseMode, Timeout)
+	b, err := tgp.NewBot(TestToken, ParseMode)
 	if err != nil {
 		t.Error(err)
 		t.Fail()
@@ -38,7 +51,7 @@ func getBot(t *testing.T) *tgp.Bot {
 }
 
 func TestCheckToken(t *testing.T) {
-	b, err := tgp.NewBot("bla:bla", "HTML", Timeout)
+	b, err := tgp.NewBot("bla:bla", "HTML")
 	if err != nil && b == nil {
 		t.Error(err)
 		t.Fail()
