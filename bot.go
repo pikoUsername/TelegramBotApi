@@ -58,15 +58,15 @@ type Bot struct {
 	// when you make get_me request, result
 	// caches there, and you can take that
 	// value in any moment.
-	// Using Lazy method, instead of one moment
+	// Using Lazy method, instead of on startup init
 	Me *objects.User `json:"me"`
 
-	// client if you need this, here
-	// Client uses only for Post requests
+	// Client uses for requests
 	Client *http.Client `json:"-"`
 
 	// ProxyURL HTTP proxy URL
-	ProxyURL *url.URL `json:"proxy_url"`
+	// No Proxy, yet
+	// ProxyURL *url.URL `json:"proxy_url"`
 
 	// default server must be here
 	// if you wanna create own, just create
@@ -80,7 +80,7 @@ type Bot struct {
 	logger StdLogger `json:"-"`
 }
 
-// NewBot returns a New bot which need to contact with Telegram Bot API
+// NewBot returns a new bot struct which need to interact with Telegram Bot API
 // Bot structure should provide only Telegram bot API methods
 func NewBot(token string, parseMode string) (*Bot, error) {
 	// Check out for correct token
@@ -94,19 +94,11 @@ func NewBot(token string, parseMode string) (*Bot, error) {
 		ParseMode: parseMode,
 		server:    DefaultTelegramServer,
 		logger:    log.New(os.Stderr, "", log.LstdFlags),
-		// Client have default timeout 5 second
+		// Client has 5 second timeout by default
 		Client: &http.Client{
 			Timeout: 5 * time.Second,
 		},
 	}, nil
-}
-
-func (bot *Bot) SetTimeout(t time.Duration) {
-	if bot.Client.Timeout == t {
-		return
-	}
-
-	bot.Client.Timeout = t
 }
 
 func (bot *Bot) log(text string, v url.Values, message ...interface{}) {
@@ -257,7 +249,7 @@ func (b *Bot) UploadFile(method string, f interface{}, fieldname string, v map[s
 	return checkResult(tgresp)
 }
 
-// GetMe reporesents telegram method
+// GetMe represents telegram "getMe" method
 // https://core.telegram.org/bots/api#getme
 func (bot *Bot) GetMe() (*objects.User, error) {
 	if bot.Me != nil {
@@ -281,7 +273,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 // https://core.telegram.org/bots/api#logout
 func (bot *Bot) Logout() (*objects.TelegramResponse, error) {
 	return bot.Request("logout", url.Values{})
-} // Indeed
+}
 
 // ===============================
 // No returning value Telegram api methods
@@ -582,10 +574,7 @@ func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) (*objects.TelegramResponse
 // GetUpdates uses for long polling
 // https://core.telegram.org/bots/api#getupdates
 func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
-	v, err := c.values()
-	if err != nil {
-		return []*objects.Update{}, err
-	}
+	v, _ := c.values()
 	resp, err := bot.Request(c.method(), v)
 	if err != nil {
 		return []*objects.Update{}, &objects.TelegramApiError{
@@ -621,7 +610,6 @@ func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, erro
 	}
 	params := make(map[string]string)
 	urlValuesToMapString(v, params)
-	// for debug
 	bot.log("Params: ", nil, params)
 	// uploads a certificate file, with other parametrs
 	resp, err := bot.UploadFile(meth, c.Certificate, "certificate", params)
@@ -741,6 +729,41 @@ func (bot *Bot) UnbanChatMember(chat_id int64, user_id int64, only_if_banned boo
 	if err != nil {
 		return false, err
 	}
+	return ok, nil
+}
+
+// RestrictChatMember ...
+func (bot *Bot) RestrictChatMember(c *RestrictChatMemberConfig) (bool, error) {
+	v, _ := c.values()
+	res, err := bot.Request(c.method(), v)
+	if err != nil {
+		return false, err
+	}
+
+	var ok bool
+	err = json.Unmarshal(res.Result, &ok)
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
+// SetChatPermissions ...
+func (bot *Bot) SetChatPermissions(chat_id int64, perms objects.ChatMemberPermissions) (ok bool, err error) {
+	v := make(url.Values)
+
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+	v.Add("permissions", ObjectToJson(perms))
+
+	res, err := bot.Request("setChatPermissions", v)
+	if err != nil {
+		return false, err
+	}
+	err = json.Unmarshal(res.Result, &ok)
+	if err != nil {
+		return false, err
+	}
+
 	return ok, nil
 }
 

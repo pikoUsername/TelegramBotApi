@@ -1,6 +1,7 @@
 package tgp
 
 import (
+	"fmt"
 	"io"
 	"net/url"
 	"strconv"
@@ -1092,4 +1093,28 @@ func NewBanChatMember(chat_id int64, user_id int64) *BanChatMemberConfig {
 		ChatID: chat_id,
 		UserID: user_id,
 	}
+}
+
+type RestrictChatMemberConfig struct {
+	ChatID      int64
+	UserID      int64
+	Permissions *objects.ChatMemberPermissions
+	UntilDate   time.Duration
+}
+
+func (rc *RestrictChatMemberConfig) method() string {
+	return "restrictChatMember"
+}
+
+func (rc *RestrictChatMemberConfig) values() (url.Values, error) {
+	v := url.Values{}
+
+	v.Add("chat_id", strconv.FormatInt(rc.ChatID, 10))
+	v.Add("user_id", strconv.FormatInt(rc.UserID, 10))
+	v.Add("permissions", ObjectToJson(rc.Permissions))
+	if rc.UntilDate != 0 {
+		v.Add("until_date", fmt.Sprintln(rc.UntilDate))
+	}
+
+	return v, nil
 }
