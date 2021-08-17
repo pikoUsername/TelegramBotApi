@@ -11,12 +11,12 @@ type HandlerFunc interface{}
 
 // Another level of abstraction
 // Filters field is interface{}, types:
-// func(u *objects.Update) and Just Filter interface
+// func(u *objects.Update) and Filter interface
 //
-// example: ```go
+// ```go
 // 	dp.MessageHandler.Register(
-//		func(m *objects.Message) {...},
-// 		func(u *objects.Update) {return u.Message.From.ID == <owner_id>},
+//		func(bot *tgp.Bot, m *objects.Message) {...}, // handler
+// 		func(u *objects.Update) {return u.Message.From.ID == <owner_id>}, // filter
 // 	)
 // ```
 type HandlerType struct {
