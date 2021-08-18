@@ -26,7 +26,6 @@ type Dispatcher struct {
 	Storage storage.Storage
 	Welcome bool
 	mu      sync.Mutex
-	wg      sync.WaitGroup
 
 	// Handlers
 	MessageHandler       *HandlerObj
@@ -65,7 +64,6 @@ func NewDispatcher(bot *Bot, storage storage.Storage, synchronus bool) *Dispatch
 		synchronus: synchronus,
 		Storage:    storage,
 		Welcome:    true,
-		wg:         sync.WaitGroup{},
 	}
 
 	dp.MessageHandler = NewHandlerObj(dp)
@@ -415,26 +413,8 @@ func (dp *Dispatcher) Shutdown() {
 	}
 }
 
-func (dp *Dispatcher) RunRunner(f func(), safe_exit bool) {
-	if dp.polling && dp.webhook {
-		panic(ErrorConflictModes)
-	}
-	dp.Start()
-	if safe_exit {
-		dp.SafeExit()
-	}
-	if dp.synchronus {
-		f()
-	} else {
-		dp.wg.Add(1)
-		go func() {
-			defer dp.wg.Done()
-			f()
-		}()
-		dp.wg.Wait()
-	}
-}
-
+// SafeExit method uses for notify about exit from program
+// and need to terminate it
 // Thanks: https://stackoverflow.com/questions/11268943/is-it-possible-to-capture-a-ctrlc-signal-and-run-a-cleanup-function-in-a-defe
 func (dp *Dispatcher) SafeExit() {
 	c := make(chan os.Signal)
@@ -496,6 +476,9 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Up
 	}()
 }
 
+// ProcessUpdates iterate <-chan *objects.Update
+//
+// Note: use after a MakeUpdatesChan call
 func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 	for upd := range ch {
 		dp.currentUpdate = upd
@@ -513,6 +496,15 @@ func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 // Using GetUpdates method in Bot structure
 // GetUpdates config using for getUpdates method
 func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
+	if dp.webhook {
+		panic(ErrorConflictModes)
+	}
+
+	dp.polling = true
+	dp.Start()
+	if c.SafeExit {
+		dp.SafeExit()
+	}
 	if c.ResetWebhook {
 		dp.ResetWebhook(true)
 	}
@@ -520,17 +512,16 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	if c.SkipUpdates {
 		dp.SkipUpdates()
 	}
-	dp.polling = true
-	dp.RunRunner(func() {
-		ch := make(chan *objects.Update)
 
-		dp.MakeUpdatesChan(c, ch)
-		dp.ProcessUpdates(ch)
-	}, c.SafeExit)
+	ch := make(chan *objects.Update)
+
+	dp.MakeUpdatesChan(c, ch)
+	dp.ProcessUpdates(ch)
 
 	return nil
 }
 
+// MakeWebhookChan adds a http Handler with c.BotURL path
 func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig, ch chan *objects.Update) {
 	http.HandleFunc(c.BotURL, func(wr http.ResponseWriter, req *http.Request) {
 		update, err := requestToUpdate(req)
@@ -546,20 +537,21 @@ func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig, ch chan *objects.Up
 	})
 }
 
-// StartWebhook method registers on BotUrl uri a function which handles every comming update
+// StartWebhook method registers BotUrl uri a function which handles every comming update
 // Using In Pair of SetWebhook method
-// Startup method executes after SetWebhook method
+// Startup method executes after SetWebhook method call
 //
 // NOTE: you should to add a webhook close callback function, using OnShutdown
 func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
 	if dp.polling {
-		return ErrorConflictModes
+		panic(ErrorConflictModes)
 	}
 	_, err := dp.Bot.SetWebhook(c.SetWebhookConfig)
 	if err != nil {
 		return err
 	}
-	dp.startupWebhook()
+	dp.webhook = true
+	dp.Start()
 	if c.SafeExit {
 		dp.SafeExit()
 	}
@@ -587,6 +579,5 @@ func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
 	if err != nil {
 		return err
 	}
-	dp.webhook = true
 	return http.ListenAndServeTLS(c.Address, certPath, keyfile, c.Handler)
 }
