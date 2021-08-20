@@ -2,6 +2,7 @@ package tgp
 
 import (
 	"reflect"
+	"sync"
 
 	"github.com/pikoUsername/tgp/objects"
 )
@@ -60,14 +61,16 @@ func (ht *HandlerType) Call(u *objects.Update, f func(), sync bool) {
 
 // HandlerObj uses for save Callback
 type HandlerObj struct {
-	handlers   []*HandlerType
-	Middleware *DefaultMiddlewareManager
+	handlers    []*HandlerType
+	errHandlers []*HandlerType
+	Middleware  *DefaultMiddlewareManager
+	mu          *sync.Mutex
 }
 
 // NewHandlerObj creates new DefaultHandlerObj
 func NewHandlerObj(dp *Dispatcher) *HandlerObj {
 	md := NewMiddlewareManager(dp)
-	return &HandlerObj{Middleware: md}
+	return &HandlerObj{Middleware: md, mu: &sync.Mutex{}}
 }
 
 // Register, append to Callbacks, e.g handler functions
@@ -77,21 +80,43 @@ func (ho *HandlerObj) Register(f HandlerFunc, filters ...interface{}) {
 		return
 	}
 
+	ho.mu.Lock()
 	ht := HandlerType{
 		Callback: &f,
 		Filters:  filters,
 	}
 
 	ho.handlers = append(ho.handlers, &ht)
+	ho.mu.Unlock()
+}
+
+func (ho *HandlerObj) CheckAndErrTrigger(err error, update *objects.Update, sync bool) {
+	if err == nil {
+		return
+	}
+	var cb func(upd *objects.Update)
+
+	for _, h := range ho.errHandlers {
+		cb = h.Callback.(func(upd *objects.Update))
+		h.Call(update, func() { cb(update) }, sync)
+	}
 }
 
 // Unregister checkout to memory address
 // and cut up it if find something, with same address
 func (ho *HandlerObj) Unregister(handler *HandlerFunc) {
+	t := reflect.TypeOf(handler)
+	if t.Kind() != reflect.Func {
+		return
+	}
+	var s, s2 uintptr
 	var index int
+	s = reflect.ValueOf(handler).Pointer()
+
 	for i, h := range ho.handlers {
-		if h.Callback == handler {
-			// deleting from slice
+		s2 = reflect.ValueOf(h).Pointer()
+		if s == s2 {
+			// pop up from slice
 			index = i - 1
 			if index < 0 {
 				index = 0
