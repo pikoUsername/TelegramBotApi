@@ -6,7 +6,7 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
-// CheckToken Check out for a Space containing, and correct token
+// CheckToken Check out for a Space containing, and token correct 
 func checkToken(token string) error {
 	// Checks for space in token
 	if strings.Contains(token, " ") {
