@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 
@@ -25,15 +26,15 @@ type Configurable interface {
 type FileableConf interface {
 	Configurable
 	params() (map[string]string, error)
-	name() string
-	path() string
+	name() []string
+	path() []string
 	getFile() io.Reader
 }
 
 // InputFile interaced by FileableConf
 // Uses as File holder
 type InputFile struct {
-	Name   string
+	Path   string
 	URL    string
 	Length uint
 	File   io.Reader
@@ -45,12 +46,27 @@ func (f *InputFile) Read(p []byte) (n int, err error) {
 	if f.File != nil && f.URL == "" {
 		return f.File.Read(p)
 	}
-	bs, err := fileToBytes(f.Name, true)
+	bs, err := fileToBytes(f.Path, true)
 	if err != nil {
 		return 0, err
 	}
 	p = append(p[:0], bs...)
 	return len(bs), nil
+}
+
+func NewInputFile(f io.Reader, path string) (*InputFile, error) {
+	if f == nil {
+		var err error
+
+		f, err = os.OpenFile(path, os.O_RDONLY, 0)
+		if err != nil {
+			return &InputFile{}, err
+		}
+	}
+	return &InputFile{
+		File: f,
+		Path: path,
+	}, nil
 }
 
 // BaseChat taken from go-telegram-bot-api
@@ -120,19 +136,23 @@ func (bf *BaseFile) params() (v map[string]string, err error) {
 	return v, nil
 }
 
-func (bf *BaseFile) path() string {
-	var path string
-	if bf.File.Name != "" {
-		path = bf.File.Name
+func (bf *BaseFile) path() []string {
+	var path []string
+	if bf.File.Path != "" {
+		path = append(path, bf.File.Path)
 	} else if bf.File.URL != "" {
-		path = bf.File.URL
+		path = append(path, bf.File.URL)
 	}
-	path = bf.FileID
+	if bf.FileID != "" {
+		path = append(path, bf.FileID)
+	}
 	return path
 }
 
-func (bf *BaseFile) name() string {
-	return bf.File.Name
+func (bf *BaseFile) name() []string {
+	var path []string
+	path = append(path, bf.File.Path)
+	return path
 }
 
 func (bf *BaseFile) getFile() io.Reader {
@@ -394,7 +414,7 @@ func (sdc *SendDocumentConfig) values() (v url.Values, err error) {
 }
 
 func (sdc *SendDocumentConfig) name() string {
-	return sdc.Document.Name
+	return sdc.Document.Path
 }
 
 func (sdc *SendDocumentConfig) getFile() io.Reader {
@@ -403,9 +423,9 @@ func (sdc *SendDocumentConfig) getFile() io.Reader {
 
 func (sdc *SendDocumentConfig) path() string {
 	if sdc.Document != nil {
-		return sdc.Document.Name
+		return sdc.Document.Path
 	}
-	return sdc.Thumb.Name
+	return sdc.Thumb.Path
 }
 
 func (sdc *SendDocumentConfig) params() (map[string]string, error) {
@@ -1117,4 +1137,12 @@ func (rc *RestrictChatMemberConfig) values() (url.Values, error) {
 	}
 
 	return v, nil
+}
+
+func NewRestrictMember(chat_id, user_id int64, perms *objects.ChatMemberPermissions) *RestrictChatMemberConfig {
+	return &RestrictChatMemberConfig{
+		ChatID:      chat_id,
+		UserID:      user_id,
+		Permissions: perms,
+	}
 }

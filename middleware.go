@@ -37,12 +37,11 @@ var (
 
 type DefaultMiddlewareManager struct {
 	middlewares []MiddlewareFunc
-	dp          *Dispatcher
 }
 
 // NewDMiddlewareManager creates a DefaultMiddlewareManager, and return
 func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
-	return &DefaultMiddlewareManager{dp: dp}
+	return &DefaultMiddlewareManager{}
 }
 
 // convertErr creates err in the fly with template:

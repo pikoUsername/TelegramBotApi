@@ -1,7 +1,6 @@
 package tgp
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -145,6 +144,21 @@ func (bot *Bot) Request(Method string, params url.Values) (*objects.TelegramResp
 	return checkResult(tgresp)
 }
 
+// BoolRequest call a Request, and return bool
+// in telegram api have many methods that return the Bool value
+func (bot *Bot) BoolRequest(method string, params url.Values) (bool, error) {
+	var ok bool
+	resp, err := bot.Request(method, params)
+	if err != nil {
+		return false, err
+	}
+	err = json.Unmarshal(resp.Result, &ok)
+	if err != nil {
+		return false, err
+	}
+	return ok, err
+}
+
 // DownloadFile uses for download file from any URL,
 func (bot *Bot) DownloadFile(path string, w io.WriteSeeker, seek bool) error {
 	request, err := http.NewRequest("GET", path, nil)
@@ -179,59 +193,69 @@ func (bot *Bot) DownloadFile(path string, w io.WriteSeeker, seek bool) error {
 
 // UploadFile same as MakeRequest, with one defference, file, and name variable, and nothing more
 // copypaste of UploadFile go-telegram-bot
-func (b *Bot) UploadFile(method string, f interface{}, fieldname string, v map[string]string) (*objects.TelegramResponse, error) {
+func (b *Bot) UploadFile(method string, data map[string]interface{}, v map[string]string) (*objects.TelegramResponse, error) {
 	var name string
 	ms := multipartstreamer.New()
 	values := make(map[string]string)
 
-	switch m := f.(type) {
-	case string:
-		ms.WriteFile(fieldname, m)
-	case *InputFile:
-	case InputFile:
-		if m.URL != "" {
-			values[fieldname] = m.URL
-
-			ms.WriteFields(values)
-		} else {
-			data, err := ioutil.ReadAll(m.File)
-			if name == "" {
-				return &objects.TelegramResponse{}, errors.New("name field is nothing")
-			}
-			if err != nil {
-				return &objects.TelegramResponse{}, err
-			}
-
-			buf := bytes.NewBuffer(data)
-
-			ms.WriteReader(fieldname, m.Name, int64(len(data)), buf)
-		}
-	case FileableConf:
-		name = m.name()
-
-		data, err := ioutil.ReadAll(m.getFile())
-		if err != nil {
-			return &objects.TelegramResponse{}, err
-		}
-		buf := bytes.NewBuffer(data)
-
-		ms.WriteReader(fieldname, name, (int64)(len(data)), buf)
-	case url.URL:
-	case *url.URL:
-		values[fieldname] = m.String()
-
-		ms.WriteFields(values)
-	default:
-		return &objects.TelegramResponse{}, errors.New("not reached")
-	}
-	// creating File url
 	tgurl := b.server.FileURL(b.Token, name)
 
 	req, err := http.NewRequest(method, tgurl, nil)
-	if err != nil {
-		return &objects.TelegramResponse{}, err
+
+	for key, file := range data {
+		values[key] = nil
 	}
-	ms.SetupRequest(req)
+
+	// switch m := f.(type) {
+	// case string:
+	// 	ms.WriteFile(fieldname, m)
+	// case *InputFile:
+	// case InputFile:
+	// 	if m.URL != "" {
+	// 		values[fieldname] = m.URL
+
+	// 		ms.WriteFields(values)
+	// 	} else {
+	// 		data, err := ioutil.ReadAll(m.File)
+	// 		if name == "" {
+	// 			return &objects.TelegramResponse{}, errors.New("name field is nothing")
+	// 		}
+	// 		if err != nil {
+	// 			return &objects.TelegramResponse{}, err
+	// 		}
+
+	// 		buf := bytes.NewBuffer(data)
+
+	// 		ms.WriteReader(fieldname, m.Path, int64(len(data)), buf)
+	// 	}
+	// case FileableConf:
+	// 	names := m.name()
+	// 	if len(names) < 1 {
+	// 		name = names[0]
+	// 	}
+
+	// 	data, err := ioutil.ReadAll(m.getFile())
+	// 	if err != nil {
+	// 		return &objects.TelegramResponse{}, err
+	// 	}
+	// 	buf := bytes.NewBuffer(data)
+
+	// 	ms.WriteReader(fieldname, name, (int64)(len(data)), buf)
+	// case url.URL:
+	// case *url.URL:
+	// 	values[fieldname] = m.String()
+
+	// 	ms.WriteFields(values)
+	// default:
+	// 	return &objects.TelegramResponse{}, errors.New("not reached")
+	// }
+	// // creating File url
+
+	// if err != nil {
+	// 	return &objects.TelegramResponse{}, err
+	// }
+	// req.Write()
+	// ms.SetupRequest(req)
 
 	// sending request
 	resp, err := b.Client.Do(req)
@@ -520,21 +544,8 @@ func (bot *Bot) SendVenue(config *SendVenueConfig) (*objects.Message, error) {
 // SetMyCommands Setup command to Telegram bot
 // https://core.telegram.org/bots/api#setmycommands
 func (bot *Bot) SetMyCommands(conf *SetMyCommandsConfig) (bool, error) {
-	v, err := conf.values()
-	if err != nil {
-		return false, err
-	}
-	resp, err := bot.Request(conf.method(), v)
-	if err != nil {
-		return false, err
-	}
-	var ok bool
-	err = json.Unmarshal(resp.Result, &ok)
-	if err != nil {
-		return false, err
-	}
-
-	return ok, nil
+	v, _ := conf.values()
+	return bot.BoolRequest(conf.method(), v)
 }
 
 // GetMyCommands get from bot commands command
@@ -612,7 +623,7 @@ func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, erro
 	urlValuesToMapString(v, params)
 	bot.log("Params: ", nil, params)
 	// uploads a certificate file, with other parametrs
-	resp, err := bot.UploadFile(meth, c.Certificate, "certificate", params)
+	resp, err := bot.UploadFile(meth, c.Certificate, []string{"certificate"}, params)
 	if err != nil {
 		return resp, err
 	}
@@ -649,16 +660,7 @@ func (bot *Bot) SendChatAction(c SendChatActionConf) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	resp, err := bot.Request(c.method(), v)
-	if err != nil {
-		return false, nil
-	}
-	var ok bool
-	err = json.Unmarshal(resp.Result, &ok)
-	if err != nil {
-		return false, err
-	}
-	return ok, nil
+	return bot.BoolRequest(c.method(), v)
 }
 
 // DeleteChatStickerSet represents deleteChatStickerSet method
@@ -666,16 +668,7 @@ func (bot *Bot) SendChatAction(c SendChatActionConf) (bool, error) {
 func (bot *Bot) DeleteChatStickerSet(chat_id int64) (bool, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
-	resp, err := bot.Request("deleteChatStickerSet", v)
-	if err != nil {
-		return false, err
-	}
-	var ok bool
-	err = json.Unmarshal(resp.Result, &ok)
-	if err != nil {
-		return ok, err
-	}
-	return ok, nil
+	return bot.BoolRequest("deleteChatStickerSet", v)
 }
 
 // GetChat ...
@@ -702,16 +695,7 @@ func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
 // BanChatMember ...
 func (bot *Bot) BanChatMember(c *BanChatMemberConfig) (bool, error) {
 	v, _ := c.values()
-	res, err := bot.Request(c.method(), v)
-	if err != nil {
-		return false, err
-	}
-	var ok bool
-	err = json.Unmarshal(res.Result, &ok)
-	if err != nil {
-		return false, err
-	}
-	return ok, nil
+	return bot.BoolRequest(c.method(), v)
 }
 
 // UnbanChatMember ...
@@ -720,51 +704,63 @@ func (bot *Bot) UnbanChatMember(chat_id int64, user_id int64, only_if_banned boo
 	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
 	v.Add("user_id", strconv.FormatInt(user_id, 10))
 	v.Add("only_if_banned", strconv.FormatBool(only_if_banned))
-	res, err := bot.Request("unbanChatMember", v)
-	if err != nil {
-		return false, err
-	}
-	var ok bool
-	err = json.Unmarshal(res.Result, &ok)
-	if err != nil {
-		return false, err
-	}
-	return ok, nil
+	return bot.BoolRequest("unbanChatMember", v)
 }
 
 // RestrictChatMember ...
 func (bot *Bot) RestrictChatMember(c *RestrictChatMemberConfig) (bool, error) {
 	v, _ := c.values()
-	res, err := bot.Request(c.method(), v)
-	if err != nil {
-		return false, err
-	}
-
-	var ok bool
-	err = json.Unmarshal(res.Result, &ok)
-	if err != nil {
-		return false, err
-	}
-	return ok, nil
+	return bot.BoolRequest(c.method(), v)
 }
 
 // SetChatPermissions ...
-func (bot *Bot) SetChatPermissions(chat_id int64, perms objects.ChatMemberPermissions) (ok bool, err error) {
+func (bot *Bot) SetChatPermissions(chat_id int64, perms objects.ChatMemberPermissions) (bool, error) {
 	v := make(url.Values)
 
 	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
 	v.Add("permissions", ObjectToJson(perms))
 
-	res, err := bot.Request("setChatPermissions", v)
+	return bot.BoolRequest("setChatPermissions", v)
+}
+
+// SCACT too long to read, represents a telegram method
+// https://core.telegram.org/bots/api#setchatadministratorcustomtitle
+func (bot *Bot) SetChatAdministratorCustomTitle(chat_id, user_id int64, title string) (bool, error) {
+	v := make(url.Values)
+
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+	v.Add("user_id", strconv.FormatInt(user_id, 10))
+	v.Add("title", title)
+
+	return bot.BoolRequest("setChatAdministratorCustomTitle", v)
+}
+
+func (bot *Bot) ExportChatInviteLink(chat_id int64) (string, error) {
+	v := make(url.Values)
+
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+
+	resp, err := bot.Request("exportChatInviteLink", v)
 	if err != nil {
-		return false, err
-	}
-	err = json.Unmarshal(res.Result, &ok)
-	if err != nil {
-		return false, err
+		return "", err
 	}
 
-	return ok, nil
+	var val string
+	err = json.Unmarshal(resp.Result, &val)
+	if err != nil {
+		return "", err
+	}
+	return val, err
+}
+
+func (bot *Bot) SetChatPhoto(chat_id int64, file *InputFile) (bool, error) {
+	v := make(map[string]string)
+
+	v["chat_id"] = strconv.FormatInt(chat_id, 10)
+
+	bot.UploadFile("setChatPhoto", file, []string{"photo"}, v)
+
+	return false, nil
 }
 
 // ================

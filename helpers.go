@@ -289,3 +289,5 @@ func readFromInputFile(v *InputFile, compress bool) (p []byte, err error) {
 	_, err = v.Read(bs)
 	return bs, err
 }
+
+func ComposeFiles(files []*InputFile) { return }
