@@ -1,24 +1,24 @@
 package objects
 
 type Poll struct {
-	ID                    int64            `json:"id"`
-	Question              string           `json:"question"`
+	ExplanationEntities   []*MessageEntity `json:"explanation_entities"`
 	Options               []*PollOption    `json:"options"`
-	TotalVoterCount       int              `json:"total_voter_count"`
+	AllowsMultipleAnswers bool             `json:"allows_multiple_answers"`
 	IsClosed              bool             `json:"is_closed"`
 	IsAnonymoust          bool             `json:"is_anonymous"`
+	Question              string           `json:"question"`
 	Type                  string           `json:"type"`
-	AllowsMultipleAnswers bool             `json:"allows_multiple_answers"`
-	CorrectOptionId       int64            `json:"correct_option_id"`
 	Explanation           string           `json:"explanation"`
-	ExplanationEntities   []*MessageEntity `json:"explanation_entities"`
+	TotalVoterCount       int              `json:"total_voter_count"`
+	CorrectOptionId       int64            `json:"correct_option_id"`
+	ID                    int64            `json:"id"`
 	OpenPeriod            int64            `json:"open_period"`
 	CloseDate             int64            `json:"close_date"`
 }
 
 type PollAnswer struct {
-	PollID    int64 `json:"poll_id"`
-	*User     `json:"user"`
+	User      *User   `json:"user"`
+	PollID    int64   `json:"poll_id"`
 	OptionIDs []int64 `json:"option_ids"`
 }
 

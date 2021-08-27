@@ -20,7 +20,7 @@ func GetDispatcher(check_token bool) (*tgp.Dispatcher, error) {
 	if err != nil {
 		return &tgp.Dispatcher{}, err
 	}
-	return tgp.NewDispatcher(b, storage.NewMemoryStorage(), false), nil
+	return tgp.NewDispatcher(b, storage.NewMemoryStorage()), nil
 }
 
 func TestNewDispatcher(t *testing.T) {

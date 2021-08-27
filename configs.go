@@ -2,9 +2,7 @@ package tgp
 
 import (
 	"fmt"
-	"io"
 	"net/url"
-	"os"
 	"strconv"
 	"time"
 
@@ -26,60 +24,34 @@ type Configurable interface {
 type FileableConf interface {
 	Configurable
 	params() (map[string]string, error)
-	name() []string
-	path() []string
-	getFile() io.Reader
-}
-
-// InputFile interaced by FileableConf
-// Uses as File holder
-type InputFile struct {
-	Path   string
-	URL    string
-	Length uint
-	File   io.Reader
-}
-
-// Read ...
-// No compress choice
-func (f *InputFile) Read(p []byte) (n int, err error) {
-	if f.File != nil && f.URL == "" {
-		return f.File.Read(p)
-	}
-	bs, err := fileToBytes(f.Path, true)
-	if err != nil {
-		return 0, err
-	}
-	p = append(p[:0], bs...)
-	return len(bs), nil
-}
-
-func NewInputFile(f io.Reader, path string) (*InputFile, error) {
-	if f == nil {
-		var err error
-
-		f, err = os.OpenFile(path, os.O_RDONLY, 0)
-		if err != nil {
-			return &InputFile{}, err
-		}
-	}
-	return &InputFile{
-		File: f,
-		Path: path,
-	}, nil
+	getFiles() []*objects.InputFile
 }
 
 // BaseChat taken from go-telegram-bot-api
 type BaseChat struct {
 	ChatID              int64
 	ChannelUsername     string
-	ReplyToMessageID    int
+	ReplyToMessageID    int64
 	ReplyMarkup         interface{}
 	DisableNotification bool
 }
 
-func (chat *BaseChat) params() (map[string]string, error) {
+func (c *BaseChat) params() (map[string]string, error) {
 	params := make(map[string]string)
+
+	if c.ChannelUsername != "" {
+		params["chat_id"] = strconv.FormatInt(c.ChatID, 10)
+	} else {
+		params["chat_id"] = c.ChannelUsername
+	}
+	if c.ReplyToMessageID != 0 {
+		params["reply_to_message_id"] = strconv.FormatInt(c.ChatID, 10)
+	}
+
+	if c.ReplyMarkup != nil {
+		params["reply_markup"] = FormatMarkup(c.ReplyMarkup)
+	}
+	params["disable_notification"] = strconv.FormatBool(c.DisableNotification)
 
 	return params, nil
 }
@@ -94,11 +66,11 @@ func (c *BaseChat) values() (url.Values, error) {
 	}
 
 	if c.ReplyToMessageID != 0 {
-		v.Add("reply_to_message_id", strconv.Itoa(c.ReplyToMessageID))
+		v.Add("reply_to_message_id", strconv.FormatInt(c.ReplyToMessageID, 10))
 	}
 
 	if c.ReplyMarkup != nil {
-		v.Add("reply_markup", MarkupToString(c.ReplyMarkup))
+		v.Add("reply_markup", FormatMarkup(c.ReplyMarkup))
 	}
 
 	v.Add("disable_notification", strconv.FormatBool(c.DisableNotification))
@@ -109,13 +81,14 @@ func (c *BaseChat) values() (url.Values, error) {
 // BaseFile taken from go-telegram-bot-api
 type BaseFile struct {
 	BaseChat
-	File        *InputFile
+	File        *objects.InputFile
 	FileID      string
 	UseExisting bool
 	MimeType    string
 	FileSize    int
 }
 
+// params ...
 func (bf *BaseFile) params() (v map[string]string, err error) {
 	v = make(map[string]string)
 
@@ -136,40 +109,21 @@ func (bf *BaseFile) params() (v map[string]string, err error) {
 	return v, nil
 }
 
-func (bf *BaseFile) path() []string {
-	var path []string
-	if bf.File.Path != "" {
-		path = append(path, bf.File.Path)
-	} else if bf.File.URL != "" {
-		path = append(path, bf.File.URL)
-	}
-	if bf.FileID != "" {
-		path = append(path, bf.FileID)
-	}
-	return path
-}
-
-func (bf *BaseFile) name() []string {
-	var path []string
-	path = append(path, bf.File.Path)
-	return path
-}
-
-func (bf *BaseFile) getFile() io.Reader {
-	return bf.File
+func (bf *BaseFile) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{bf.File}
 }
 
 // For CopyMessage method config
 // https://core.telegram.org/bots/api#copymessage
 type CopyMessageConfig struct {
+	DisableNotifications  bool
+	AllowSendingWithReply bool
+	Caption               string
 	ChatID                int64 // required
 	FromChatID            int64 // required
 	MessageID             int64 // required
-	Caption               string
-	CaptionEntities       []*objects.MessageEntity
-	DisableNotifications  bool
 	ReplyToMessageId      int64
-	AllowSendingWithReply bool
+	CaptionEntities       []*objects.MessageEntity
 
 	// Note: Interface here is simple need
 	// type: Union[objects.InlineKeyboardMarkup, ReplyKeyboardMarkup]
@@ -193,7 +147,7 @@ func (cmc *CopyMessageConfig) values() (url.Values, error) {
 	}
 	v.Add("allow_sending_with_reply", strconv.FormatBool(cmc.AllowSendingWithReply))
 	if cmc.ReplyMarkup != nil {
-		v.Add("reply_keyboards", MarkupToString(cmc.ReplyMarkup))
+		v.Add("reply_keyboards", FormatMarkup(cmc.ReplyMarkup))
 	}
 	return v, nil
 }
@@ -234,7 +188,7 @@ func (smc *SendMessageConfig) values() (url.Values, error) {
 		result.Add("parse_mode", smc.ParseMode)
 	}
 
-	result.Add("reply_markup", MarkupToString(smc.ReplyKeyboard))
+	result.Add("reply_markup", FormatMarkup(smc.ReplyKeyboard))
 	result.Add("disable_web_page_preview", strconv.FormatBool(smc.DisableWebPagePreview))
 	// Must be work!
 	result.Add("entities", ObjectToJson(smc.Entities))
@@ -258,12 +212,12 @@ func NewSendMessage(chat_id int64, text string) *SendMessageConfig {
 // https://core.telegram.org/bots/api#setwebhook
 type SetWebhookConfig struct {
 	URL                string // required
-	Certificate        interface{}
 	Offset             int
 	MaxConnections     int
 	AllowedUpdates     bool
 	DropPendingUpdates bool
 	IP                 string // if you need u can use it ;)
+	Certificate        *objects.InputFile
 }
 
 func (wc *SetWebhookConfig) values() (url.Values, error) {
@@ -308,7 +262,15 @@ func (spc *SendPhotoConfig) method() string {
 	return "sendPhoto"
 }
 
-func NewSendPhoto(chat_id int64, photo *InputFile) *SendPhotoConfig {
+func (spc *SendPhotoConfig) params() (map[string]string, error) {
+	v, _ := spc.BaseFile.params()
+	if spc.Caption != "" {
+		v["caption"] = spc.Caption
+	}
+	return v, nil
+}
+
+func NewSendPhoto(chat_id int64, photo *objects.InputFile) *SendPhotoConfig {
 	return &SendPhotoConfig{
 		BaseFile: BaseFile{
 			BaseChat: BaseChat{ChatID: chat_id},
@@ -322,11 +284,11 @@ type SendAudioConfig struct {
 	BaseFile
 	Caption         string
 	ParseMode       string
-	CaptionEntities []*objects.MessageEntity
 	Duration        uint
 	Performer       string
 	Title           string
-	// Thumb           *InputFile
+	Thumb           *objects.InputFile
+	CaptionEntities []*objects.MessageEntity
 }
 
 func (sac *SendAudioConfig) values() (url.Values, error) {
@@ -359,11 +321,16 @@ func (sac *SendAudioConfig) method() string {
 	return "sendAudio"
 }
 
-func NewSendAudio(chatId int64, file *InputFile) *SendAudioConfig {
+func (sac *SendAudioConfig) getFiles() []*objects.InputFile {
+	return append(sac.BaseFile.getFiles(), sac.Thumb)
+}
+
+func NewSendAudio(chatId int64, audio *objects.InputFile) *SendAudioConfig {
+	audio.Name = "audio"
 	return &SendAudioConfig{
 		BaseFile: BaseFile{
 			BaseChat:    BaseChat{ChatID: chatId},
-			File:        file,
+			File:        audio,
 			UseExisting: false,
 		},
 	}
@@ -371,9 +338,9 @@ func NewSendAudio(chatId int64, file *InputFile) *SendAudioConfig {
 
 // SendDocumentConfig represents sendDoucument method fields
 type SendDocumentConfig struct {
-	ChatID                      int64      // required
-	Document                    *InputFile // required
-	Thumb                       *InputFile
+	ChatID                      int64              // required
+	Document                    *objects.InputFile // required
+	Thumb                       *objects.InputFile
 	Caption                     string
 	ParseMode                   string
 	CaptionEntities             []*objects.MessageEntity
@@ -408,24 +375,13 @@ func (sdc *SendDocumentConfig) values() (v url.Values, err error) {
 	}
 	v.Add("allow_sending_without_reply", strconv.FormatBool(sdc.AllowSendingWithoutReply))
 	if sdc.ReplyMarkup != nil {
-		v.Add("reply_markup", MarkupToString(sdc.ReplyMarkup))
+		v.Add("reply_markup", FormatMarkup(sdc.ReplyMarkup))
 	}
 	return v, nil
 }
 
-func (sdc *SendDocumentConfig) name() string {
-	return sdc.Document.Path
-}
-
-func (sdc *SendDocumentConfig) getFile() io.Reader {
-	return sdc.Document
-}
-
-func (sdc *SendDocumentConfig) path() string {
-	if sdc.Document != nil {
-		return sdc.Document.Path
-	}
-	return sdc.Thumb.Path
+func (sdc *SendDocumentConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{sdc.Document, sdc.Thumb}
 }
 
 func (sdc *SendDocumentConfig) params() (map[string]string, error) {
@@ -441,7 +397,7 @@ func (sdc *SendDocumentConfig) method() string {
 	return "sendDocument"
 }
 
-func NewDocumentConfig(cid int64, r *InputFile) *SendDocumentConfig {
+func NewDocumentConfig(cid int64, r *objects.InputFile) *SendDocumentConfig {
 	return &SendDocumentConfig{
 		ChatID:   cid,
 		Document: r,
@@ -455,7 +411,7 @@ type SendVideoConfig struct {
 	Duration uint32
 	Width    uint16
 	Height   uint16
-	// Thumb    *InputFile
+	Thumb    *objects.InputFile
 }
 
 func (svc *SendVideoConfig) values() (url.Values, error) {
@@ -474,6 +430,19 @@ func (svc *SendVideoConfig) values() (url.Values, error) {
 	return v, nil
 }
 
+func (svc *SendVideoConfig) params() (map[string]string, error) {
+	v, _ := svc.BaseFile.params()
+	uv, _ := svc.values()
+
+	urlValuesToMapString(uv, v)
+
+	return v, nil
+}
+
+func (svc *SendVideoConfig) getFiles() []*objects.InputFile {
+	return append(svc.BaseFile.getFiles(), svc.Thumb)
+}
+
 func (svc *SendVideoConfig) method() string {
 	return "sendVideo"
 }
@@ -481,16 +450,14 @@ func (svc *SendVideoConfig) method() string {
 // Represents Method SendAnimation Fields
 // https://core.telegram.org/bots/api#sendanimation
 type SendAnimationConfig struct {
-	ChatId    int64      // ChatId might be a minus, or something like this
-	Animation *InputFile // type: InputFile or string
+	ChatId    int64
+	Animation *objects.InputFile
 
-	// Using unsigned, bc Duration width,
-	// and height could be ONLY positive number
 	Duration uint32
-	Width    uint32 // Animation Width, what?
+	Width    uint32
 	Height   uint32
 
-	// Thumb     *InputFile
+	Thumb     *objects.InputFile
 	Caption   string
 	ParseMode string
 }
@@ -515,6 +482,17 @@ func (sac *SendAnimationConfig) method() string {
 	return "sendAnimation"
 }
 
+func (sac *SendAnimationConfig) params() (map[string]string, error) {
+	m := map[string]string{}
+	v, _ := sac.values()
+	urlValuesToMapString(v, m)
+	return m, nil
+}
+
+func (sac *SendAnimationConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{sac.Animation, sac.Thumb}
+}
+
 type SendVoiceConfig struct {
 	BaseFile
 	ChatId               int64
@@ -525,7 +503,7 @@ type SendVoiceConfig struct {
 	DisableNotifications bool
 	ReplyToMessageID     int64
 
-	// Must be generic object, but for first time you can use InlineKeyboardMarkup
+	// for first time you can use InlineKeyboardMarkup
 	// TODO
 	ReplyMarkup *objects.InlineKeyboardMarkup
 }
@@ -543,7 +521,9 @@ func (svc *SendVoiceConfig) values() (url.Values, error) {
 	}
 
 	v.Add("caption_entities", ObjectToJson(svc.CaptionEntities))
-	// TODO: reply Markup parsing function
+	if svc.ReplyMarkup != nil {
+		v.Add("reply_markup", FormatMarkup(svc.ReplyMarkup))
+	}
 
 	return v, nil
 }
@@ -558,6 +538,14 @@ type SendVideoNoteConfig struct {
 
 func (svnc *SendVideoNoteConfig) values() (url.Values, error) {
 	return url.Values{}, nil
+}
+
+func (svnc *SendVideoNoteConfig) params() (v map[string]string, err error) {
+	v, _ = svnc.BaseFile.params()
+	uv, _ := svnc.values()
+	urlValuesToMapString(uv, v)
+
+	return
 }
 
 func (svnc *SendVideoNoteConfig) method() string {
@@ -842,7 +830,7 @@ func (sdc *SendDiceConfig) values() (url.Values, error) {
 	}
 	v.Add("allow_sending_without_reply", strconv.FormatBool(sdc.AllowSendingWithoutReply))
 	if sdc.ReplyMarkup != nil {
-		v.Add("reply_markup", MarkupToString(sdc.ReplyMarkup))
+		v.Add("reply_markup", FormatMarkup(sdc.ReplyMarkup))
 	}
 	return v, nil
 }
@@ -929,20 +917,6 @@ func NewSendPoll(chatid int64, question string, options []string) *SendPollConfi
 	}
 }
 
-type GetChat struct {
-	ChatID int64
-}
-
-func (gc *GetChat) values() (url.Values, error) {
-	v := url.Values{}
-	v.Add("chat_id", strconv.FormatInt(gc.ChatID, 10))
-	return v, nil
-}
-
-func (gc *GetChat) method() string {
-	return "NONE"
-}
-
 // GetUserProfilePhotosConf represents getUserProfilePhotos method fields
 // https://core.telegram.org/bots/api#getUserProfilePhotos
 type GetUserProfilePhotosConf struct {
@@ -1016,7 +990,7 @@ func (scc *SendContactConfig) values() (url.Values, error) {
 		v.Add("reply_to_message_id", strconv.FormatInt(scc.ReplyToMessageID, 10))
 	}
 	if scc.ReplyKeyboard != nil {
-		v.Add("reply_keyboard", MarkupToString(scc.ReplyKeyboard))
+		v.Add("reply_keyboard", FormatMarkup(scc.ReplyKeyboard))
 	}
 	return v, nil
 }
@@ -1072,7 +1046,7 @@ func (svc *SendVenueConfig) values() (url.Values, error) {
 		v.Add("four_square_type", svc.FoursQuareType)
 	}
 	if svc.ReplyMarkup != nil {
-		v.Add("reply_markup", MarkupToString(svc.ReplyMarkup))
+		v.Add("reply_markup", FormatMarkup(svc.ReplyMarkup))
 	}
 
 	return v, nil

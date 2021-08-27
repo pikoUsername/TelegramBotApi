@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pikoUsername/multipartreader"
 	"github.com/pikoUsername/tgp/objects"
-	"github.com/technoweenie/multipartstreamer"
 )
 
 // StdLogger taken from logrus
@@ -43,6 +43,9 @@ type StdLogger interface {
 //
 // ProxyURL is not used
 type Bot struct {
+	// For DebugLog in console
+	Debug bool `json:"debug"`
+
 	// Token uses for authonificate using URL
 	// Url template {api_url}/bot{bot_token}/{method}?{args}
 	Token string `json:"token"`
@@ -50,6 +53,18 @@ type Bot struct {
 	// i will recomend to use HTML parse_mode
 	// bc, HTML easy to use, and more conforatble
 	ParseMode string `json:"parse_mode"`
+
+	// ProxyURL HTTP proxy URL
+	// No Proxy, yet
+	// ProxyURL *url.URL `json:"proxy_url"`
+
+	// default server must be here
+	// if you wanna create own, just create
+	// using this structure instead of NewBot function
+	server *TelegramApiServer
+
+	// logger is one for dispatcher and Bot
+	logger StdLogger `json:"-"`
 
 	// Using prefix Bot, for avoid names conflict
 	// and golang dont love name conflicts
@@ -62,21 +77,6 @@ type Bot struct {
 
 	// Client uses for requests
 	Client *http.Client `json:"-"`
-
-	// ProxyURL HTTP proxy URL
-	// No Proxy, yet
-	// ProxyURL *url.URL `json:"proxy_url"`
-
-	// default server must be here
-	// if you wanna create own, just create
-	// using this structure instead of NewBot function
-	server *TelegramApiServer
-
-	// For DebugLog in console
-	Debug bool `json:"debug"`
-
-	// logger is one for dispatcher and Bot
-	logger StdLogger `json:"-"`
 }
 
 // NewBot returns a new bot struct which need to interact with Telegram Bot API
@@ -100,7 +100,7 @@ func NewBot(token string, parseMode string) (*Bot, error) {
 	}, nil
 }
 
-func (bot *Bot) log(text string, v url.Values, message ...interface{}) {
+func (bot *Bot) debugLog(text string, v url.Values, message ...interface{}) {
 	if bot.Debug {
 		bot.logger.Printf("%s req : %+v\n", text, v)
 		bot.logger.Printf("%s resp: %+v\n", text, message)
@@ -114,8 +114,6 @@ func (bot *Bot) log(text string, v url.Values, message ...interface{}) {
 // Request to telegram servers
 // and result parses to TelegramResponse
 func (bot *Bot) Request(Method string, params url.Values) (*objects.TelegramResponse, error) {
-	// Bad Code, but working, huh
-
 	// Creating URL
 	// fix bug with sending request,
 	// when url creates here or NewRequest not creates a correct url with url params
@@ -145,7 +143,7 @@ func (bot *Bot) Request(Method string, params url.Values) (*objects.TelegramResp
 }
 
 // BoolRequest call a Request, and return bool
-// in telegram api have many methods that return the Bool value
+// in telegram api there are many methods that return the Boolean value
 func (bot *Bot) BoolRequest(method string, params url.Values) (bool, error) {
 	var ok bool
 	resp, err := bot.Request(method, params)
@@ -193,69 +191,37 @@ func (bot *Bot) DownloadFile(path string, w io.WriteSeeker, seek bool) error {
 
 // UploadFile same as MakeRequest, with one defference, file, and name variable, and nothing more
 // copypaste of UploadFile go-telegram-bot
-func (b *Bot) UploadFile(method string, data map[string]interface{}, v map[string]string) (*objects.TelegramResponse, error) {
+func (b *Bot) UploadFile(method string, v map[string]string, data ...*objects.InputFile) (*objects.TelegramResponse, error) {
 	var name string
-	ms := multipartstreamer.New()
+	ms := multipartreader.New()
 	values := make(map[string]string)
 
-	tgurl := b.server.FileURL(b.Token, name)
+	for _, value := range data {
+		if value.URL == "" && value.Name == "" && value.File == nil {
+			return &objects.TelegramResponse{}, tgpErr.New("inputfile is empty")
+		}
+		if value.URL != "" && value.Name != "" {
+			values[value.Name] = value.URL
+
+			ms.WriteFields(values)
+		}
+		if value.File != nil && value.Name != "" {
+			ms.AddFormReader(value.Name, value.Path, int64(value.Length), value.File)
+		}
+		if value.Path != "" && value.Name != "" {
+			err := ms.WriteFile(value.Name, value.Path)
+			if err != nil {
+				return &objects.TelegramResponse{}, err
+			}
+		}
+	}
+	tgurl := b.server.ApiURL(b.Token, name)
 
 	req, err := http.NewRequest(method, tgurl, nil)
-
-	for key, file := range data {
-		values[key] = nil
+	if err != nil {
+		return &objects.TelegramResponse{}, err
 	}
-
-	// switch m := f.(type) {
-	// case string:
-	// 	ms.WriteFile(fieldname, m)
-	// case *InputFile:
-	// case InputFile:
-	// 	if m.URL != "" {
-	// 		values[fieldname] = m.URL
-
-	// 		ms.WriteFields(values)
-	// 	} else {
-	// 		data, err := ioutil.ReadAll(m.File)
-	// 		if name == "" {
-	// 			return &objects.TelegramResponse{}, errors.New("name field is nothing")
-	// 		}
-	// 		if err != nil {
-	// 			return &objects.TelegramResponse{}, err
-	// 		}
-
-	// 		buf := bytes.NewBuffer(data)
-
-	// 		ms.WriteReader(fieldname, m.Path, int64(len(data)), buf)
-	// 	}
-	// case FileableConf:
-	// 	names := m.name()
-	// 	if len(names) < 1 {
-	// 		name = names[0]
-	// 	}
-
-	// 	data, err := ioutil.ReadAll(m.getFile())
-	// 	if err != nil {
-	// 		return &objects.TelegramResponse{}, err
-	// 	}
-	// 	buf := bytes.NewBuffer(data)
-
-	// 	ms.WriteReader(fieldname, name, (int64)(len(data)), buf)
-	// case url.URL:
-	// case *url.URL:
-	// 	values[fieldname] = m.String()
-
-	// 	ms.WriteFields(values)
-	// default:
-	// 	return &objects.TelegramResponse{}, errors.New("not reached")
-	// }
-	// // creating File url
-
-	// if err != nil {
-	// 	return &objects.TelegramResponse{}, err
-	// }
-	// req.Write()
-	// ms.SetupRequest(req)
+	ms.SetupRequest(req)
 
 	// sending request
 	resp, err := b.Client.Do(req)
@@ -263,7 +229,7 @@ func (b *Bot) UploadFile(method string, data map[string]interface{}, v map[strin
 		return &objects.TelegramResponse{}, err
 	}
 	// closing body
-	b.log("Response as bytes: ", nil, fmt.Sprintln(resp))
+	b.debugLog("Response as bytes: ", nil, fmt.Sprintln(resp))
 	defer resp.Body.Close()
 	tgresp, err := responseDecode(resp.Body)
 	if err != nil {
@@ -402,7 +368,7 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 	}
 	var msg objects.Message
 	err = json.Unmarshal(resp.Result, &msg)
-	bot.log("SendMessageable function activated:", v, &msg)
+	bot.debugLog("SendMessageable function activated:", v, &msg)
 	if err != nil {
 		return &msg, err
 	}
@@ -416,9 +382,8 @@ func (bot *Bot) UploadAndSend(config FileableConf) (*objects.Message, error) {
 		return &objects.Message{}, err
 	}
 
-	file := config.getFile()
 	method := config.method()
-	resp, err := bot.UploadFile(method, file, config.name(), params)
+	resp, err := bot.UploadFile(method, params, config.getFiles()...)
 	if err != nil {
 		return &objects.Message{}, err
 	}
@@ -426,7 +391,7 @@ func (bot *Bot) UploadAndSend(config FileableConf) (*objects.Message, error) {
 	var message *objects.Message
 	json.Unmarshal(resp.Result, &message)
 
-	bot.log(method, nil, message)
+	bot.debugLog(method, nil, message)
 
 	return message, nil
 }
@@ -621,9 +586,9 @@ func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, erro
 	}
 	params := make(map[string]string)
 	urlValuesToMapString(v, params)
-	bot.log("Params: ", nil, params)
+	bot.debugLog("Params: ", nil, params)
 	// uploads a certificate file, with other parametrs
-	resp, err := bot.UploadFile(meth, c.Certificate, []string{"certificate"}, params)
+	resp, err := bot.UploadFile(meth, params, c.Certificate)
 	if err != nil {
 		return resp, err
 	}
@@ -753,12 +718,12 @@ func (bot *Bot) ExportChatInviteLink(chat_id int64) (string, error) {
 	return val, err
 }
 
-func (bot *Bot) SetChatPhoto(chat_id int64, file *InputFile) (bool, error) {
+func (bot *Bot) SetChatPhoto(chat_id int64, file *objects.InputFile) (bool, error) {
 	v := make(map[string]string)
 
 	v["chat_id"] = strconv.FormatInt(chat_id, 10)
 
-	bot.UploadFile("setChatPhoto", file, []string{"photo"}, v)
+	bot.UploadFile("setChatPhoto", v, file)
 
 	return false, nil
 }

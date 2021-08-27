@@ -30,9 +30,9 @@ const (
 
 // errors
 var (
-	MiddlewareTypeInvalid = Errors.New("typ parameter of variable not in ['post', 'pre', 'process']")
-	MiddlewareNotFound    = Errors.New("passed middleware not found")
-	MiddlewareIncorrect   = Errors.New("passed function is not function type")
+	MiddlewareTypeInvalid = tgpErr.New("typ parameter of variable not in ['post', 'pre', 'process']")
+	MiddlewareNotFound    = tgpErr.New("passed middleware not found")
+	MiddlewareIncorrect   = tgpErr.New("passed function is not function type")
 )
 
 type DefaultMiddlewareManager struct {
@@ -49,7 +49,7 @@ func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
 func convertErr(it interface{}, ito interface{}) error {
 	ts := reflect.TypeOf(it).String()
 	tos := reflect.TypeOf(ito).String()
-	return Errors.New("failed convert this " + ts + " to " + tos)
+	return tgpErr.New("failed convert this " + ts + " to " + tos)
 }
 
 // preTriggerProcess ...

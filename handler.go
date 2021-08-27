@@ -60,8 +60,8 @@ func (ht *HandlerType) Call(u *objects.Update, f func(), sync bool) {
 
 // HandlerObj uses for save Callback
 type HandlerObj struct {
-	handlers   []*HandlerType
 	Middleware *DefaultMiddlewareManager
+	handlers   []*HandlerType
 }
 
 // NewHandlerObj creates new DefaultHandlerObj
@@ -77,12 +77,12 @@ func (ho *HandlerObj) Register(f HandlerFunc, filters ...interface{}) {
 		return
 	}
 
-	ht := HandlerType{
+	ht := &HandlerType{
 		Callback: &f,
 		Filters:  filters,
 	}
 
-	ho.handlers = append(ho.handlers, &ht)
+	ho.handlers = append(ho.handlers, ht)
 }
 
 // Unregister checkout to memory address
