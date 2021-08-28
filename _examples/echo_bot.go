@@ -18,7 +18,7 @@ func main() {
 	}
 
 	// recommended set syncronus argument to false
-	dp := tgp.NewDispatcher(bot, storage.NewMemoryStorage(), false)
+	dp := tgp.NewDispatcher(bot, storage.NewMemoryStorage())
 
 	// register a your callback
 	// this callback will be called on every message
