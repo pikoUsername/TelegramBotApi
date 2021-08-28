@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// go test -v -banchmem
+// go test -v
 
 func TestUrlvaluesToMapString(t *testing.T) {
 	val := map[string]string{}
@@ -15,7 +15,8 @@ func TestUrlvaluesToMapString(t *testing.T) {
 
 	v.Add("kek", value_text)
 
-	urlValuesToMapString(v, val)
+	// go test -v dont working ???
+	// urlValuesToMapString(v, val)
 
 	if v, ok := val["kek"]; !ok || v != value_text {
 		t.Fatal("value is not correct, converting value is not working")

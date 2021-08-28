@@ -158,7 +158,7 @@ func (bot *Bot) BoolRequest(method string, params url.Values) (bool, error) {
 }
 
 // DownloadFile uses for download file from any URL,
-func (bot *Bot) DownloadFile(path string, w io.WriteSeeker, seek bool) error {
+func (bot *Bot) DownloadFile(path string, w io.Writer, seek bool) error {
 	request, err := http.NewRequest("GET", path, nil)
 	if err != nil {
 		return err
@@ -180,12 +180,6 @@ func (bot *Bot) DownloadFile(path string, w io.WriteSeeker, seek bool) error {
 		return err
 	}
 
-	if seek {
-		_, err := w.Seek((int64)(0), 0)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

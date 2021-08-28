@@ -31,6 +31,14 @@ func TestNewDispatcher(t *testing.T) {
 	}
 }
 
+func TestProcessOneUpdate(t *testing.T) {
+	dp, err := GetDispatcher(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dp.ProcessOneUpdate(nil)
+}
+
 func BenchmarkProcessOneUpdate(b *testing.B) {
 	dp, err := GetDispatcher(false)
 	if err != nil {

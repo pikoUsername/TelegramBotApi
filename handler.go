@@ -46,17 +46,13 @@ func (ht *HandlerType) CheckForFilters(u *objects.Update) bool {
 }
 
 // Call uses for checking using filters
-func (ht *HandlerType) Call(u *objects.Update, f func(), sync bool) {
+func (ht *HandlerType) Call(u *objects.Update, f func()) {
 	fr := ht.CheckForFilters(u)
 	if !fr {
 		return
 	}
 
-	if sync {
-		f()
-	} else {
-		go f()
-	}
+	go f()
 }
 
 // HandlerObj uses for save Callback
@@ -98,7 +94,7 @@ func (ho *HandlerObj) CheckAndErrTrigger(err error, update *objects.Update, sync
 
 	for _, h := range ho.errHandlers {
 		cb = h.Callback.(func(upd *objects.Update))
-		h.Call(update, func() { cb(update) }, sync)
+		h.Call(update, func() { cb(update) })
 	}
 }
 
