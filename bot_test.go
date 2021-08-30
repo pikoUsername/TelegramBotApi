@@ -19,8 +19,7 @@ var (
 	FileDirectory = "./.sandbox"
 	SaveFile      = path.Join(FileDirectory, "file")
 	WebhookURL    = ""
-	// TestToken     = os.Getenv("TEST_TOKEN")
-	TestToken = "1161421739:AAFTVoB3EMX2BePkDgOMOFoY_QxpqDpqJ88"
+	TestToken     = os.Getenv("TEST_TOKEN")
 
 	// here could be any image, file, anthing else
 	DownloadFromURL = "https://random.imagecdn.app/500/150"
