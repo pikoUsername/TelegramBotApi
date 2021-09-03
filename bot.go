@@ -183,8 +183,7 @@ func (bot *Bot) DownloadFile(path string, w io.Writer, seek bool) error {
 	return nil
 }
 
-// UploadFile same as MakeRequest, with one defference, file, and name variable, and nothing more
-// copypaste of UploadFile go-telegram-bot
+// Upload file uploads file to telegram server
 func (b *Bot) UploadFile(method string, v map[string]string, data ...*objects.InputFile) (*objects.TelegramResponse, error) {
 	var name string
 	ms := multipartreader.New()
@@ -391,7 +390,7 @@ func (bot *Bot) UploadAndSend(config FileableConf) (*objects.Message, error) {
 }
 
 // Send ...
-func (bot *Bot) Send(config interface{}) (*objects.Message, error) {
+func (bot *Bot) Send(config Configurable) (*objects.Message, error) {
 	switch c := config.(type) {
 	case FileableConf:
 		return bot.UploadAndSend(c)

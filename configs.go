@@ -2,6 +2,7 @@ package tgp
 
 import (
 	"fmt"
+	"io"
 	"net/url"
 	"strconv"
 	"time"
@@ -109,10 +110,6 @@ func (bf *BaseFile) params() (v map[string]string, err error) {
 	return v, nil
 }
 
-func (bf *BaseFile) getFiles() []*objects.InputFile {
-	return []*objects.InputFile{bf.File}
-}
-
 // For CopyMessage method config
 // https://core.telegram.org/bots/api#copymessage
 type CopyMessageConfig struct {
@@ -170,11 +167,7 @@ type SendMessageConfig struct {
 	DisableWebPagePreview bool
 
 	DisableNotifiaction bool
-
-	// ReplyKeyboard types:
-	// InlineKeyboardMarkup
-	// ReplyKeyboardMarkup
-	ReplyKeyboard interface{}
+	ReplyKeyboard       *objects.InlineKeyboardMarkup
 }
 
 // values ...
@@ -188,10 +181,14 @@ func (smc *SendMessageConfig) values() (url.Values, error) {
 		result.Add("parse_mode", smc.ParseMode)
 	}
 
-	result.Add("reply_markup", FormatMarkup(smc.ReplyKeyboard))
+	if smc.ReplyKeyboard != nil {
+		result.Add("reply_markup", FormatMarkup(smc.ReplyKeyboard))
+	}
 	result.Add("disable_web_page_preview", strconv.FormatBool(smc.DisableWebPagePreview))
-	// Must be work!
-	result.Add("entities", ObjectToJson(smc.Entities))
+	if smc.Entities != nil {
+		// Must be work!
+		result.Add("entities", ObjectToJson(smc.Entities))
+	}
 
 	return result, nil
 }
@@ -317,16 +314,24 @@ func (sac *SendAudioConfig) values() (url.Values, error) {
 	return v, nil
 }
 
+func (sac *SendAudioConfig) params() (map[string]string, error) {
+	v, _ := sac.values()
+	m := make(map[string]string)
+
+	urlValuesToMapString(v, m)
+
+	return m, nil
+}
+
 func (sac *SendAudioConfig) method() string {
 	return "sendAudio"
 }
 
 func (sac *SendAudioConfig) getFiles() []*objects.InputFile {
-	return append(sac.BaseFile.getFiles(), sac.Thumb)
+	return []*objects.InputFile{sac.File, sac.Thumb}
 }
 
 func NewSendAudio(chatId int64, audio *objects.InputFile) *SendAudioConfig {
-	audio.Name = "audio"
 	return &SendAudioConfig{
 		BaseFile: BaseFile{
 			BaseChat:    BaseChat{ChatID: chatId},
@@ -355,11 +360,6 @@ func (sdc *SendDocumentConfig) values() (v url.Values, err error) {
 	v = url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(sdc.ChatID, 10))
-	bs, err := readFromInputFile(sdc.Document, true)
-	if err != nil {
-		return v, err
-	}
-	v.Add("document", (string)(bs))
 	if sdc.Caption != "" {
 		v.Add("caption", sdc.Caption)
 		if sdc.ParseMode != "" {
@@ -407,7 +407,7 @@ func NewDocumentConfig(cid int64, r *objects.InputFile) *SendDocumentConfig {
 // SendVideoConfig Represents sendVideo fields
 // https://core.telegram.org/bots/api#sendvideo
 type SendVideoConfig struct {
-	BaseFile
+	*BaseFile
 	Duration uint32
 	Width    uint16
 	Height   uint16
@@ -440,7 +440,7 @@ func (svc *SendVideoConfig) params() (map[string]string, error) {
 }
 
 func (svc *SendVideoConfig) getFiles() []*objects.InputFile {
-	return append(svc.BaseFile.getFiles(), svc.Thumb)
+	return []*objects.InputFile{svc.File, svc.Thumb}
 }
 
 func (svc *SendVideoConfig) method() string {
@@ -494,7 +494,7 @@ func (sac *SendAnimationConfig) getFiles() []*objects.InputFile {
 }
 
 type SendVoiceConfig struct {
-	BaseFile
+	*BaseFile
 	ChatId               int64
 	Caption              string
 	ParseMode            string
@@ -528,12 +528,23 @@ func (svc *SendVoiceConfig) values() (url.Values, error) {
 	return v, nil
 }
 
+func (s *SendVoiceConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{s.File}
+}
+
 func (svc *SendVoiceConfig) method() string {
 	return "sendVoice"
 }
 
 type SendVideoNoteConfig struct {
-	BaseFile
+	*BaseFile
+	Duration                 time.Duration
+	Length                   int64
+	Thumb                    io.Reader
+	DisableNotification      bool
+	ReplyToMessageID         int64
+	AllowSendingWithoutReply bool
+	ReplyMarkup              objects.InlineKeyboardMarkup
 }
 
 func (svnc *SendVideoNoteConfig) values() (url.Values, error) {
@@ -550,6 +561,15 @@ func (svnc *SendVideoNoteConfig) params() (v map[string]string, err error) {
 
 func (svnc *SendVideoNoteConfig) method() string {
 	return "sendVideoName"
+}
+
+func NewSendVideoNote(chat_id int64, video_note *objects.InputFile) *SendVideoNoteConfig {
+	return &SendVideoNoteConfig{
+		BaseFile: &BaseFile{
+			BaseChat: BaseChat{ChatID: chat_id},
+			File:     video_note,
+		},
+	}
 }
 
 type SendMediaGroupConfig struct {
