@@ -1,5 +1,10 @@
 package objects
 
+import (
+	"encoding/json"
+	"unsafe"
+)
+
 type ReplyKBbuttonsType [][]KeyboardButton
 
 // KeyboardButtonPoll represents keyboardButtonPollType object
@@ -44,4 +49,9 @@ func (rkm *ReplyKeyboardMarkup) Add(btns ...KeyboardButton) *ReplyKeyboardMarkup
 	}
 
 	return rkm
+}
+
+func (rkm *ReplyKeyboardMarkup) String() string {
+	v, _ := json.Marshal(rkm.Keyboard)
+	return *(*string)(unsafe.Pointer(&v))
 }

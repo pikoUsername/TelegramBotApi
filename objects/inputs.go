@@ -4,16 +4,15 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"time"
 )
 
 // InputFile ...
-// NOTE:
-// 	  InputFile.Name must be same as field that stores InputFile.
 type InputFile struct {
 	Path   string
+	Name   string
 	URL    string
 	Length int
-	Name   string
 	File   io.Reader
 }
 
@@ -47,7 +46,6 @@ func NewInputFile(path string, name string) (*InputFile, error) {
 	return &InputFile{
 		File:   f,
 		Path:   path,
-		Name:   name,
 		Length: int(stat.Size()),
 	}, nil
 }
@@ -56,22 +54,33 @@ func InputFileFromReader(r io.Reader, length int, name string) *InputFile {
 	return &InputFile{
 		File:   r,
 		Length: length,
-		Name:   name,
 	}
 }
 
-type InputFilePlaceHolder interface {
+type InputMedia interface {
 	GetMedia() string
 }
 
-type InputMediaAudio struct {
-	Type  string
-	Media string
-	Thumb
+type InputMediaVideo struct {
+	Type  string `json:"type"`
+	Media string `json:"media"`
+
+	// TODO: use it with InputFile
+	Thumb             string           `json:"thumb"`
+	Caption           string           `json:"caption"`
+	ParseMode         string           `json:"parse_mode"`
+	CaptionEntities   []*MessageEntity `json:"caption_entities"`
+	Width             int64            `json:"width"`
+	Height            int64            `json:"height"`
+	Duration          time.Duration    `json:"duration"`
+	SupportsStreaming bool             `json:"supports_streaming"`
+}
+
+type InputMediaAnimation struct {
 }
 
 type InputMediaDocument struct {
 }
 
-type InputMediaVideo struct {
+type InputMediaVoice struct {
 }
