@@ -152,18 +152,18 @@ func ObjectToJson(obj interface{}) string {
 	if err != nil {
 		return ""
 	}
-	return (string)(marshal)
+	return BytesToString(marshal)
 }
 
 func FormatMarkup(obj interface{}) string {
 	t, ok := obj.(*objects.InlineKeyboardMarkup)
 	if ok {
-		return ObjectToJson(t)
+		return t.String()
 	}
 
 	t2, ok := obj.(*objects.ReplyKeyboardMarkup)
 	if ok {
-		return ObjectToJson(t2)
+		return t2.String()
 	}
 
 	return ""
@@ -178,12 +178,12 @@ func getUidAndCidFromUpd(u *objects.Update) (cid_, uid_ int64) {
 	} else if u.EditedMessage != nil {
 		cid = u.EditedMessage.Chat.ID
 		uid = u.EditedMessage.From.ID
-	} else if u.PinnedMessage != nil {
-		cid = u.PinnedMessage.Chat.ID
-		uid = u.PinnedMessage.From.ID
-	} else if u.ReplyToMessage != nil {
-		cid = u.ReplyToMessage.Chat.ID
-		uid = u.ReplyToMessage.From.ID
+	} else if u.Message.PinnedMessage != nil {
+		cid = u.Message.PinnedMessage.Chat.ID
+		uid = u.Message.PinnedMessage.From.ID
+	} else if u.Message.ReplyToMessage != nil {
+		cid = u.Message.ReplyToMessage.Chat.ID
+		uid = u.Message.ReplyToMessage.From.ID
 	}
 
 	return cid, uid
@@ -255,8 +255,6 @@ func guessFileName(f interface{}) (string, error) {
 			return "", tgpErr.New("path is directory")
 		}
 		s = info.Name()
-	case *objects.InputFile:
-		return f.Name, nil
 
 	default:
 	}
@@ -284,14 +282,6 @@ func responseDecode(respBody io.ReadCloser) (*objects.TelegramResponse, error) {
 		return &tgresp, err
 	}
 	return &tgresp, nil
-}
-
-// ReadFromInputFile call InputFile.Read method and for more shorter code this function was created
-// using in Values() in SendDocumentConfig struct
-func readFromInputFile(v *objects.InputFile, compress bool) (p []byte, err error) {
-	bs := make([]byte, v.Length)
-	_, err = v.Read(bs)
-	return bs, err
 }
 
 // CheckToken Check out for a Space containing, and token correct
@@ -347,3 +337,48 @@ func StringToBytes(x string) []byte {
 func BytesToString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
+
+// // Golang example that creates an http client that leverages a SOCKS5 proxy and a DialContext
+// func NewClientFromEnv() (*http.Client, error) {
+// 	proxyHost := os.Getenv("PROXY_HOST")
+
+// 	baseDialer := &net.Dialer{
+// 		Timeout:   30 * time.Second,
+// 		KeepAlive: 30 * time.Second,
+// 	}
+// 	var dialContext DialContext
+
+// 	if proxyHost != "" {
+// 		dialSocksProxy, err := proxy.SOCKS5("tcp", proxyHost, nil, baseDialer)
+// 		if err != nil {
+// 			return nil, errors.Wrap(err, "Error creating SOCKS5 proxy")
+// 		}
+// 		if contextDialer, ok := dialSocksProxy.(proxy.ContextDialer); ok {
+// 			dialContext = contextDialer.DialContext
+// 		} else {
+// 			return nil, errors.New("Failed type assertion to DialContext")
+// 		}
+// 		logger.Debug("Using SOCKS5 proxy for http client",
+// 			zap.String("host", proxyHost),
+// 		)
+// 	} else {
+// 		dialContext = (baseDialer).DialContext
+// 	}
+
+// 	httpClient = newClient(dialContext)
+// 	return httpClient, nil
+// }
+
+// func newClient(dialContext DialContext) *http.Client {
+// 	return &http.Client{
+// 		Transport: &http.Transport{
+// 			Proxy:                 http.ProxyFromEnvironment,
+// 			DialContext:           dialContext,
+// 			MaxIdleConns:          10,
+// 			IdleConnTimeout:       60 * time.Second,
+// 			TLSHandshakeTimeout:   10 * time.Second,
+// 			ExpectContinueTimeout: 1 * time.Second,
+// 			MaxIdleConnsPerHost:   runtime.GOMAXPROCS(0) + 1,
+// 		},
+// 	}
+// }

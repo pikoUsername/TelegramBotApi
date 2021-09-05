@@ -7,9 +7,11 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -56,7 +58,7 @@ type Bot struct {
 
 	// ProxyURL HTTP proxy URL
 	// No Proxy, yet
-	// ProxyURL *url.URL `json:"proxy_url"`
+	proxyURL *url.URL
 
 	// default server must be here
 	// if you wanna create own, just create
@@ -64,7 +66,7 @@ type Bot struct {
 	server *TelegramApiServer
 
 	// logger is one for dispatcher and Bot
-	logger StdLogger `json:"-"`
+	logger StdLogger
 
 	// Using prefix Bot, for avoid names conflict
 	// and golang dont love name conflicts
@@ -76,28 +78,50 @@ type Bot struct {
 	Me *objects.User `json:"me"`
 
 	// Client uses for requests
-	Client *http.Client `json:"-"`
+	Client *http.Client
 }
 
 // NewBot returns a new bot struct which need to interact with Telegram Bot API
 // Bot structure should provide only Telegram bot API methods
-func NewBot(token string, parseMode string) (*Bot, error) {
+func NewBot(token string, parseMode string, proxy *url.URL) (*Bot, error) {
+	var client *http.Client
 	// Check out for correct token
 	err := checkToken(token)
 	if err != nil {
 		return nil, err
 	}
-
+	// client will be by default
+	if proxy == nil {
+		client = &http.Client{Timeout: 5 * time.Second}
+	} else {
+		client = &http.Client{
+			Timeout: time.Second * 5,
+			Transport: &http.Transport{
+				Proxy: http.ProxyURL(proxy),
+				// default values for http.DefaultTransport
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				MaxIdleConns:          10,
+				IdleConnTimeout:       60 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+				MaxIdleConnsPerHost:   runtime.GOMAXPROCS(0) + 1,
+			},
+		}
+	}
 	return &Bot{
 		Token:     token,
 		ParseMode: parseMode,
 		server:    DefaultTelegramServer,
 		logger:    log.New(os.Stderr, "", log.LstdFlags),
-		// Client has 5 second timeout by default
-		Client: &http.Client{
-			Timeout: 5 * time.Second,
-		},
+		Client:    client,
 	}, nil
+}
+
+func (bot *Bot) SetTimeout(dur time.Duration) {
+	bot.Client.Timeout = dur
 }
 
 func (bot *Bot) debugLog(text string, v url.Values, message ...interface{}) {

@@ -41,7 +41,7 @@ func PanicIfErr(t *testing.T, err error) {
 }
 
 func getBot(t *testing.T) *tgp.Bot {
-	b, err := tgp.NewBot(TestToken, ParseMode)
+	b, err := tgp.NewBot(TestToken, ParseMode, nil)
 	if err != nil {
 		t.Error(err)
 		t.Fail()
@@ -51,7 +51,7 @@ func getBot(t *testing.T) *tgp.Bot {
 }
 
 func TestCheckToken(t *testing.T) {
-	b, err := tgp.NewBot("bla:bla", "HTML")
+	b, err := tgp.NewBot("bla:bla", "HTML", nil)
 	if err != nil && b == nil {
 		t.Error(err)
 		t.Fail()

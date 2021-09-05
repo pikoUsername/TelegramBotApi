@@ -1,6 +1,7 @@
 package tgp
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -76,26 +77,31 @@ func (ho *HandlerObj) Register(f HandlerFunc, filters ...interface{}) {
 		return
 	}
 
-	ho.mu.Lock()
 	ht := HandlerType{
 		Callback: &f,
 		Filters:  filters,
 	}
 
+	ho.mu.Lock()
 	ho.handlers = append(ho.handlers, &ht)
 	ho.mu.Unlock()
 }
 
-func (ho *HandlerObj) CheckAndErrTrigger(err error, update *objects.Update, sync bool) {
+func (ho *HandlerObj) CheckAndErrTrigger(err error, update *objects.Update, sync bool) error {
 	if err == nil {
-		return
+		return nil
 	}
 	var cb func(upd *objects.Update)
+	var ok bool
 
 	for _, h := range ho.errHandlers {
-		cb = h.Callback.(func(upd *objects.Update))
+		cb, ok = h.Callback.(func(upd *objects.Update))
+		if !ok {
+			return tgpErr.New("failed convert to func(Update) from " + fmt.Sprintln(h.Callback))
+		}
 		h.Call(update, func() { cb(update) })
 	}
+	return nil
 }
 
 // Unregister checkout to memory address

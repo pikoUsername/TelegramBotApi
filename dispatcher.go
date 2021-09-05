@@ -414,7 +414,6 @@ func (dp *Dispatcher) Shutdown() {
 }
 
 // SafeExit method uses for notify about exit from program
-// and need to terminate it
 // Thanks: https://stackoverflow.com/questions/11268943/is-it-possible-to-capture-a-ctrlc-signal-and-run-a-cleanup-function-in-a-defe
 func (dp *Dispatcher) SafeExit() {
 	c := make(chan os.Signal)
@@ -481,6 +480,9 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Up
 // Note: use after a MakeUpdatesChan call
 func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 	for upd := range ch {
+		if upd == nil {
+			continue
+		}
 		dp.currentUpdate = upd
 		err := dp.ProcessOneUpdate(upd)
 		if err != nil {

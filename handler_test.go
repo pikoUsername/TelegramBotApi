@@ -42,8 +42,8 @@ func TestMiddlwareRegister(t *testing.T) {
 		// You can write any stuff you want to
 		// FOr example simple ACL, or maybe other
 		dp.Storage.SetData(
-			u.Chat.ID,
-			u.From.ID,
+			u.Message.Chat.ID,
+			u.Message.From.ID,
 			storage.PackType{"AAAAAAAAAAA": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa"},
 		)
 	})
