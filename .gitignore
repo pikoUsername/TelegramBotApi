@@ -1,5 +1,6 @@
 # other stuff 
 .sandbox/ 
+.vscode/
 
 # Binaries for programs and plugins
 *.exe

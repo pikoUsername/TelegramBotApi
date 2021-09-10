@@ -1,22 +1,23 @@
 package tgp
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/pikoUsername/multipartreader"
 	"github.com/pikoUsername/tgp/objects"
-	"github.com/technoweenie/multipartstreamer"
 )
 
 // StdLogger taken from logrus
@@ -34,11 +35,6 @@ type StdLogger interface {
 	Panicln(...interface{})
 }
 
-// HttpClient default interface for using by bot
-type HttpClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
 // Bot can be created using Json config,
 // Copy pasted from go-telegram-bot-api ;D
 //
@@ -49,6 +45,9 @@ type HttpClient interface {
 //
 // ProxyURL is not used
 type Bot struct {
+	// For DebugLog in console
+	Debug bool `json:"debug"`
+
 	// Token uses for authonificate using URL
 	// Url template {api_url}/bot{bot_token}/{method}?{args}
 	Token string `json:"token"`
@@ -57,60 +56,78 @@ type Bot struct {
 	// bc, HTML easy to use, and more conforatble
 	ParseMode string `json:"parse_mode"`
 
-	// Using prefix Bot, for avoid names conflict
-	// and golang dont love name conflicts
-	// by default this values is nil,
-	// when you make get_me request, result
-	// caches there, and you can take that
-	// value in any moment.
-	// Using Lazy method, instead of one moment
-	Me *objects.User `json:"me"`
-
-	// client if you need this, here
-	// Client uses only for Post requests
-	Client HttpClient `json:"-"`
-
 	// ProxyURL HTTP proxy URL
-	ProxyURL *url.URL `json:"proxy_url"`
+	// No Proxy, yet
+	proxyURL *url.URL
 
 	// default server must be here
 	// if you wanna create own, just create
 	// using this structure instead of NewBot function
 	server *TelegramApiServer
 
-	// For DebugLog in console
-	Debug bool `json:"debug"`
+	// logger is one for dispatcher and Bot
+	logger StdLogger
 
-	// Logger used instead
-	Logger StdLogger `json:"-"`
+	// Using prefix Bot, for avoid names conflict
+	// and golang dont love name conflicts
+	// by default this values is nil,
+	// when you make get_me request, result
+	// caches there, and you can take that
+	// value in any moment.
+	// Using Lazy method, instead of on startup init
+	Me *objects.User `json:"me"`
+
+	// Client uses for requests
+	Client *http.Client
 }
 
-// NewBot get a new Bot
-// This Fucntion checks a token
-// for spaces and etc.
-func NewBot(token string, parseMode string, timeout time.Duration) (*Bot, error) {
+// NewBot returns a new bot struct which need to interact with Telegram Bot API
+// Bot structure should provide only Telegram bot API methods
+func NewBot(token string, parseMode string, proxy *url.URL) (*Bot, error) {
+	var client *http.Client
 	// Check out for correct token
 	err := checkToken(token)
 	if err != nil {
 		return nil, err
 	}
-
+	// client will be by default
+	if proxy == nil {
+		client = &http.Client{Timeout: 5 * time.Second}
+	} else {
+		client = &http.Client{
+			Timeout: time.Second * 5,
+			Transport: &http.Transport{
+				Proxy: http.ProxyURL(proxy),
+				// default values for http.DefaultTransport
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				MaxIdleConns:          10,
+				IdleConnTimeout:       60 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+				MaxIdleConnsPerHost:   runtime.GOMAXPROCS(0) + 1,
+			},
+		}
+	}
 	return &Bot{
 		Token:     token,
 		ParseMode: parseMode,
 		server:    DefaultTelegramServer,
-		Logger:    log.New(os.Stderr, "", log.LstdFlags),
-		// Client have default timeout 5 second
-		Client: &http.Client{
-			Timeout: timeout,
-		},
+		logger:    log.New(os.Stderr, "", log.LstdFlags),
+		Client:    client,
 	}, nil
 }
 
-func (bot *Bot) log(text string, v url.Values, message ...interface{}) {
+func (bot *Bot) SetTimeout(dur time.Duration) {
+	bot.Client.Timeout = dur
+}
+
+func (bot *Bot) debugLog(text string, v url.Values, message ...interface{}) {
 	if bot.Debug {
-		bot.Logger.Printf("%s req : %+v\n", text, v)
-		bot.Logger.Printf("%s resp: %+v\n", text, message)
+		bot.logger.Printf("%s req : %+v\n", text, v)
+		bot.logger.Printf("%s resp: %+v\n", text, message)
 	}
 }
 
@@ -118,11 +135,9 @@ func (bot *Bot) log(text string, v url.Values, message ...interface{}) {
 // sending requests
 // ===================
 
-// MakeRequest to telegram servers
+// Request to telegram servers
 // and result parses to TelegramResponse
-func (bot *Bot) MakeRequest(Method string, params url.Values) (*objects.TelegramResponse, error) {
-	// Bad Code, but working, huh
-
+func (bot *Bot) Request(Method string, params url.Values) (*objects.TelegramResponse, error) {
 	// Creating URL
 	// fix bug with sending request,
 	// when url creates here or NewRequest not creates a correct url with url params
@@ -151,10 +166,24 @@ func (bot *Bot) MakeRequest(Method string, params url.Values) (*objects.Telegram
 	return checkResult(tgresp)
 }
 
+// BoolRequest call a Request, and return bool
+// in telegram api there are many methods that return the Boolean value
+func (bot *Bot) BoolRequest(method string, params url.Values) (bool, error) {
+	var ok bool
+	resp, err := bot.Request(method, params)
+	if err != nil {
+		return false, err
+	}
+	err = json.Unmarshal(resp.Result, &ok)
+	if err != nil {
+		return false, err
+	}
+	return ok, err
+}
+
 // DownloadFile uses for download file from any URL,
-func (bot *Bot) DownloadFile(path string, w io.WriteSeeker, seek bool) error {
-	file_url := bot.server.FileURL(bot.Token, path)
-	request, err := http.NewRequest("GET", file_url, nil)
+func (bot *Bot) DownloadFile(path string, w io.Writer, seek bool) error {
+	request, err := http.NewRequest("GET", path, nil)
 	if err != nil {
 		return err
 	}
@@ -166,7 +195,7 @@ func (bot *Bot) DownloadFile(path string, w io.WriteSeeker, seek bool) error {
 
 	defer resp.Body.Close()
 
-	bs, err := ioutil.ReadAll(w.(io.Reader))
+	bs, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -175,65 +204,35 @@ func (bot *Bot) DownloadFile(path string, w io.WriteSeeker, seek bool) error {
 		return err
 	}
 
-	if seek {
-		_, err := w.Seek((int64)(0), 0)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-// UploadFile same as MakeRequest, with one defference, file, and name variable, and nothing more
-// copypaste of UploadFile go-telegram-bot
-func (b *Bot) UploadFile(method string, f interface{}, fieldname string, v map[string]string) (*objects.TelegramResponse, error) {
+// Upload file uploads file to telegram server
+func (b *Bot) UploadFile(method string, v map[string]string, data ...*objects.InputFile) (*objects.TelegramResponse, error) {
 	var name string
-	ms := multipartstreamer.New()
+	ms := multipartreader.New()
 	values := make(map[string]string)
 
-	switch m := f.(type) {
-	case string:
-		name = m
-		ms.WriteFile(fieldname, m)
-	case InputFile:
-		if m.URL != "" {
-			values[fieldname] = m.URL
+	for _, value := range data {
+		if value.URL == "" && value.Name == "" && value.File == nil {
+			return &objects.TelegramResponse{}, tgpErr.New("inputfile is empty")
+		}
+		if value.URL != "" && value.Name != "" {
+			values[value.Name] = value.URL
 
 			ms.WriteFields(values)
-		} else {
-			data, err := ioutil.ReadAll(m.File)
-			name = m.Name
-			if name == "" {
-				return &objects.TelegramResponse{}, errors.New("name field is nothing")
-			}
+		}
+		if value.File != nil && value.Name != "" {
+			ms.AddFormReader(value.Name, value.Path, int64(value.Length), value.File)
+		}
+		if value.Path != "" && value.Name != "" {
+			err := ms.WriteFile(value.Name, value.Path)
 			if err != nil {
 				return &objects.TelegramResponse{}, err
 			}
-
-			buf := bytes.NewBuffer(data)
-
-			ms.WriteReader(fieldname, m.Name, int64(len(data)), buf)
 		}
-	case FileableConf:
-		name = m.Name()
-
-		data, err := ioutil.ReadAll(m.GetFile().(io.Reader))
-		if err != nil {
-			return &objects.TelegramResponse{}, err
-		}
-		buf := bytes.NewBuffer(data)
-
-		ms.WriteReader(fieldname, name, int64(len(data)), buf)
-	case url.URL:
-	case *url.URL:
-		values[fieldname] = m.String()
-
-		ms.WriteFields(values)
-	default:
-		return &objects.TelegramResponse{}, errors.New("not reached")
 	}
-	// creating File url
-	tgurl := b.server.FileURL(b.Token, name)
+	tgurl := b.server.ApiURL(b.Token, name)
 
 	req, err := http.NewRequest(method, tgurl, nil)
 	if err != nil {
@@ -247,7 +246,7 @@ func (b *Bot) UploadFile(method string, f interface{}, fieldname string, v map[s
 		return &objects.TelegramResponse{}, err
 	}
 	// closing body
-	b.log("Response as bytes: ", nil, fmt.Sprintln(resp))
+	b.debugLog("Response as bytes: ", nil, fmt.Sprintln(resp))
 	defer resp.Body.Close()
 	tgresp, err := responseDecode(resp.Body)
 	if err != nil {
@@ -257,13 +256,13 @@ func (b *Bot) UploadFile(method string, f interface{}, fieldname string, v map[s
 	return checkResult(tgresp)
 }
 
-// GetMe reporesents telegram method
+// GetMe represents telegram "getMe" method
 // https://core.telegram.org/bots/api#getme
 func (bot *Bot) GetMe() (*objects.User, error) {
 	if bot.Me != nil {
 		return bot.Me, nil
 	}
-	resp, err := bot.MakeRequest("getMe", url.Values{})
+	resp, err := bot.Request("getMe", url.Values{})
 	if err != nil {
 		return new(objects.User), err
 	}
@@ -280,8 +279,8 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 // Logout your bot from telegram
 // https://core.telegram.org/bots/api#logout
 func (bot *Bot) Logout() (*objects.TelegramResponse, error) {
-	return bot.MakeRequest("logout", url.Values{})
-} // Indeed
+	return bot.Request("logout", url.Values{})
+}
 
 // ===============================
 // No returning value Telegram api methods
@@ -294,7 +293,7 @@ func (bot *Bot) DeleteChatPhoto(ChatId int64) (*objects.TelegramResponse, error)
 
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 
-	resp, err := bot.MakeRequest("deleteChatPhoto", v)
+	resp, err := bot.Request("deleteChatPhoto", v)
 
 	if err != nil {
 		return resp, err
@@ -311,7 +310,7 @@ func (bot *Bot) SetChatTitle(ChatId int64, Title string) (*objects.TelegramRespo
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("title", Title)
 
-	resp, err := bot.MakeRequest("setChatTitle", v)
+	resp, err := bot.Request("setChatTitle", v)
 
 	if err != nil {
 		return resp, err
@@ -326,7 +325,7 @@ func (bot *Bot) SetChatDescription(ChatId int64, Description string) (*objects.T
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("description", Description)
-	resp, err := bot.MakeRequest("setChatDescription", v)
+	resp, err := bot.Request("setChatDescription", v)
 	if err != nil {
 		return resp, err
 	}
@@ -344,7 +343,7 @@ func (bot *Bot) PinChatMessage(
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
 	v.Add("message_id", strconv.FormatInt(MessageId, 10))
 	v.Add("disable_notifications", strconv.FormatBool(DisableNotifiaction))
-	resp, err := bot.MakeRequest("pinChatMessage", v)
+	resp, err := bot.Request("pinChatMessage", v)
 	if err != nil {
 		return resp, err
 	}
@@ -357,7 +356,7 @@ func (bot *Bot) PinChatMessage(
 func (bot *Bot) UnpinAllChatMessages(ChatId int64) (*objects.TelegramResponse, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(ChatId, 10))
-	resp, err := bot.MakeRequest("unpinAllChatMessages", v)
+	resp, err := bot.Request("unpinAllChatMessages", v)
 	if err != nil {
 		return resp, err
 	}
@@ -371,7 +370,7 @@ func (bot *Bot) UnpinAllChatMessages(ChatId int64) (*objects.TelegramResponse, e
 
 // Send uses as sender for almost all stuff
 func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
-	v, err := c.Values()
+	v, err := c.values()
 	if err != nil {
 		return &objects.Message{}, err
 	}
@@ -379,14 +378,14 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 	if v.Get("parse_mode") == "" {
 		v.Set("parse_mode", bot.ParseMode)
 	}
-	resp, err := bot.MakeRequest(c.Method(), v)
+	resp, err := bot.Request(c.method(), v)
 
 	if err != nil {
 		return &objects.Message{}, err
 	}
 	var msg objects.Message
 	err = json.Unmarshal(resp.Result, &msg)
-	bot.log("SendMessageable function activated:", v, &msg)
+	bot.debugLog("SendMessageable function activated:", v, &msg)
 	if err != nil {
 		return &msg, err
 	}
@@ -394,15 +393,14 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 }
 
 // uploadAndSend will send a Message with a new file to Telegram.
-func (bot *Bot) uploadAndSend(config FileableConf) (*objects.Message, error) {
-	params, err := config.Params()
+func (bot *Bot) UploadAndSend(config FileableConf) (*objects.Message, error) {
+	params, err := config.params()
 	if err != nil {
 		return &objects.Message{}, err
 	}
 
-	file := config.GetFile()
-	method := config.Method()
-	resp, err := bot.UploadFile(method, file, config.Name(), params)
+	method := config.method()
+	resp, err := bot.UploadFile(method, params, config.getFiles()...)
 	if err != nil {
 		return &objects.Message{}, err
 	}
@@ -410,16 +408,16 @@ func (bot *Bot) uploadAndSend(config FileableConf) (*objects.Message, error) {
 	var message *objects.Message
 	json.Unmarshal(resp.Result, &message)
 
-	bot.log(method, nil, message)
+	bot.debugLog(method, nil, message)
 
 	return message, nil
 }
 
 // Send ...
-func (bot *Bot) Send(config interface{}) (*objects.Message, error) {
+func (bot *Bot) Send(config Configurable) (*objects.Message, error) {
 	switch c := config.(type) {
 	case FileableConf:
-		return bot.uploadAndSend(c)
+		return bot.UploadAndSend(c)
 	case Configurable:
 		return bot.SendMessageable(c)
 	}
@@ -429,12 +427,12 @@ func (bot *Bot) Send(config interface{}) (*objects.Message, error) {
 // CopyMessage copies message
 // https://core.telegram.org/bots/api#copymessage
 func (bot *Bot) CopyMessage(config *CopyMessageConfig) (*objects.MessageID, error) {
-	v, err := config.Values()
+	v, err := config.values()
 
 	if err != nil {
 		return &objects.MessageID{}, err
 	}
-	resp, err := bot.MakeRequest(config.Method(), v)
+	resp, err := bot.Request(config.method(), v)
 	if err != nil {
 		return &objects.MessageID{}, err
 	}
@@ -528,28 +526,15 @@ func (bot *Bot) SendVenue(config *SendVenueConfig) (*objects.Message, error) {
 // SetMyCommands Setup command to Telegram bot
 // https://core.telegram.org/bots/api#setmycommands
 func (bot *Bot) SetMyCommands(conf *SetMyCommandsConfig) (bool, error) {
-	v, err := conf.Values()
-	if err != nil {
-		return false, err
-	}
-	resp, err := bot.MakeRequest(conf.Method(), v)
-	if err != nil {
-		return false, err
-	}
-	var ok bool
-	err = json.Unmarshal(resp.Result, &ok)
-	if err != nil {
-		return false, err
-	}
-
-	return ok, nil
+	v, _ := conf.values()
+	return bot.BoolRequest(conf.method(), v)
 }
 
 // GetMyCommands get from bot commands command
 // https://core.telegram.org/bots/api#getmycommands
 func (bot *Bot) GetMyCommands(c *GetMyCommandsConfig) ([]objects.BotCommand, error) {
-	v, _ := c.Values()
-	resp, err := bot.MakeRequest(c.Method(), v)
+	v, _ := c.values()
+	resp, err := bot.Request(c.method(), v)
 	if err != nil {
 		return []objects.BotCommand{}, err
 	}
@@ -568,11 +553,11 @@ func (bot *Bot) GetMyCommands(c *GetMyCommandsConfig) ([]objects.BotCommand, err
 // DeleteWebhook if result is True, will be nil, if not so err
 // https://core.telegram.org/bots/api#deletewebhook
 func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) (*objects.TelegramResponse, error) {
-	v, err := c.Values()
+	v, err := c.values()
 	if err != nil {
 		return &objects.TelegramResponse{}, err
 	}
-	resp, err := bot.MakeRequest(c.Method(), v)
+	resp, err := bot.Request(c.method(), v)
 	if err != nil {
 		return &objects.TelegramResponse{}, err
 	}
@@ -582,11 +567,8 @@ func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) (*objects.TelegramResponse
 // GetUpdates uses for long polling
 // https://core.telegram.org/bots/api#getupdates
 func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
-	v, err := c.Values()
-	if err != nil {
-		return []*objects.Update{}, err
-	}
-	resp, err := bot.MakeRequest(c.Method(), v)
+	v, _ := c.values()
+	resp, err := bot.Request(c.method(), v)
 	if err != nil {
 		return []*objects.Update{}, &objects.TelegramApiError{
 			Code:               resp.ErrorCode,
@@ -609,22 +591,21 @@ func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
 // Your bot IP and sends to your bot a Update
 // https://core.telegram.org/bots/api#setwebhook
 func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, error) {
-	v, err := c.Values()
-	meth := c.Method()
+	v, err := c.values()
+	meth := c.method()
 
 	// checkout for certificate, webhook may use without cert
 	if c.Certificate == nil {
-		return bot.MakeRequest(meth, v)
+		return bot.Request(meth, v)
 	}
 	if err != nil {
 		return &objects.TelegramResponse{}, err
 	}
 	params := make(map[string]string)
 	urlValuesToMapString(v, params)
-	// for debug
-	bot.log("Params: ", nil, params)
+	bot.debugLog("Params: ", nil, params)
 	// uploads a certificate file, with other parametrs
-	resp, err := bot.UploadFile(meth, c.Certificate, "certificate", params)
+	resp, err := bot.UploadFile(meth, params, c.Certificate)
 	if err != nil {
 		return resp, err
 	}
@@ -634,7 +615,7 @@ func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, erro
 // GetWebhookInfo not require parametrs
 // https://core.telegram.org/bots/api#getwebhookinfo
 func (bot *Bot) GetWebhookInfo() (*objects.WebhookInfo, error) {
-	resp, err := bot.MakeRequest("getWebhookInfo", url.Values{})
+	resp, err := bot.Request("getWebhookInfo", url.Values{})
 	if err != nil {
 		return &objects.WebhookInfo{}, err
 	}
@@ -657,20 +638,11 @@ func (bot *Bot) GetWebhookInfo() (*objects.WebhookInfo, error) {
 // (when a message arrives from your bot, Telegram clients clear its typing status).
 // Returns True on success.
 func (bot *Bot) SendChatAction(c SendChatActionConf) (bool, error) {
-	v, err := c.Values()
+	v, err := c.values()
 	if err != nil {
 		return false, err
 	}
-	resp, err := bot.MakeRequest(c.Method(), v)
-	if err != nil {
-		return false, nil
-	}
-	var ok bool
-	err = json.Unmarshal(resp.Result, &ok)
-	if err != nil {
-		return false, err
-	}
-	return ok, nil
+	return bot.BoolRequest(c.method(), v)
 }
 
 // DeleteChatStickerSet represents deleteChatStickerSet method
@@ -678,16 +650,7 @@ func (bot *Bot) SendChatAction(c SendChatActionConf) (bool, error) {
 func (bot *Bot) DeleteChatStickerSet(chat_id int64) (bool, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
-	resp, err := bot.MakeRequest("deleteChatStickerSet", v)
-	if err != nil {
-		return false, err
-	}
-	var ok bool
-	err = json.Unmarshal(resp.Result, &ok)
-	if err != nil {
-		return ok, err
-	}
-	return ok, nil
+	return bot.BoolRequest("deleteChatStickerSet", v)
 }
 
 // GetChat ...
@@ -695,7 +658,7 @@ func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
 
-	resp, err := bot.MakeRequest("getChat", v)
+	resp, err := bot.Request("getChat", v)
 
 	if err != nil {
 		return &objects.Chat{}, err
@@ -711,6 +674,77 @@ func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
 	return &chat, nil
 }
 
+// BanChatMember ...
+func (bot *Bot) BanChatMember(c *BanChatMemberConfig) (bool, error) {
+	v, _ := c.values()
+	return bot.BoolRequest(c.method(), v)
+}
+
+// UnbanChatMember ...
+func (bot *Bot) UnbanChatMember(chat_id int64, user_id int64, only_if_banned bool) (bool, error) {
+	v := make(url.Values)
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+	v.Add("user_id", strconv.FormatInt(user_id, 10))
+	v.Add("only_if_banned", strconv.FormatBool(only_if_banned))
+	return bot.BoolRequest("unbanChatMember", v)
+}
+
+// RestrictChatMember ...
+func (bot *Bot) RestrictChatMember(c *RestrictChatMemberConfig) (bool, error) {
+	v, _ := c.values()
+	return bot.BoolRequest(c.method(), v)
+}
+
+// SetChatPermissions ...
+func (bot *Bot) SetChatPermissions(chat_id int64, perms objects.ChatMemberPermissions) (bool, error) {
+	v := make(url.Values)
+
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+	v.Add("permissions", ObjectToJson(perms))
+
+	return bot.BoolRequest("setChatPermissions", v)
+}
+
+// SCACT too long to read, represents a telegram method
+// https://core.telegram.org/bots/api#setchatadministratorcustomtitle
+func (bot *Bot) SetChatAdministratorCustomTitle(chat_id, user_id int64, title string) (bool, error) {
+	v := make(url.Values)
+
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+	v.Add("user_id", strconv.FormatInt(user_id, 10))
+	v.Add("title", title)
+
+	return bot.BoolRequest("setChatAdministratorCustomTitle", v)
+}
+
+func (bot *Bot) ExportChatInviteLink(chat_id int64) (string, error) {
+	v := make(url.Values)
+
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+
+	resp, err := bot.Request("exportChatInviteLink", v)
+	if err != nil {
+		return "", err
+	}
+
+	var val string
+	err = json.Unmarshal(resp.Result, &val)
+	if err != nil {
+		return "", err
+	}
+	return val, err
+}
+
+func (bot *Bot) SetChatPhoto(chat_id int64, file *objects.InputFile) (bool, error) {
+	v := make(map[string]string)
+
+	v["chat_id"] = strconv.FormatInt(chat_id, 10)
+
+	bot.UploadFile("setChatPhoto", v, file)
+
+	return false, nil
+}
+
 // ================
 // User methods
 // ================
@@ -718,8 +752,8 @@ func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
 // GetUserProfilePhotos resresents getUserProfilePhotos method
 // https://core.telegram.org/bots/api#getuserprofilephotos
 func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserProfilePhotos, error) {
-	v, _ := c.Values()
-	resp, err := bot.MakeRequest(c.Method(), v)
+	v, _ := c.values()
+	resp, err := bot.Request(c.method(), v)
 
 	if err != nil {
 		return &objects.UserProfilePhotos{}, err
@@ -736,13 +770,13 @@ func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserP
 }
 
 // ====================
-// other method
+// other methods
 // ====================
 
 func (bot *Bot) GetFile(file_id string) (*objects.File, error) {
 	v := url.Values{}
 	v.Add("file_id", file_id)
-	resp, err := bot.MakeRequest("getFile", v)
+	resp, err := bot.Request("getFile", v)
 
 	if err != nil {
 		return &objects.File{}, err

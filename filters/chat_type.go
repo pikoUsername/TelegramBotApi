@@ -2,11 +2,11 @@ package filters
 
 import "github.com/pikoUsername/tgp/objects"
 
-type ChatType struct {
+type ChatTypeFilter struct {
 	Ignore string
 }
 
-func (ct *ChatType) Check(u *objects.Update) bool {
+func (ct *ChatTypeFilter) Check(u *objects.Update) bool {
 	var chat *objects.Chat
 
 	if u.EditedMessage != nil {
@@ -21,8 +21,8 @@ func (ct *ChatType) Check(u *objects.Update) bool {
 	return chat.Type == ct.Ignore
 }
 
-func NewChatType(ig string) *ChatType {
-	return &ChatType{
+func ChatType(ig string) *ChatTypeFilter {
+	return &ChatTypeFilter{
 		Ignore: ig,
 	}
 }

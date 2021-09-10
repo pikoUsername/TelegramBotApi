@@ -22,13 +22,6 @@ type ProcessMiddleware func(*Bot, *objects.Update) error
 
 type triggerType map[string]func(c interface{}, upd *objects.Update, bot *Bot) error
 
-// Middleware is interface, default realization is DefaultMiddleware
-type MiddlewareManager interface {
-	Trigger(bot *Bot, update *objects.Update, typ string) error
-	Register(middlewares ...MiddlewareFunc) // for many middleware add
-	Unregister(middleware *MiddlewareFunc) (*MiddlewareFunc, error)
-}
-
 const (
 	PREMIDDLEWARE     = "pre"
 	PROCESSMIDDLEWARE = "process"
@@ -37,22 +30,18 @@ const (
 
 // errors
 var (
-	MiddlewareTypeInvalid = objects.Errors.New("typ parameter of variable not in ['post', 'pre', 'process']")
-	MiddleawreNotFound    = objects.Errors.New("passed middleware not found")
+	MiddlewareTypeInvalid = tgpErr.New("typ parameter of variable not in ['post', 'pre', 'process']")
+	MiddlewareNotFound    = tgpErr.New("passed middleware not found")
+	MiddlewareIncorrect   = tgpErr.New("passed function is not function type")
 )
 
 type DefaultMiddlewareManager struct {
-	middlewares []*MiddlewareFunc
-	dp          *Dispatcher
+	middlewares []MiddlewareFunc
 }
 
 // NewDMiddlewareManager creates a DefaultMiddlewareManager, and return
 func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
-	dmm := &DefaultMiddlewareManager{
-		dp: dp,
-	}
-
-	return dmm
+	return &DefaultMiddlewareManager{}
 }
 
 // convertErr creates err in the fly with template:
@@ -60,7 +49,7 @@ func NewMiddlewareManager(dp *Dispatcher) *DefaultMiddlewareManager {
 func convertErr(it interface{}, ito interface{}) error {
 	ts := reflect.TypeOf(it).String()
 	tos := reflect.TypeOf(ito).String()
-	return objects.Errors.New("failed convert this " + ts + " to " + tos)
+	return tgpErr.New("failed convert this " + ts + " to " + tos)
 }
 
 // preTriggerProcess ...
@@ -101,10 +90,8 @@ func (dmm *DefaultMiddlewareManager) Trigger(bot *Bot, upd *objects.Update, typ 
 	}
 
 	for _, cb := range dmm.middlewares {
-		c := *cb
-
 		if val, ok := trigger_map[typ]; ok {
-			err := val(c, upd, bot)
+			err := val(cb, upd, bot)
 			if err != nil {
 				return err
 			}
@@ -118,30 +105,32 @@ func (dmm *DefaultMiddlewareManager) Trigger(bot *Bot, upd *objects.Update, typ 
 
 // Register ...
 func (dmm *DefaultMiddlewareManager) Register(md ...MiddlewareFunc) {
-	// Transoforming Objects to Pointers
-	// It s obuvious is bad code,
-	// and maybe in golang libs exists func to make same, but more efficient
-	var obj []*MiddlewareFunc
-
-	for _, o := range md {
-		obj = append(obj, &o)
-	}
-
-	dmm.middlewares = append(dmm.middlewares, obj...)
+	dmm.middlewares = append(dmm.middlewares, md...)
 }
 
-// Unregister a middleware
-func (dmm *DefaultMiddlewareManager) Unregister(md *MiddlewareFunc) (*MiddlewareFunc, error) {
-	// Checking for memory address, its really bad idea, but variant with map, too huge
-	// variant with struct, too huge, and for middlewares store no need to use special structs
+// Unregister a middleware from middleware list
+// thx: https://stackoverflow.com/questions/34901307/how-to-compare-2-functions-in-go/34901677
+func (dmm *DefaultMiddlewareManager) Unregister(md MiddlewareFunc) (MiddlewareFunc, error) {
+	t := reflect.TypeOf(md)
+	if t.Kind() != reflect.Func {
+		return nil, MiddlewareIncorrect
+	}
+	var s, s2 uintptr
+	s = reflect.ValueOf(md).Pointer()
+
 	for i, m := range dmm.middlewares {
-		if m == md {
+		s2 = reflect.ValueOf(m).Pointer()
+		if s == s2 {
 			// removing from list
-			dmm.middlewares = append(dmm.middlewares[:i-1], dmm.middlewares[i:]...)
+			i2 := i - 1
+			if i2 < 0 {
+				i2 = 0
+			}
+			dmm.middlewares = append(dmm.middlewares[:i2], dmm.middlewares[i2:]...)
 			return m, nil
 		}
 	}
-	return nil, MiddleawreNotFound
+	return nil, MiddlewareNotFound
 }
 
 func (dmm *DefaultMiddlewareManager) UnregisterByIndex(i uint) {

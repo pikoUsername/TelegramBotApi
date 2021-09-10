@@ -7,9 +7,9 @@ package objects
 // query	String	Text of the query (up to 256 characters)
 // offset	String	Offset of the results to be returned, can be controlled by the bot
 type InlineQuery struct {
-	Id       string `json:"id"`
-	From     *User  `json:"from"`
-	Location `json:"Location"`
-	Query    string `json:"query"`
-	Offset   string `json:"offset"`
+	Id       string    `json:"id"`
+	From     *User     `json:"from"`
+	Location *Location `json:"Location"`
+	Query    string    `json:"query"`
+	Offset   string    `json:"offset"`
 }
