@@ -8,14 +8,14 @@ import (
 
 // Command filter, check out for prefix
 // Prefix by default is /, and prefix could be only one character
-type Command struct {
+type CommandFilter struct {
 	prefix         string
 	cmds           []string
 	ignore_mention bool
 	ignore_caption bool
 }
 
-func (c *Command) Check(u *objects.Update) bool {
+func (c *CommandFilter) Check(u *objects.Update) bool {
 	var mention string
 	text := u.Message.Text
 	if text == "" {
@@ -40,8 +40,8 @@ func (c *Command) Check(u *objects.Update) bool {
 }
 
 // NewCommand creates new Command object
-func NewCommand(cmd ...string) *Command {
-	return &Command{
+func Command(cmd ...string) *CommandFilter {
+	return &CommandFilter{
 		prefix:         "/",
 		cmds:           cmd,
 		ignore_mention: false,
@@ -53,22 +53,22 @@ func NewCommand(cmd ...string) *Command {
 // Command based filters
 // ========================
 
-func NewCommandStart() *Command {
-	return NewCommand("start")
+func CommandStart() *CommandFilter {
+	return Command("start")
 }
 
-func NewCommandHelp() *Command {
-	return NewCommand("help")
+func CommandHelp() *CommandFilter {
+	return Command("help")
 }
 
-func NewCommandPrivacy() *Command {
-	return NewCommand("privacy")
+func CommandPrivacy() *CommandFilter {
+	return Command("privacy")
 }
 
-func NewCommandSettings() *Command {
-	return NewCommand("settings")
+func CommandSettings() *CommandFilter {
+	return Command("settings")
 }
 
-func NewCommandCancel() *Command {
-	return NewCommand("cancel")
+func CommandCancel() *CommandFilter {
+	return Command("cancel")
 }

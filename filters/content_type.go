@@ -2,16 +2,16 @@ package filters
 
 import "github.com/pikoUsername/tgp/objects"
 
-type ContentType struct {
+type ContentTypeFilter struct {
 	ctype string
 }
 
-func (ct *ContentType) Check(u *objects.Update) bool {
+func (ct *ContentTypeFilter) Check(u *objects.Update) bool {
 	return u.Message.GetContentType() == ct.ctype
 }
 
-func NewContentType(ctype string) *ContentType {
-	return &ContentType{
+func ContentType(ctype string) *ContentTypeFilter {
+	return &ContentTypeFilter{
 		ctype: ctype,
 	}
 }

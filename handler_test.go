@@ -24,7 +24,7 @@ func TestRegister(t *testing.T) {
 			panic(err)
 		}
 		fmt.Println(msg.Text)
-	}, filters.NewCommandStart())
+	}, filters.CommandStart())
 }
 
 func TestMiddlwareRegister(t *testing.T) {

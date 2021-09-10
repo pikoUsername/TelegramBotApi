@@ -6,7 +6,7 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
-type Text struct {
+type TextFilter struct {
 	text        string
 	ignore_case bool
 	equals      bool
@@ -15,7 +15,7 @@ type Text struct {
 	startswith  bool
 }
 
-func (t *Text) Check(u *objects.Update) bool {
+func (t *TextFilter) Check(u *objects.Update) bool {
 	var text string
 
 	// CheckOut for text
@@ -46,8 +46,8 @@ func (t *Text) Check(u *objects.Update) bool {
 	return false
 }
 
-func NewText(text string) *Text {
-	return &Text{
+func NewText(text string) *TextFilter {
+	return &TextFilter{
 		text:        text,
 		ignore_case: true,
 		// other fields is false, by default, boolean type by default is false

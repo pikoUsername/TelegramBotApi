@@ -8,12 +8,12 @@ import (
 )
 
 // StateFilter uses for filter a state
-type StateFilter struct {
+type FSMStateFilter struct {
 	Storage storage.Storage
 	State   interface{}
 }
 
-func (sf *StateFilter) GetState(u *objects.Update) string {
+func (sf *FSMStateFilter) GetState(u *objects.Update) string {
 	var cid, uid int64
 
 	if u.Message != nil {
@@ -37,7 +37,7 @@ func (sf *StateFilter) GetState(u *objects.Update) string {
 	return state
 }
 
-func (sf *StateFilter) checkState(state string) bool {
+func (sf *FSMStateFilter) checkState(state string) bool {
 	if reflect.TypeOf(sf.State).Comparable() && sf.State == state {
 		return true
 	}
@@ -56,13 +56,13 @@ func (sf *StateFilter) checkState(state string) bool {
 	return false
 }
 
-func (sf *StateFilter) Check(u *objects.Update) bool {
+func (sf *FSMStateFilter) Check(u *objects.Update) bool {
 	state := sf.GetState(u)
 	return sf.checkState(state) || state == "*"
 }
 
-func NewStateFilter(state struct{}) *StateFilter {
-	return &StateFilter{
+func StateFilter(state struct{}) *FSMStateFilter {
+	return &FSMStateFilter{
 		State: state,
 	}
 }
