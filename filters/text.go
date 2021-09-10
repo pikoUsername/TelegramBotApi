@@ -46,7 +46,7 @@ func (t *TextFilter) Check(u *objects.Update) bool {
 	return false
 }
 
-func NewText(text string) *TextFilter {
+func Text(text string) *TextFilter {
 	return &TextFilter{
 		text:        text,
 		ignore_case: true,

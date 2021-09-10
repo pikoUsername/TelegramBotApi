@@ -29,8 +29,7 @@ var (
 
 func FailIfErr(t *testing.T, err error) {
 	if err != nil {
-		t.Error(err)
-		t.Fail()
+		t.Fatal(err)
 	}
 }
 
@@ -43,8 +42,7 @@ func PanicIfErr(t *testing.T, err error) {
 func getBot(t *testing.T) *tgp.Bot {
 	b, err := tgp.NewBot(TestToken, ParseMode, nil)
 	if err != nil {
-		t.Error(err)
-		t.Fail()
+		t.Fatal(err)
 	}
 	b.Debug = true
 	return b
@@ -53,8 +51,7 @@ func getBot(t *testing.T) *tgp.Bot {
 func TestCheckToken(t *testing.T) {
 	b, err := tgp.NewBot("bla:bla", "HTML", nil)
 	if err != nil && b == nil {
-		t.Error(err)
-		t.Fail()
+		t.Fatal(err)
 	}
 }
 
@@ -65,41 +62,35 @@ func TestDownloadFile(t *testing.T) {
 		os.Mkdir(FileDirectory, 0777)
 		dir, err = os.Open(FileDirectory)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 	}
 	stat, err := dir.Stat()
 	if err != nil {
-		t.Error(err)
-		t.Fail()
+		t.Fatal(err)
 	}
 	if !stat.IsDir() {
-		t.Error("Sorry but -"+FileDirectory, "Is file, delete file and try again!")
-		t.Fail()
+		t.Fatal("Sorry but -"+FileDirectory, "Is file, delete file and try again!")
 	}
 
 	f, err := os.OpenFile(SaveFile, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		t.Error(err)
-		t.Fail()
+		t.Fatal(err)
 	}
 	err = b.DownloadFile(DownloadFromURL, f, true)
 	if err != nil {
-		t.Error(err)
-		t.Fail()
+		t.Fatal(err)
 	}
 	stat, err = f.Stat()
 	if err != nil {
-		t.Error(err)
-		t.Fail()
+		t.Fatal(err)
 	}
 	bs := make([]byte, stat.Size())
 	f.Read(bs)
 	if bs == nil || strings.Compare(string(bs), "") == -1 && DownloadFromURL != "" {
-		t.Error(
+		t.Fatal(
 			"Cannot download file from ethernet, debug: file - ", bs,
 			", URL: ", DownloadFromURL, ", Directory: ", stat.Name(), ", Bot: ", b)
-		t.Fail()
 	}
 }
 
@@ -107,16 +98,13 @@ func TestGetMe(t *testing.T) {
 	b := getBot(t)
 	u, err := b.GetMe()
 	if err != nil {
-		t.Error(err)
-		t.Fail()
+		t.Fatal(err)
 	}
 	if b.Me == nil {
-		t.Error("Me is empty pointer")
-		t.Fail()
+		t.Fatal("Me is empty pointer")
 	}
 	if b.Me.ID != u.ID {
-		t.Error("Getted User is defferent from bot user")
-		t.Fail()
+		t.Fatal("Getted User is defferent from bot user")
 	}
 }
 
@@ -124,7 +112,7 @@ func TestGetUpdates(t *testing.T) {
 	b := getBot(t)
 	_, err := b.GetUpdates(&tgp.GetUpdatesConfig{})
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 }
 
@@ -132,7 +120,7 @@ func TestParseMode(t *testing.T) {
 	b := getBot(t)
 	line, err := tgp.NewHTMLMarkdown().Link("https://www.google.com", "lol")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	m := &tgp.SendMessageConfig{
 		ChatID: int64(TestChatID),
@@ -140,7 +128,7 @@ func TestParseMode(t *testing.T) {
 	}
 	_, err = b.SendMessageable(m)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 }
 
@@ -148,7 +136,7 @@ func TestSetWebhook(t *testing.T) {
 	b := getBot(t)
 	resp, err := b.SetWebhook(tgp.NewSetWebhook(WebhookURL))
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	fmt.Println(resp)
 }
@@ -159,11 +147,11 @@ func TestSetCommands(t *testing.T) {
 	cmd := &objects.BotCommand{Command: "31321", Description: "ALLOO"}
 	ok, err := b.SetMyCommands(tgp.NewSetMyCommands(cmd))
 	if err != nil {
-		t.Error(err, ok)
+		t.Fatal(err, ok)
 	}
 	cmds, err := b.GetMyCommands(&tgp.GetMyCommandsConfig{})
 	if err != nil {
-		t.Error(err, cmds)
+		t.Fatal(err, cmds)
 	}
 	t.Log(cmds)
 	for _, c := range cmds {
@@ -172,5 +160,5 @@ func TestSetCommands(t *testing.T) {
 			return
 		}
 	}
-	t.Error("Command which getted from telegram, is not same as original, Original: ", cmd)
+	t.Fatal("Command which getted from telegram, is not same as original, Original: ", cmd)
 }
