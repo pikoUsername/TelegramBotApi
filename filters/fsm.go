@@ -22,12 +22,12 @@ func (sf *FSMStateFilter) GetState(u *objects.Update) string {
 	} else if u.EditedMessage != nil {
 		cid = u.EditedMessage.Chat.ID
 		uid = u.EditedMessage.From.ID
-	} else if u.PinnedMessage != nil {
-		cid = u.PinnedMessage.Chat.ID
-		uid = u.PinnedMessage.From.ID
-	} else if u.ReplyToMessage != nil {
-		cid = u.ReplyToMessage.Chat.ID
-		uid = u.ReplyToMessage.From.ID
+	} else if u.Message.PinnedMessage != nil {
+		cid = u.Message.PinnedMessage.Chat.ID
+		uid = u.Message.PinnedMessage.From.ID
+	} else if u.Message.ReplyToMessage != nil {
+		cid = u.Message.ReplyToMessage.Chat.ID
+		uid = u.Message.ReplyToMessage.From.ID
 	}
 
 	state, err := sf.Storage.GetState(cid, uid)

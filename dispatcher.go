@@ -174,39 +174,137 @@ func (dp *Dispatcher) ResetWebhook(check bool) error {
 // ProcessOneUpdate you guess, processes ONLY one comming update
 // Support only one Message update
 func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
-	var upd_type string
-	var u interface{}
+	var err error
 
+	// very bad code, please dont see this bullshit
+	// ============================================
 	if update.Message != nil {
-		upd_type = "Message"
-		u = update.Message
+		dp.MessageHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
+		for _, h := range dp.MessageHandler.handlers {
+			cb, ok := h.Callback.(func(*Bot, *objects.Message))
+			if !ok {
+				return tgpErr.New("message handler type assertion error, need type func(*Bot, *Message), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
+			}
+
+			err = dp.MessageHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
+			if err != nil {
+				dp.Bot.logger.Println(err)
+				continue
+			}
+
+			h.Call(update, func() { cb(dp.Bot, update.Message) })
+		}
+		dp.MessageHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
+
 	} else if update.CallbackQuery != nil {
-		upd_type = "CallbackQuery"
+		dp.CallbackQueryHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
+		for _, h := range dp.CallbackQueryHandler.handlers {
+			cb, ok := h.Callback.(func(*Bot, *objects.CallbackQuery))
+			if !ok {
+				return tgpErr.New("callbackquery handler type assertion error, need type func(*Bot, *CallbackQuery), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
+			}
+			err = dp.CallbackQueryHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
+			if err != nil {
+				dp.Bot.logger.Println(err)
+				continue
+			}
+
+			h.Call(update, func() { cb(dp.Bot, update.CallbackQuery) })
+		}
+		dp.CallbackQueryHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
+
 	} else if update.ChannelPost != nil {
-		upd_type = "ChannelPost"
+		dp.ChannelPostHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
+		for _, h := range dp.ChannelPostHandler.handlers {
+			cb, ok := h.Callback.(func(*Bot, *objects.Message))
+			if !ok {
+				return tgpErr.New("channelPost handler type assertion error, need type func(*Bot, *ChannelPost), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
+			}
+			err = dp.ChannelPostHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
+			if err != nil {
+				dp.Bot.logger.Println(err)
+				continue
+			}
+
+			h.Call(update, func() { cb(dp.Bot, update.ChannelPost) })
+		}
+		dp.ChannelPostHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
+
 	} else if update.Poll != nil {
-		upd_type = "Poll"
+		dp.PollHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
+		for _, h := range dp.PollHandler.handlers {
+			cb, ok := h.Callback.(func(*Bot, *objects.Poll))
+			if !ok {
+				return tgpErr.New("poll handler type assertion error, need type func(*Bot, *Poll), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
+			}
+			err = dp.PollHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
+			if err != nil {
+				dp.Bot.logger.Println(err)
+				continue
+			}
+
+			h.Call(update, func() { cb(dp.Bot, update.Poll) })
+		}
+		dp.PollHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
+
 	} else if update.PollAnswer != nil {
-		upd_type = "PollAnswer"
+		dp.PollAnswerHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
+		for _, h := range dp.PollAnswerHandler.handlers {
+			cb, ok := h.Callback.(func(*Bot, *objects.PollAnswer))
+			if !ok {
+				return tgpErr.New("pollAnswer handler type assertion error, need type func(*Bot, *PollAnswer), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
+			}
+			err = dp.PollAnswerHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
+			if err != nil {
+				dp.Bot.logger.Println(err)
+				continue
+			}
+
+			h.Call(update, func() { cb(dp.Bot, update.PollAnswer) })
+		}
+		dp.PollAnswerHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
+
 	} else if update.ChatMember != nil {
-		upd_type = "ChatMember"
+		dp.ChatMemberHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
+		for _, h := range dp.ChatMemberHandler.handlers {
+			cb, ok := h.Callback.(func(*Bot, *objects.ChatMember))
+			if !ok {
+				return tgpErr.New("ChatMember handler type assertion error, need type func(*Bot, *ChatMember), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
+			}
+			err = dp.ChatMemberHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
+			if err != nil {
+				dp.Bot.logger.Println(err)
+				continue
+			}
+
+			h.Call(update, func() { cb(dp.Bot, update.ChatMember) })
+		}
+		dp.ChatMemberHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
+
 	} else if update.MyChatMember != nil {
-		upd_type = "MyChatMember"
+
+		dp.MyChatMemberHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
+		for _, h := range dp.MyChatMemberHandler.handlers {
+			cb, ok := h.Callback.(func(*Bot, *objects.ChatMemberUpdated))
+			if !ok {
+				return tgpErr.New("MyChatMember handler type assertion error, need type func(*Bot, *ChatMemberUpdated), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
+			}
+			err = dp.MyChatMemberHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
+			if err != nil {
+				dp.Bot.logger.Println(err)
+				continue
+			}
+
+			h.Call(update, func() { cb(dp.Bot, update.MyChatMember) })
+		}
+		dp.MyChatMemberHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
+
 	} else {
 		text := "detected not supported type of updates, seems like telegram bot api updated before this package updated"
 		return tgpErr.New(text)
 	}
 
-	// non-effective code
-	v_dp := reflect.ValueOf(dp)
-	args := make([]reflect.Value, 2)
-	args = append(args, reflect.ValueOf(dp.Bot))
-	args = append(args, reflect.ValueOf(u))
-
-	for _, cb := range v_dp.FieldByName(upd_type + "Handler").FieldByName("handlers").MapKeys() {
-		cb.FieldByName("Callback").Call(args)
-	}
-
+	// end of adventure
 	return nil
 }
 
@@ -316,7 +414,6 @@ func (dp *Dispatcher) Shutdown() {
 }
 
 // SafeExit method uses for notify about exit from program
-// and need to terminate it
 // Thanks: https://stackoverflow.com/questions/11268943/is-it-possible-to-capture-a-ctrlc-signal-and-run-a-cleanup-function-in-a-defe
 func (dp *Dispatcher) SafeExit() {
 	c := make(chan os.Signal)
@@ -383,6 +480,9 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Up
 // Note: use after a MakeUpdatesChan call
 func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 	for upd := range ch {
+		if upd == nil {
+			continue
+		}
 		dp.currentUpdate = upd
 		err := dp.ProcessOneUpdate(upd)
 		if err != nil {

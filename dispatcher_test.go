@@ -13,7 +13,7 @@ func GetDispatcher(check_token bool) (*tgp.Dispatcher, error) {
 	var b *tgp.Bot
 
 	if check_token {
-		b, err = tgp.NewBot(TestToken, "HTML")
+		b, err = tgp.NewBot(TestToken, "HTML", nil)
 	} else {
 		b = &tgp.Bot{}
 	}
@@ -31,12 +31,23 @@ func TestNewDispatcher(t *testing.T) {
 	}
 }
 
+func TestProcessOneUpdate(t *testing.T) {
+	dp, err := GetDispatcher(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dp.ProcessOneUpdate(nil)
+}
+
+// go test -bench -benchmem
+
 func BenchmarkProcessOneUpdate(b *testing.B) {
 	dp, err := GetDispatcher(false)
 	if err != nil {
 		b.Error(err)
 		b.Fail()
 	}
+
 	dp.MessageHandler.Register(func(m *objects.Message) {})
 	dp.MessageHandler.RegisterMiddleware(func(u *objects.Update) {})
 

@@ -1,6 +1,9 @@
 package objects
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"unsafe"
+)
 
 // https://github.com/aiogram/aiogram/blob/dev-2.x/aiogram/types/inline_keyboard.py
 
@@ -37,9 +40,9 @@ func (ikm *InlineKeyboardMarkup) Add(btns ...InlineKeyboardButton) *InlineKeyboa
 	return ikm
 }
 
-func (self *InlineKeyboardMarkup) String() (string, error) {
-	v, err := json.Marshal(self.InlineKeyboard)
-	return (string)(v), err
+func (ikm *InlineKeyboardMarkup) String() string {
+	v, _ := json.Marshal(ikm.InlineKeyboard)
+	return *(*string)(unsafe.Pointer(&v))
 }
 
 // InlineKeyboardButton represnts InlineKeyboardButton telegram object
