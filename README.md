@@ -7,7 +7,7 @@ and any update can broke backward capability
 
 NOTE: Please, don't try to use this package in serious projects 
 
-## version 0.1.1
+## version 0.1.3
 <br>
 
 ## docs
