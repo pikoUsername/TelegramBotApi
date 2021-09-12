@@ -1,12 +1,9 @@
 package tgp
 
 import (
-	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -187,39 +184,6 @@ func getUidAndCidFromUpd(u *objects.Update) (cid_, uid_ int64) {
 	}
 
 	return cid, uid
-}
-
-func fileToBytes(f interface{}, compress bool) ([]byte, error) {
-	var bs []byte
-
-	switch f := f.(type) {
-	case string:
-		fp, err := os.Open(f)
-		if err != nil {
-			return []byte{}, err
-		}
-		defer fp.Close()
-		if compress {
-			compressed := &bytes.Buffer{}
-			cw, err := gzip.NewWriterLevel(compressed, gzip.BestCompression)
-
-			defer cw.Close()
-
-			if err != nil {
-				return []byte{}, err
-			}
-			if _, err := io.Copy(cw, fp); err != nil {
-				return []byte{}, err
-			}
-			return ioutil.ReadAll(compressed)
-		}
-
-		return ioutil.ReadAll(fp)
-	case io.Reader:
-		return ioutil.ReadAll(f)
-	}
-
-	return bs, nil
 }
 
 func requestToUpdate(req *http.Request) (*objects.Update, error) {

@@ -669,29 +669,55 @@ func (slc *SendLocationConfig) method() string {
 // LiveLocationConfig represents Telegram method fields of editmessageliveLocation
 // https://core.telegram.org/bots/api#editmessagelivelocation
 type EditMessageLLConf struct { // too long name anyway
-	Longitude float32
-	Latitude  float32
-	ChatID    int64
-	MessageID int64
+	Longitude            float64 // required
+	Latitude             float64 // required
+	InlineMessageID      int64
+	ChatID               int64
+	MessageID            int64
+	HorizontalAccuracy   float64
+	Heading              int64
+	ProximityAlertRadius int64
+	ReplyMarkup          *objects.InlineKeyboardMarkup
 }
 
-// Values is stub!!
 func (llc *EditMessageLLConf) values() (url.Values, error) {
 	v := url.Values{}
-	return v, nil // stub
+
+	v.Add("longitude", strconv.FormatFloat(llc.Longitude, 'E', -1, 64))
+	v.Add("latitude", strconv.FormatFloat(llc.Latitude, 'E', -1, 64))
+	if llc.InlineMessageID != 0 {
+		v.Add("inline_message_id", strconv.FormatInt(llc.InlineMessageID, 10))
+	}
+	if llc.ChatID != 0 {
+		v.Add("chat_id", strconv.FormatInt(llc.ChatID, 10))
+	}
+	if llc.MessageID != 0 {
+		v.Add("message_id", strconv.FormatInt(llc.MessageID, 10))
+	}
+	if llc.HorizontalAccuracy != 0.0 {
+		v.Add("horizontal_accuracy", strconv.FormatFloat(llc.HorizontalAccuracy, 'E', -1, 64))
+	}
+	if llc.Heading != 0 {
+		v.Add("heading", strconv.FormatInt(llc.Heading, 10))
+	}
+	if llc.ProximityAlertRadius != 0 {
+		v.Add("proximity_alert_radius", strconv.FormatInt(llc.ProximityAlertRadius, 10))
+	}
+	if llc.ReplyMarkup != nil {
+		v.Add("reply_markup", FormatMarkup(llc.ReplyMarkup))
+	}
+
+	return v, nil
 }
 
 func (llc *EditMessageLLConf) method() string {
 	return "editMessageLiveLocation"
 }
 
-// all fields are required
-func NewEditMessageLL(longitude float32, latit float32, chat_id int64, message_id int64) *EditMessageLLConf {
+func NewEditMessageLL(longitude float64, latit float64) *EditMessageLLConf {
 	return &EditMessageLLConf{
 		Longitude: longitude,
 		Latitude:  latit,
-		ChatID:    chat_id,
-		MessageID: message_id,
 	}
 }
 

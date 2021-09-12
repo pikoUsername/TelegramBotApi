@@ -56,10 +56,6 @@ type Bot struct {
 	// bc, HTML easy to use, and more conforatble
 	ParseMode string `json:"parse_mode"`
 
-	// ProxyURL HTTP proxy URL
-	// No Proxy, yet
-	proxyURL *url.URL
-
 	// default server must be here
 	// if you wanna create own, just create
 	// using this structure instead of NewBot function
