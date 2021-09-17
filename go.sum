@@ -42,6 +42,8 @@ github.com/onsi/gomega v1.10.5/go.mod h1:gza4q3jKQJijlu05nKWRCW/GavJumGt8aNRxWg7
 github.com/onsi/gomega v1.15.0/go.mod h1:cIuvLEne0aoVhAgh/O6ac0Op8WWw9H6eYCriF+tEHG0=
 github.com/pikoUsername/multipartreader v0.0.0-20210823080657-c18143575dbe h1:zjo08uESBvIwvVnyokGCQPTPbuXVKX6Qf/Ws7yBkj/8=
 github.com/pikoUsername/multipartreader v0.0.0-20210823080657-c18143575dbe/go.mod h1:pLn3aFC/RSd5iN4lkCB53NCB3LrspPWugM4BVe+tkxs=
+github.com/pikoUsername/multipartreader v0.0.0-20210826063628-454e06b3a2a1 h1:LQHR+dYv7ZES623CRx63Zhjgp5kJJV04XazLqlY4yLs=
+github.com/pikoUsername/multipartreader v0.0.0-20210826063628-454e06b3a2a1/go.mod h1:pLn3aFC/RSd5iN4lkCB53NCB3LrspPWugM4BVe+tkxs=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
