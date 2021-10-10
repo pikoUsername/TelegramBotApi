@@ -45,6 +45,7 @@ func NewInputFile(path string, name string) (*InputFile, error) {
 	}
 	return &InputFile{
 		File:   f,
+		Name:   name,
 		Path:   path,
 		Length: int(stat.Size()),
 	}, nil

@@ -1,15 +1,20 @@
 package tgp
 
 import (
-	"fmt"
-	"reflect"
 	"sync"
+	"unsafe"
 
 	"github.com/pikoUsername/tgp/objects"
 )
 
-// HandlerFunc is stub
-type HandlerFunc interface{}
+type HandlerFunc func(ctx *Context)
+
+// errors
+var (
+	MiddlewareTypeInvalid = tgpErr.New("typ parameter of variable not in ['post', 'pre', 'process']")
+	MiddlewareNotFound    = tgpErr.New("passed middleware not found")
+	MiddlewareIncorrect   = tgpErr.New("passed function is not function type")
+)
 
 // Another level of abstraction
 // Filters field is interface{}, types:
@@ -17,69 +22,91 @@ type HandlerFunc interface{}
 //
 // ```go
 // 	dp.MessageHandler.Register(
-//		func(bot *tgp.Bot, m *objects.Message) {...}, // handler
-// 		func(u *objects.Update) {return u.Message.From.ID == <owner_id>}, // filter
+//		func(ctx *tgp.Context) {...}, // handler
+// 		func(upd *objects.Update) {return u.Message.From.ID == <owner_id>}, // filter
 // 	)
 // ```
+// Can be used as handlers chain, e.g registered by ResgisterChain()
+//
+// Not concurrency safe!
 type HandlerType struct {
-	Callback HandlerFunc
-	Filters  []interface{}
+	Callbacks []HandlerFunc
+	Filters   []interface{}
 }
 
-// CheckForFilters iterate all filters and call Check method for check
-func (ht *HandlerType) CheckForFilters(u *objects.Update) bool {
-	var b bool
-
-	for _, f := range ht.Filters {
-		switch t := f.(type) {
-		case Filter:
-			b = t.Check(u)
-		case func(u *objects.Update) bool:
-			b = t(u)
-		default:
-			continue
-		}
-		if !b {
-			return false
-		}
+func (h *HandlerType) Add(handlers ...HandlerFunc) {
+	if len(handlers) != 0 {
+		h.Callbacks = append(h.Callbacks, handlers...)
 	}
-	return true
 }
 
-// Call uses for checking using filters
-func (ht *HandlerType) Call(u *objects.Update, f func()) {
-	fr := ht.CheckForFilters(u)
-	if !fr {
-		return
+func (h *HandlerType) AddFilters(filters ...interface{}) {
+	if len(filters) != 0 {
+		h.Filters = append(h.Filters, filters...)
 	}
-
-	go f()
 }
 
 // HandlerObj uses for save Callback
 type HandlerObj struct {
-	handlers    []*HandlerType
-	errHandlers []*HandlerType
-	Middleware  *DefaultMiddlewareManager
-	mu          *sync.Mutex
+	handlers   []*HandlerType
+	mu         *sync.Mutex
+	handlerPos uint16
 }
 
 // NewHandlerObj creates new DefaultHandlerObj
-func NewHandlerObj(dp *Dispatcher) *HandlerObj {
-	md := NewMiddlewareManager(dp)
-	return &HandlerObj{Middleware: md, mu: &sync.Mutex{}}
+func NewHandlerObj() *HandlerObj {
+	return &HandlerObj{mu: &sync.Mutex{}}
+}
+
+func (ho *HandlerObj) Trigger(c *Context) {
+	var filtersResult bool
+	var nextIndex int
+	for i, h := range ho.handlers {
+		if h != nil {
+			if len(c.calledErrors) != 0 {
+
+			}
+			ho.handlerPos = *(*uint16)(unsafe.Pointer(&i))
+			nextIndex = i + 1
+			if nextIndex > len(ho.handlers) {
+				nextIndex = i
+			}
+			handlers := ho.handlers[nextIndex].Callbacks
+			for _, nextHandler := range handlers {
+				if nextHandler == nil {
+					c.Next()
+					continue
+				} else {
+					c.nextHandler = nextHandler
+				}
+			}
+
+			for _, f := range h.Filters {
+				switch t := f.(type) {
+				case Filter:
+					filtersResult = t.Check(c.Update)
+				case func(u *objects.Update) bool:
+					filtersResult = t(c.Update)
+				default:
+					filtersResult = false
+				}
+			}
+
+			if !filtersResult {
+				c.Next()
+				continue
+			}
+			c.GetCurrent()(c)
+			c.Reset()
+		}
+	}
 }
 
 // Register, append to Callbacks, e.g handler functions
 func (ho *HandlerObj) Register(f HandlerFunc, filters ...interface{}) {
-	t := reflect.TypeOf(f)
-	if t.Kind() != reflect.Func {
-		return
-	}
-
 	ht := HandlerType{
-		Callback: &f,
-		Filters:  filters,
+		Callbacks: []HandlerFunc{f},
+		Filters:   filters,
 	}
 
 	ho.mu.Lock()
@@ -87,55 +114,8 @@ func (ho *HandlerObj) Register(f HandlerFunc, filters ...interface{}) {
 	ho.mu.Unlock()
 }
 
-func (ho *HandlerObj) CheckAndErrTrigger(err error, update *objects.Update, sync bool) error {
-	if err == nil {
-		return nil
-	}
-	var cb func(upd *objects.Update)
-	var ok bool
-
-	for _, h := range ho.errHandlers {
-		cb, ok = h.Callback.(func(upd *objects.Update))
-		if !ok {
-			return tgpErr.New("failed convert to func(Update) from " + fmt.Sprintln(h.Callback))
-		}
-		h.Call(update, func() { cb(update) })
-	}
-	return nil
-}
-
-// Unregister checkout to memory address
-// and cut up it if find something, with same address
-func (ho *HandlerObj) Unregister(handler *HandlerFunc) {
-	t := reflect.TypeOf(handler)
-	if t.Kind() != reflect.Func {
-		return
-	}
-	var s, s2 uintptr
-	var index int
-	s = reflect.ValueOf(handler).Pointer()
-
-	for i, h := range ho.handlers {
-		s2 = reflect.ValueOf(h).Pointer()
-		if s == s2 {
-			// pop up from slice
-			index = i - 1
-			if index < 0 {
-				index = 0
-			}
-			ho.handlers = append(ho.handlers[:index], ho.handlers[index:]...)
-		}
-	}
-}
-
-// RegisterMiddleware ...
-// for example, you want to register every user which writed to you bot
-// You can registerMiddleware for MessageHandler, not for all handlers
-// Or maybe want to make throttling middleware, just Registers middleware
-func (ho *HandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
-	ho.Middleware.Register(f...)
-}
-
-func (ho *HandlerObj) TriggerMiddleware(bot *Bot, update *objects.Update, typ string) error {
-	return ho.Middleware.Trigger(bot, update, typ)
+func (ho *HandlerObj) RegisterChain(f *HandlerType) {
+	ho.mu.Lock()
+	ho.handlers = append(ho.handlers, f)
+	ho.mu.Unlock()
 }

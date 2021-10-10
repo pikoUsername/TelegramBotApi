@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"reflect"
+	"sync"
 	"syscall"
 	"time"
 
@@ -66,13 +66,13 @@ func NewDispatcher(bot *Bot, storage storage.Storage) *Dispatcher {
 		Welcome:    true,
 	}
 
-	dp.MessageHandler = NewHandlerObj(dp)
-	dp.CallbackQueryHandler = NewHandlerObj(dp)
-	dp.ChannelPostHandler = NewHandlerObj(dp)
-	dp.ChatMemberHandler = NewHandlerObj(dp)
-	dp.PollHandler = NewHandlerObj(dp)
-	dp.PollAnswerHandler = NewHandlerObj(dp)
-	dp.ChannelPostHandler = NewHandlerObj(dp)
+	dp.MessageHandler = NewHandlerObj()
+	dp.CallbackQueryHandler = NewHandlerObj()
+	dp.ChannelPostHandler = NewHandlerObj()
+	dp.ChatMemberHandler = NewHandlerObj()
+	dp.PollHandler = NewHandlerObj()
+	dp.PollAnswerHandler = NewHandlerObj()
+	dp.ChannelPostHandler = NewHandlerObj()
 
 	return dp
 }
@@ -173,132 +173,25 @@ func (dp *Dispatcher) ResetWebhook(check bool) error {
 
 // ProcessOneUpdate you guess, processes ONLY one comming update
 // Support only one Message update
-func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
-	var err error
+func (dp *Dispatcher) ProcessOneUpdate(upd *objects.Update) error {
+	ctx := dp.Context(upd)
 
 	// very bad code, please dont see this bullshit
 	// ============================================
-	if update.Message != nil {
-		dp.MessageHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.MessageHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.Message))
-			if !ok {
-				return tgpErr.New("message handler type assertion error, need type func(*Bot, *Message), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-
-			err = dp.MessageHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.Message) })
-		}
-		dp.MessageHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
-	} else if update.CallbackQuery != nil {
-		dp.CallbackQueryHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.CallbackQueryHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.CallbackQuery))
-			if !ok {
-				return tgpErr.New("callbackquery handler type assertion error, need type func(*Bot, *CallbackQuery), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-			err = dp.CallbackQueryHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.CallbackQuery) })
-		}
-		dp.CallbackQueryHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
-	} else if update.ChannelPost != nil {
-		dp.ChannelPostHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.ChannelPostHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.Message))
-			if !ok {
-				return tgpErr.New("channelPost handler type assertion error, need type func(*Bot, *ChannelPost), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-			err = dp.ChannelPostHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.ChannelPost) })
-		}
-		dp.ChannelPostHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
-	} else if update.Poll != nil {
-		dp.PollHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.PollHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.Poll))
-			if !ok {
-				return tgpErr.New("poll handler type assertion error, need type func(*Bot, *Poll), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-			err = dp.PollHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.Poll) })
-		}
-		dp.PollHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
-	} else if update.PollAnswer != nil {
-		dp.PollAnswerHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.PollAnswerHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.PollAnswer))
-			if !ok {
-				return tgpErr.New("pollAnswer handler type assertion error, need type func(*Bot, *PollAnswer), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-			err = dp.PollAnswerHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.PollAnswer) })
-		}
-		dp.PollAnswerHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
-	} else if update.ChatMember != nil {
-		dp.ChatMemberHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.ChatMemberHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.ChatMember))
-			if !ok {
-				return tgpErr.New("ChatMember handler type assertion error, need type func(*Bot, *ChatMember), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-			err = dp.ChatMemberHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.ChatMember) })
-		}
-		dp.ChatMemberHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
-	} else if update.MyChatMember != nil {
-
-		dp.MyChatMemberHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.MyChatMemberHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.ChatMemberUpdated))
-			if !ok {
-				return tgpErr.New("MyChatMember handler type assertion error, need type func(*Bot, *ChatMemberUpdated), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-			err = dp.MyChatMemberHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.MyChatMember) })
-		}
-		dp.MyChatMemberHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
+	if ctx.Message != nil {
+		dp.CallbackQueryHandler.Trigger(ctx)
+	} else if ctx.CallbackQuery != nil {
+		dp.CallbackQueryHandler.Trigger(ctx)
+	} else if ctx.ChannelPost != nil {
+		dp.ChannelPostHandler.Trigger(ctx)
+	} else if ctx.Poll != nil {
+		dp.PollHandler.Trigger(ctx)
+	} else if ctx.PollAnswer != nil {
+		dp.CallbackQueryHandler.Trigger(ctx)
+	} else if ctx.ChatMember != nil {
+		dp.ChatMemberHandler.Trigger(ctx)
+	} else if ctx.MyChatMember != nil {
+		dp.MyChatMemberHandler.Trigger(ctx)
 	} else {
 		text := "detected not supported type of updates, seems like telegram bot api updated before this package updated"
 		return tgpErr.New(text)
@@ -314,6 +207,17 @@ func (dp *Dispatcher) SkipUpdates() {
 		Offset:  -1,
 		Timeout: 1,
 	})
+}
+
+func (dp *Dispatcher) Context(upd *objects.Update) *Context {
+	return &Context{
+		Update:  upd,
+		data:    dataContext{},
+		index:   -1,
+		Bot:     dp.Bot,
+		Storage: dp.Storage,
+		mu:      sync.Mutex{},
+	}
 }
 
 // SetState set a state which passed for a current user in current chat

@@ -5,7 +5,6 @@ import (
 
 	"github.com/pikoUsername/tgp"
 	"github.com/pikoUsername/tgp/fsm/storage"
-	"github.com/pikoUsername/tgp/objects"
 )
 
 // main function entry function for whole program
@@ -17,15 +16,14 @@ func main() {
 		panic(err)
 	}
 
-	// recommended set syncronus argument to false
 	dp := tgp.NewDispatcher(bot, storage.NewMemoryStorage())
 
 	// register a your callback
 	// this callback will be called on every message
 	// because handler havenot got any filters
-	dp.MessageHandler.Register(func(bot *tgp.Bot, m *objects.Message) {
+	dp.MessageHandler.Register(func(ctx *tgp.Context) {
 		// returning message text to same chat
-		_, err := bot.Send(tgp.NewSendMessage(m.Chat.ID, m.Text))
+		_, err := bot.Send(tgp.NewSendMessage(ctx.Message.Chat.ID, ctx.Message.Text))
 		if err != nil {
 			// you can use a more complex logging systems
 			// it s just example

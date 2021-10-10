@@ -11,20 +11,6 @@ var (
 	httpRegex = getHTTPRegex()
 )
 
-type parseMode interface {
-	Link(link, text string)
-
-	Bold(text ...string)
-	UnderLine(text ...string)
-	StrikeThrough(text ...string)
-
-	Pre(text ...string)
-	Code(code string, language string)
-	PreCode(code string, language string)
-
-	mode() string
-}
-
 func getHTTPRegex() *regexp.Regexp {
 	regex, _ := regexp.Compile("^(http|https)://")
 	return regex

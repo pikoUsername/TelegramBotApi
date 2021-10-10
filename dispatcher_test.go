@@ -1,26 +1,25 @@
-package tgp_test
+package tgp
 
 import (
 	"testing"
 
-	"github.com/pikoUsername/tgp"
 	"github.com/pikoUsername/tgp/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
 )
 
-func GetDispatcher(check_token bool) (*tgp.Dispatcher, error) {
+func GetDispatcher(check_token bool) (*Dispatcher, error) {
 	var err error
-	var b *tgp.Bot
+	var b *Bot
 
 	if check_token {
-		b, err = tgp.NewBot(TestToken, "HTML", nil)
+		b, err = NewBot(testToken, "HTML", nil)
 	} else {
-		b = &tgp.Bot{}
+		b = &Bot{}
 	}
 	if err != nil {
-		return &tgp.Dispatcher{}, err
+		return &Dispatcher{}, err
 	}
-	return tgp.NewDispatcher(b, storage.NewMemoryStorage()), nil
+	return NewDispatcher(b, storage.NewMemoryStorage()), nil
 }
 
 func TestNewDispatcher(t *testing.T) {
@@ -48,8 +47,7 @@ func BenchmarkProcessOneUpdate(b *testing.B) {
 		b.Fail()
 	}
 
-	dp.MessageHandler.Register(func(m *objects.Message) {})
-	dp.MessageHandler.RegisterMiddleware(func(u *objects.Update) {})
+	dp.MessageHandler.Register(func(ctx *Context) { ctx.Next() })
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
