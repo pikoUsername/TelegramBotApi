@@ -27,22 +27,35 @@ var (
 // 	)
 // ```
 // Can be used as handlers chain, e.g registered by ResgisterChain()
-//
-// Not concurrency safe!
 type HandlerType struct {
-	Callbacks []HandlerFunc
-	Filters   []interface{}
+	Handlers []HandlerFunc
+	Filters  []interface{}
+
+	mu sync.Mutex
 }
 
 func (h *HandlerType) Add(handlers ...HandlerFunc) {
 	if len(handlers) != 0 {
-		h.Callbacks = append(h.Callbacks, handlers...)
+		h.mu.Lock()
+		h.Handlers = append(h.Handlers, handlers...)
+		h.mu.Unlock()
 	}
 }
 
 func (h *HandlerType) AddFilters(filters ...interface{}) {
 	if len(filters) != 0 {
+		h.mu.Lock()
 		h.Filters = append(h.Filters, filters...)
+		h.mu.Unlock()
+	}
+}
+
+// NewHandlerType returns a HandlerType instance
+func NewHandlerType(handlers ...HandlerFunc) *HandlerType {
+	return &HandlerType{
+		Handlers: handlers,
+		Filters:  []interface{}{},
+		mu:       sync.Mutex{},
 	}
 }
 
@@ -63,15 +76,12 @@ func (ho *HandlerObj) Trigger(c *Context) {
 	var nextIndex int
 	for i, h := range ho.handlers {
 		if h != nil {
-			if len(c.calledErrors) != 0 {
-
-			}
 			ho.handlerPos = *(*uint16)(unsafe.Pointer(&i))
-			nextIndex = i + 1
-			if nextIndex > len(ho.handlers) {
+			nextIndex = i - 1
+			if nextIndex < len(ho.handlers) {
 				nextIndex = i
 			}
-			handlers := ho.handlers[nextIndex].Callbacks
+			handlers := ho.handlers[nextIndex].Handlers
 			for _, nextHandler := range handlers {
 				if nextHandler == nil {
 					c.Next()
@@ -88,7 +98,6 @@ func (ho *HandlerObj) Trigger(c *Context) {
 				case func(u *objects.Update) bool:
 					filtersResult = t(c.Update)
 				default:
-					filtersResult = false
 				}
 			}
 
@@ -102,20 +111,35 @@ func (ho *HandlerObj) Trigger(c *Context) {
 	}
 }
 
-// Register, append to Callbacks, e.g handler functions
-func (ho *HandlerObj) Register(f HandlerFunc, filters ...interface{}) {
-	ht := HandlerType{
-		Callbacks: []HandlerFunc{f},
-		Filters:   filters,
+// Register could work in two modes
+//
+// 1. registers a filters, and handlers, this mode will register chain in the end of function
+// 2. register handlerchain instantly
+func (ho *HandlerObj) Register(callbacks ...interface{}) {
+	var handler *HandlerType
+	var partial bool
+
+	handler = &HandlerType{}
+
+	for _, elem := range callbacks {
+		ho.mu.Lock()
+		switch res := elem.(type) {
+		case func(*objects.Update) error:
+		case Filter:
+			partial = true
+			handler.AddFilters(res)
+
+		case HandlerFunc:
+			partial = true
+			handler.Add(res)
+
+		case *HandlerType:
+		case HandlerType:
+			ho.handlers = append(ho.handlers, &res)
+		}
+		ho.mu.Unlock()
 	}
-
-	ho.mu.Lock()
-	ho.handlers = append(ho.handlers, &ht)
-	ho.mu.Unlock()
-}
-
-func (ho *HandlerObj) RegisterChain(f *HandlerType) {
-	ho.mu.Lock()
-	ho.handlers = append(ho.handlers, f)
-	ho.mu.Unlock()
+	if !partial {
+		ho.handlers = append(ho.handlers, handler)
+	}
 }

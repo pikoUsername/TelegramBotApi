@@ -29,12 +29,6 @@ func failIfErr(t *testing.T, err error) {
 	}
 }
 
-func panicIfErr(t *testing.T, err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 func getBot(t *testing.T) *Bot {
 	b, err := NewBot(testToken, parseMode, nil)
 	if err != nil {

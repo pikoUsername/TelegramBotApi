@@ -47,14 +47,17 @@ func TestRegister(t *testing.T) {
 	}, filters.CommandStart())
 }
 
+// fail
 func TestHandlerTrigger(t *testing.T) {
-	dp, err := GetDispatcher(true)
+	dp, err := GetDispatcher(false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	dp.MessageHandler.Register(func(ctx *Context) {
-		fmt.Println("working!")
+		t.Log("Working!!")
+		t.Fatal("Working!")
+		ctx.Error("312313")
 		ctx.Abort()
 	})
 	upd := &objects.Update{
@@ -75,5 +78,9 @@ func TestHandlerTrigger(t *testing.T) {
 			Text: "В",
 		},
 	}
-	dp.MessageHandler.Trigger(dp.Context(upd))
+	ctx := dp.Context(upd)
+	dp.MessageHandler.Trigger(ctx)
+	if len(ctx.calledErrors) == 0 {
+		t.Error("callederror is nil")
+	}
 }

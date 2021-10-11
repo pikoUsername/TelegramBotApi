@@ -43,6 +43,8 @@ type Context struct {
 	nextHandler  func(ctx *Context)
 	calledErrors []error
 
+	// ListenChannel <-chan struct{}
+
 	mu sync.Mutex
 }
 
@@ -67,6 +69,11 @@ func (c *Context) MustGet(key string) (v interface{}) {
 	}
 	c.Fatal(tgpErr.New("Key " + key + " does not exists"))
 	return
+}
+
+// Err returns error which raised in pervious handlers
+func (c *Context) Errors() []error {
+	return c.calledErrors
 }
 
 // Next calls next handler
@@ -96,16 +103,29 @@ func (c *Context) AbortWithError(err error) []error {
 }
 
 // Error adds to errors list errors from arguments
-func (c *Context) Error(s ...interface{}) []error {
+func (c *Context) Error(s ...interface{}) error {
 	err := errors.New(fmt.Sprintln(s...))
 	c.mu.Lock()
 	c.calledErrors = append(c.calledErrors, err)
 	c.mu.Unlock()
-	return c.calledErrors
+	return err
+}
+
+func (c *Context) Errorf(format string, args ...interface{}) error {
+	err := fmt.Errorf(format, args...)
+	c.mu.Lock()
+	c.calledErrors = append(c.calledErrors, err)
+	c.mu.Unlock()
+	return err
+}
+
+func (c *Context) Fatalf(format string, args ...interface{}) error {
+	c.Abort()
+	return c.Errorf(format, args...)
 }
 
 // Fatal calls Abort method, and do same thing as Error
-func (c *Context) Fatal(s ...interface{}) []error {
+func (c *Context) Fatal(s ...interface{}) error {
 	c.Abort()
 	return c.Error(s...)
 }
@@ -126,6 +146,7 @@ func (c *Context) InputFile(name, path string) (*objects.InputFile, error) {
 	return objects.NewInputFile(path, name)
 }
 
+// for context.Context interface{}
 // func (c *Context) Deadline() (deadline time.Time, ok bool) {}
 // func (c *Context) Done() <-chan struct{}                   {}
 // func (c *Context) Err() error                              {}
