@@ -3,6 +3,7 @@ package tgp
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/pikoUsername/tgp/fsm/storage"
@@ -79,8 +80,8 @@ func (c *Context) Errors() []error {
 // Next calls next handler
 func (c *Context) Next() {
 	if c.index >= ContinueIndex {
-		c.nextHandler(c)
 		c.cursor++
+		c.GetCurrent()(c)
 	}
 }
 
@@ -130,13 +131,6 @@ func (c *Context) Fatal(s ...interface{}) error {
 	return c.Error(s...)
 }
 
-func (c *Context) Reset() {
-	c.index = -1
-	// c.data = nil
-	c.calledErrors = c.calledErrors[:0] // what?
-	c.nextHandler = nil
-}
-
 func (c *Context) InputFile(name, path string) (*objects.InputFile, error) {
 	var file *objects.InputFile
 
@@ -144,6 +138,11 @@ func (c *Context) InputFile(name, path string) (*objects.InputFile, error) {
 		return file, tgpErr.New("Name and/or path arguments is unfilled ")
 	}
 	return objects.NewInputFile(path, name)
+}
+
+// IsMessageToMe returns true if message directed to this bot.
+func (ctx *Context) IsMessageToMe(message *objects.Message) bool {
+	return strings.Contains(message.Text, "@"+ctx.Bot.Me.Username)
 }
 
 // for context.Context interface{}

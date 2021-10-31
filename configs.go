@@ -1,6 +1,7 @@
 package tgp
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -729,6 +730,7 @@ type StopMessageLiveLocation struct {
 }
 
 // GetUpdate method fields
+// https://core.telegram.org/bots/api#getting-updates
 type GetUpdatesConfig struct {
 	Offset         int
 	Limit          uint
@@ -738,11 +740,16 @@ type GetUpdatesConfig struct {
 
 func (guc *GetUpdatesConfig) values() (url.Values, error) {
 	v := url.Values{}
-	if guc.Offset != 0 {
-		v.Add("offset", strconv.Itoa(guc.Offset))
-	}
+	v.Add("offset", strconv.Itoa(guc.Offset))
 	v.Add("limit", strconv.FormatUint(uint64(guc.Limit), 10))
-	v.Add("timeout", strconv.FormatUint(uint64(guc.Timeout), 10))
+	if guc.Timeout != 0 {
+		v.Add("timeout", strconv.FormatUint(uint64(guc.Timeout), 10))
+	}
+	bs, err := json.Marshal(guc.AllowedUpdates)
+	if err != nil {
+		return v, err
+	}
+	v.Add("allowed_updates", BytesToString(bs))
 
 	return v, nil
 }

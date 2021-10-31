@@ -30,8 +30,11 @@ type Dispatcher struct {
 	ChatMemberHandler    *HandlerObj
 	PollAnswerHandler    *HandlerObj
 	MyChatMemberHandler  *HandlerObj
-	Storage              storage.Storage
 
+	// Storage interface
+	Storage storage.Storage
+
+	// for FSM usage
 	currentUpdate *objects.Update
 
 	// If you want to add onshutdown function
@@ -41,10 +44,9 @@ type Dispatcher struct {
 	OnWebhookStartup  []OnStartAndShutdownFunc
 	OnPollingStartup  []OnStartAndShutdownFunc
 
-	Welcome    bool
-	Synchronus bool
-	polling    bool
-	webhook    bool
+	Welcome bool
+	polling bool
+	webhook bool
 }
 
 var (
@@ -60,10 +62,9 @@ type OnStartAndShutdownFunc func(dp *Dispatcher)
 // 		welcome: true
 func NewDispatcher(bot *Bot, storage storage.Storage) *Dispatcher {
 	dp := &Dispatcher{
-		Bot:        bot,
-		Synchronus: true,
-		Storage:    storage,
-		Welcome:    true,
+		Bot:     bot,
+		Storage: storage,
+		Welcome: true,
 	}
 
 	dp.MessageHandler = NewHandlerObj()
@@ -104,18 +105,14 @@ func NewOnConf(cb OnStartAndShutdownFunc) *OnConfig {
 
 func callListFuncs(funcs []OnStartAndShutdownFunc, dp *Dispatcher) {
 	for _, cb := range funcs {
-		if dp.Synchronus {
-			cb(dp)
-		} else {
-			go cb(dp)
-		}
+		go cb(dp)
 	}
 }
 
 // Config for start polling method
 // idk where to put this config, configs or dispatcher?
 type StartPollingConfig struct {
-	*GetUpdatesConfig
+	GetUpdatesConfig
 	SkipUpdates  bool
 	SafeExit     bool
 	ResetWebhook bool
@@ -126,7 +123,7 @@ type StartPollingConfig struct {
 
 func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 	return &StartPollingConfig{
-		GetUpdatesConfig: &GetUpdatesConfig{
+		GetUpdatesConfig: GetUpdatesConfig{
 			Timeout: 20,
 			Limit:   0,
 		},
@@ -223,9 +220,8 @@ func (dp *Dispatcher) Context(upd *objects.Update) *Context {
 // SetState set a state which passed for a current user in current chat
 // works only in handler, or in middleware, nor outside
 func (dp *Dispatcher) SetState(state *fsm.State) error {
-	u := dp.currentUpdate
-	if u != nil {
-		cid, uid := getUidAndCidFromUpd(u)
+	if dp.currentUpdate != nil {
+		cid, uid := getUidAndCidFromUpd(dp.currentUpdate)
 		return dp.Storage.SetState(cid, uid, state.GetFullState())
 	}
 	return nil
@@ -340,7 +336,7 @@ func (dp *Dispatcher) shutDown() {
 func (dp *Dispatcher) welcome() {
 	if dp.Welcome {
 		dp.Bot.GetMe()
-		dp.Bot.logger.Println("Bot: ", dp.Bot.Me)
+		dp.Bot.logger.Println("Bot: ", dp.Bot.Me.Username)
 	}
 }
 
@@ -360,7 +356,7 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Up
 				time.Sleep(c.Relax)
 			}
 
-			updates, err := dp.Bot.GetUpdates(c.GetUpdatesConfig)
+			updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
 			if err != nil {
 				dp.Bot.logger.Println(err.Error())
 				dp.Bot.logger.Println("Error with getting updates")
@@ -422,7 +418,14 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 	ch := make(chan *objects.Update)
 
 	dp.MakeUpdatesChan(c, ch)
-	dp.ProcessUpdates(ch)
+
+	for upd := range ch {
+		dp.currentUpdate = upd
+		err := dp.ProcessOneUpdate(upd)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

@@ -197,6 +197,23 @@ func checkResult(resp *objects.TelegramResponse) (*objects.TelegramResponse, err
 	return resp, nil
 }
 
+func checkFilters(filters []interface{}, upd *objects.Update) bool {
+	var filtersResult bool
+
+	for _, ifilter := range filters {
+		switch filter := ifilter.(type) {
+		case func(*objects.Update) bool:
+			filtersResult = filter(upd)
+		case Filter:
+			filtersResult = filter.Check(upd)
+		}
+		if !filtersResult {
+			return false
+		}
+	}
+	return true
+}
+
 // From gin-gonic/internal/bytesconv/bytesconv.go
 
 // StringToBytes converts string to byte slice without a memory allocation.

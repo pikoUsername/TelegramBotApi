@@ -7,7 +7,7 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
-type HandlerFunc func(ctx *Context)
+type HandlerFunc func(*Context)
 
 // errors
 var (
@@ -74,14 +74,20 @@ func NewHandlerObj() *HandlerObj {
 func (ho *HandlerObj) Trigger(c *Context) {
 	var filtersResult bool
 	var nextIndex int
+	var handlers []HandlerFunc
+
 	for i, h := range ho.handlers {
 		if h != nil {
 			ho.handlerPos = *(*uint16)(unsafe.Pointer(&i))
-			nextIndex = i - 1
-			if nextIndex < len(ho.handlers) {
+			nextIndex = i + 1
+			if nextIndex >= len(ho.handlers) {
 				nextIndex = i
 			}
-			handlers := ho.handlers[nextIndex].Handlers
+			handlers = ho.handlers[nextIndex].Handlers
+			if len(handlers) == 0 {
+				continue
+			}
+			c.handlers = handlers
 			for _, nextHandler := range handlers {
 				if nextHandler == nil {
 					c.Next()
@@ -91,22 +97,13 @@ func (ho *HandlerObj) Trigger(c *Context) {
 				}
 			}
 
-			for _, f := range h.Filters {
-				switch t := f.(type) {
-				case Filter:
-					filtersResult = t.Check(c.Update)
-				case func(u *objects.Update) bool:
-					filtersResult = t(c.Update)
-				default:
-				}
-			}
+			filtersResult = checkFilters(h.Filters, c.Update)
 
 			if !filtersResult {
 				c.Next()
 				continue
 			}
 			c.GetCurrent()(c)
-			c.Reset()
 		}
 	}
 }
@@ -114,8 +111,9 @@ func (ho *HandlerObj) Trigger(c *Context) {
 // Register could work in two modes
 //
 // 1. registers a filters, and handlers, this mode will register chain in the end of function
-// 2. register handlerchain instantly
-func (ho *HandlerObj) Register(callbacks ...interface{}) {
+// 2. registers handlerchain instantly
+// works for every functions argument
+func (ho *HandlerObj) Register(callbacks ...interface{}) error {
 	var handler *HandlerType
 	var partial bool
 
@@ -123,23 +121,27 @@ func (ho *HandlerObj) Register(callbacks ...interface{}) {
 
 	for _, elem := range callbacks {
 		ho.mu.Lock()
-		switch res := elem.(type) {
+
+		// := using this, type checking will not work
+		switch elem.(type) {
 		case func(*objects.Update) error:
-		case Filter:
 			partial = true
-			handler.AddFilters(res)
+			handler.AddFilters(elem.(func(*objects.Update) error))
 
 		case HandlerFunc:
 			partial = true
-			handler.Add(res)
+			handler.Add(elem.(HandlerFunc))
 
 		case *HandlerType:
-		case HandlerType:
-			ho.handlers = append(ho.handlers, &res)
+			ho.handlers = append(ho.handlers, elem.(*HandlerType))
+		default:
+			return tgpErr.New("only tgp.Filter, tgp.HandlerFunc, or *tgp.HandlerType types.")
 		}
+
 		ho.mu.Unlock()
 	}
-	if !partial {
+	if partial {
 		ho.handlers = append(ho.handlers, handler)
 	}
+	return nil
 }

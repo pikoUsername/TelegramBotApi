@@ -35,7 +35,7 @@ func TestProcessOneUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dp.ProcessOneUpdate(nil)
+	dp.ProcessOneUpdate(fakeUpd)
 }
 
 // go test -bench -benchmem

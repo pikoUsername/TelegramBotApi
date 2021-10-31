@@ -7,11 +7,9 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -34,6 +32,12 @@ type StdLogger interface {
 	Panicf(string, ...interface{})
 	Panicln(...interface{})
 }
+
+var (
+	DefaultClient = &http.Client{
+		Timeout: 5 * time.Second,
+	}
+)
 
 // Bot can be created using Json config,
 // Copy pasted from go-telegram-bot-api ;D
@@ -79,33 +83,15 @@ type Bot struct {
 
 // NewBot returns a new bot struct which need to interact with Telegram Bot API
 // Bot structure should provide only Telegram bot API methods
-func NewBot(token string, parseMode string, proxy *url.URL) (*Bot, error) {
-	var client *http.Client
+func NewBot(token string, parseMode string, client *http.Client) (*Bot, error) {
 	// Check out for correct token
 	err := checkToken(token)
 	if err != nil {
 		return nil, err
 	}
-	// client will be by default
-	if proxy == nil {
-		client = &http.Client{Timeout: 5 * time.Second}
-	} else {
-		client = &http.Client{
-			Timeout: time.Second * 5,
-			Transport: &http.Transport{
-				Proxy: http.ProxyURL(proxy),
-				// default values for http.DefaultTransport
-				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
-				}).DialContext,
-				MaxIdleConns:          10,
-				IdleConnTimeout:       60 * time.Second,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ExpectContinueTimeout: 1 * time.Second,
-				MaxIdleConnsPerHost:   runtime.GOMAXPROCS(0) + 1,
-			},
-		}
+	// will be by default
+	if client == nil {
+		client = DefaultClient
 	}
 	return &Bot{
 		Token:     token,
@@ -137,15 +123,18 @@ func (bot *Bot) Request(Method string, params url.Values) (*objects.TelegramResp
 	// Creating URL
 	// fix bug with sending request,
 	// when url creates here or NewRequest not creates a correct url with url params
-	tgurl := bot.server.ApiURL(bot.Token, Method+"?"+params.Encode())
+	tgurl := bot.server.ApiURL(bot.Token, Method)
 
-	// Content Type is Application/json
-	// Telegram uses application/json content type
+	print(params.Encode(), "\n")
+
 	request, err := http.NewRequest("POST", tgurl, strings.NewReader(params.Encode()))
 	if err != nil {
 		return &objects.TelegramResponse{}, err
 	}
-	request.Header.Set("Content-Type", "application/json")
+	// Using Content-Type x-www-form-urlencoded
+	// bc URL limitations, only 2048 charecters
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
 	// Most important staff doing here
 	// Sending Request to Telegram servers
 	resp, err := bot.Client.Do(request)

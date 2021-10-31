@@ -60,25 +60,7 @@ func TestHandlerTrigger(t *testing.T) {
 		ctx.Error("312313")
 		ctx.Abort()
 	})
-	upd := &objects.Update{
-		Message: &objects.Message{
-			MessageID: 1000,
-			Chat: &objects.Chat{
-				ID:        1000,
-				FirstName: "LoL",
-				Username:  "LoL",
-			},
-			From: &objects.User{
-				ID:           1000,
-				IsBot:        false,
-				FirstName:    "KAK",
-				LanguageCode: "ru",
-				LastName:     "lol",
-			},
-			Text: "В",
-		},
-	}
-	ctx := dp.Context(upd)
+	ctx := dp.Context(fakeUpd)
 	dp.MessageHandler.Trigger(ctx)
 	if len(ctx.calledErrors) == 0 {
 		t.Error("callederror is nil")
