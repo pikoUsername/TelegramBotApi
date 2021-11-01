@@ -210,7 +210,7 @@ func (dp *Dispatcher) Context(upd *objects.Update) *Context {
 	return &Context{
 		Update:  upd,
 		data:    dataContext{},
-		index:   -1,
+		index:   AcceptIndex,
 		Bot:     dp.Bot,
 		Storage: dp.Storage,
 		mu:      sync.Mutex{},

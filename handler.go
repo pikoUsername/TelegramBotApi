@@ -2,7 +2,6 @@ package tgp
 
 import (
 	"sync"
-	"unsafe"
 
 	"github.com/pikoUsername/tgp/objects"
 )
@@ -78,7 +77,6 @@ func (ho *HandlerObj) Trigger(c *Context) {
 
 	for i, h := range ho.handlers {
 		if h != nil {
-			ho.handlerPos = *(*uint16)(unsafe.Pointer(&i))
 			nextIndex = i + 1
 			if nextIndex >= len(ho.handlers) {
 				nextIndex = i
@@ -88,14 +86,6 @@ func (ho *HandlerObj) Trigger(c *Context) {
 				continue
 			}
 			c.handlers = handlers
-			for _, nextHandler := range handlers {
-				if nextHandler == nil {
-					c.Next()
-					continue
-				} else {
-					c.nextHandler = nextHandler
-				}
-			}
 
 			filtersResult = checkFilters(h.Filters, c.Update)
 

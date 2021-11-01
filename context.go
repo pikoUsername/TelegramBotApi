@@ -12,10 +12,11 @@ import (
 
 const (
 	AbortIndex = iota
-	ContinueIndex
+	AcceptIndex
 )
 
-// dataContext have no mechanisms for syncronize data
+// dataContext using for interact with each handlers
+// Not thread safe
 type dataContext map[string]interface{}
 
 func (dc dataContext) Get(key string) (v interface{}, ok bool) {
@@ -40,8 +41,6 @@ type Context struct {
 	cursor   int32
 	handlers []HandlerFunc
 
-	// nextHandler maybe a just handler, or middleware
-	nextHandler  func(ctx *Context)
 	calledErrors []error
 
 	// ListenChannel <-chan struct{}
@@ -77,12 +76,25 @@ func (c *Context) Errors() []error {
 	return c.calledErrors
 }
 
-// Next calls next handler
+// Next calls next handler, and increment cursor
 func (c *Context) Next() {
-	if c.index >= ContinueIndex {
+	if c.index >= AcceptIndex {
 		c.cursor++
 		c.GetCurrent()(c)
 	}
+}
+
+// Calls pervious handler, and decrement cursor
+func (c *Context) Pervious() {
+	if c.index >= AcceptIndex {
+		c.cursor--
+		c.GetCurrent()(c)
+	}
+}
+
+// Returns Context cursor
+func (c *Context) Cursor() int32 {
+	return c.cursor
 }
 
 func (c *Context) GetCurrent() HandlerFunc {
