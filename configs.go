@@ -451,7 +451,7 @@ func (svc *SendVideoConfig) method() string {
 // Represents Method SendAnimation Fields
 // https://core.telegram.org/bots/api#sendanimation
 type SendAnimationConfig struct {
-	ChatId    int64
+	ChatID    int64
 	Animation *objects.InputFile
 
 	Duration uint32
@@ -465,7 +465,7 @@ type SendAnimationConfig struct {
 
 func (sac *SendAnimationConfig) values() (url.Values, error) {
 	v := url.Values{}
-	v.Add("chat_id", strconv.FormatInt(sac.ChatId, 10))
+	v.Add("chat_id", strconv.FormatInt(sac.ChatID, 10))
 	v.Add("duration", strconv.FormatUint(uint64(sac.Duration), 10))
 	v.Add("width", strconv.FormatUint(uint64(sac.Width), 10))
 	v.Add("height", strconv.FormatUint(uint64(sac.Height), 10))
@@ -496,7 +496,7 @@ func (sac *SendAnimationConfig) getFiles() []*objects.InputFile {
 
 type SendVoiceConfig struct {
 	*BaseFile
-	ChatId               int64
+	ChatID               int64
 	Caption              string
 	ParseMode            string
 	CaptionEntities      []*objects.MessageEntity
@@ -511,7 +511,7 @@ type SendVoiceConfig struct {
 
 func (svc *SendVoiceConfig) values() (url.Values, error) {
 	v := url.Values{}
-	v.Add("chat_id", strconv.FormatInt(svc.ChatId, 10))
+	v.Add("chat_id", strconv.FormatInt(svc.ChatID, 10))
 	v.Add("caption", svc.Caption)
 	if svc.Caption != "" {
 		v.Add("parse_mode", svc.Caption)

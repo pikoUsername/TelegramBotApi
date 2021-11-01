@@ -11,7 +11,7 @@ type ITelegramServer interface {
 
 // TelegramApiServer need in
 // make easier use custom telegram api server
-type TelegramApiServer struct {
+type TelegramAPIServer struct {
 	// Base telegram, sendMessage and etc.
 	Base string `json:"base"`
 
@@ -20,23 +20,23 @@ type TelegramApiServer struct {
 }
 
 // NewTelegramApiServer ...
-func NewTelegramApiServer(Base string) *TelegramApiServer {
+func NewTelegramApiServer(Base string) *TelegramAPIServer {
 	template := "/bot%s/%s"
 	// /bot%s/%s is /bot<TOKEN>/<METHOD>
-	return &TelegramApiServer{
+	return &TelegramAPIServer{
 		Base: fmt.Sprint(Base, template),
 		File: fmt.Sprint(Base, "/file", template),
 	}
 }
 
 // ApiUrl creates from base telegram url
-func (tas *TelegramApiServer) ApiURL(Token string, Method string) string {
+func (tas *TelegramAPIServer) ApiURL(Token string, Method string) string {
 	return fmt.Sprintf(tas.Base, Token, Method)
 }
 
 // FileUrl Creates at base of tas.File string
 // a url for send a request
-func (tas *TelegramApiServer) FileURL(Token string, File string) string {
+func (tas *TelegramAPIServer) FileURL(Token string, File string) string {
 	return fmt.Sprintf(tas.File, Token, File)
 }
 
