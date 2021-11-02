@@ -40,14 +40,9 @@ var (
 )
 
 // Bot can be created using Json config,
-// Copy pasted from go-telegram-bot-api ;D
+// Copy-pasted from go-telegram-bot-api
 //
 // Client field have timeout, and default timeout is 5 second
-// we can NOT change timeout if you using default client,
-//
-// Logger field is too default, and we can change logger any way we can
-//
-// ProxyURL is not used
 type Bot struct {
 	// For DebugLog in console
 	Debug bool `json:"debug"`
@@ -124,8 +119,6 @@ func (bot *Bot) Request(Method string, params url.Values) (*objects.TelegramResp
 	// fix bug with sending request,
 	// when url creates here or NewRequest not creates a correct url with url params
 	tgurl := bot.server.ApiURL(bot.Token, Method)
-
-	print(params.Encode(), "\n")
 
 	request, err := http.NewRequest("POST", tgurl, strings.NewReader(params.Encode()))
 	if err != nil {
@@ -551,6 +544,7 @@ func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) (*objects.TelegramResponse
 
 // GetUpdates uses for long polling
 // https://core.telegram.org/bots/api#getupdates
+// Telegram will hold updates only on 24 hours
 func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
 	v, _ := c.values()
 	resp, err := bot.Request(c.method(), v)

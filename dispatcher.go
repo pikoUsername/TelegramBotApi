@@ -129,7 +129,7 @@ func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 		},
 		Relax:        1 * time.Second,
 		ResetWebhook: false,
-		ErrorSleep:   5,
+		ErrorSleep:   1,
 		SkipUpdates:  skip_updates,
 		SafeExit:     true,
 		Timeout:      5 * time.Second,
@@ -419,15 +419,7 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 
 	dp.MakeUpdatesChan(c, ch)
 
-	for upd := range ch {
-		dp.currentUpdate = upd
-		err := dp.ProcessOneUpdate(upd)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return dp.ProcessUpdates(ch)
 }
 
 // MakeWebhookChan adds a http Handler with c.BotURL path

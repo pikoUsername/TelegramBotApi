@@ -9,7 +9,7 @@ type ITelegramServer interface {
 	FileURL(Token string, File string)
 }
 
-// TelegramApiServer need in
+// TelegramApiServer(just copy paste from aiogram)
 // make easier use custom telegram api server
 type TelegramAPIServer struct {
 	// Base telegram, sendMessage and etc.

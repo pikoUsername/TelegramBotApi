@@ -244,7 +244,7 @@ func NewSetWebhook(url string) *SetWebhookConfig {
 // SendPhotoConfig represnts telegram api method fields
 // https://core.telegram.org/bots/api#sendphoto
 type SendPhotoConfig struct {
-	BaseFile
+	*BaseFile
 	Caption string
 }
 
@@ -270,7 +270,7 @@ func (spc *SendPhotoConfig) params() (map[string]string, error) {
 
 func NewSendPhoto(chat_id int64, photo *objects.InputFile) *SendPhotoConfig {
 	return &SendPhotoConfig{
-		BaseFile: BaseFile{
+		BaseFile: &BaseFile{
 			BaseChat: BaseChat{ChatID: chat_id},
 			File:     photo,
 		},
@@ -745,11 +745,13 @@ func (guc *GetUpdatesConfig) values() (url.Values, error) {
 	if guc.Timeout != 0 {
 		v.Add("timeout", strconv.FormatUint(uint64(guc.Timeout), 10))
 	}
-	bs, err := json.Marshal(guc.AllowedUpdates)
-	if err != nil {
-		return v, err
+	if len(guc.AllowedUpdates) != 0 {
+		bs, err := json.Marshal(guc.AllowedUpdates)
+		if err != nil {
+			return v, err
+		}
+		v.Add("allowed_updates", BytesToString(bs))
 	}
-	v.Add("allowed_updates", BytesToString(bs))
 
 	return v, nil
 }
