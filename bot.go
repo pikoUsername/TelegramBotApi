@@ -63,7 +63,7 @@ type Bot struct {
 	// default server must be here
 	// if you wanna create own, just create
 	// using this structure instead of NewBot function
-	server *TelegramApiServer
+	server *TelegramAPIServer
 
 	// logger is one for dispatcher and Bot
 	logger StdLogger
