@@ -9,7 +9,7 @@ import (
 
 // main function entry function for whole program
 func main() {
-	bot, err := tgp.NewBot("<token>", "HTML")
+	bot, err := tgp.NewBot("<token>", "HTML", nil)
 
 	// check out for error
 	if err != nil {
