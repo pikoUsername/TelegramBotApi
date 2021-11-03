@@ -1,22 +1,5 @@
 test_timeout := 30s
 
-# =================================
-#  			 SANDBOX 
-# =================================
-
-run-sandbox:
-	cd .sandbox/ && go run .
-
-build-sandbox: 
-	cd .sandbox/ && go build .
-
-build-run: 
-	$(MAKE) build-sandbox 
-	$(MAKE) run-exe args=""
-
-run-exe: 
-	cd .sandbox/ && ./.sandbox ${args}
-		
 # =============================
 # 			TESTS 
 # =============================

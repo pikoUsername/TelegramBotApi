@@ -60,9 +60,8 @@ func NewHandlerType(handlers ...HandlerFunc) *HandlerType {
 
 // HandlerObj uses for save Callback
 type HandlerObj struct {
-	handlers   []*HandlerType
-	mu         *sync.Mutex
-	handlerPos uint16
+	handlers []*HandlerType
+	mu       *sync.Mutex
 }
 
 // NewHandlerObj creates new DefaultHandlerObj

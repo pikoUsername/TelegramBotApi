@@ -47,6 +47,8 @@ type Dispatcher struct {
 	Welcome bool
 	polling bool
 	webhook bool
+
+	functionsWG *sync.WaitGroup
 }
 
 var (
@@ -105,8 +107,10 @@ func NewOnConf(cb OnStartAndShutdownFunc) *OnConfig {
 
 func callListFuncs(funcs []OnStartAndShutdownFunc, dp *Dispatcher) {
 	for _, cb := range funcs {
+		dp.functionsWG.Add(1)
 		go cb(dp)
 	}
+	dp.functionsWG.Wait()
 }
 
 // Config for start polling method
@@ -125,9 +129,8 @@ func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 	return &StartPollingConfig{
 		GetUpdatesConfig: GetUpdatesConfig{
 			Timeout: 20,
-			Limit:   0,
 		},
-		Relax:        1 * time.Second,
+		Relax:        time.Second / 10, // 0.1
 		ResetWebhook: false,
 		ErrorSleep:   1,
 		SkipUpdates:  skip_updates,
@@ -250,7 +253,7 @@ func (dp *Dispatcher) shutdownPolling() {
 // Calls in StartPolling function
 func (dp *Dispatcher) startupPolling() {
 	callListFuncs(dp.OnPollingStartup, dp)
-	dp.welcome()
+	go dp.welcome()
 }
 
 // shutdownWebhook method, iterate over a callbacks from OnWebhookShutdown
@@ -261,7 +264,7 @@ func (dp *Dispatcher) shutdownWebhook() {
 // startupPolling method, iterate over a callbacks from OnWebhookStartup
 func (dp *Dispatcher) startupWebhook() {
 	callListFuncs(dp.OnWebhookStartup, dp)
-	dp.welcome()
+	go dp.welcome()
 }
 
 // Onstartup method append to OnStartupCallbaks a callbacks
@@ -375,9 +378,7 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Up
 	}()
 }
 
-// ProcessUpdates iterate <-chan *objects.Update
-//
-// Note: use after a MakeUpdatesChan call
+// ProcessUpdates iterates <-chan *objects.Update
 func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 	for upd := range ch {
 		if upd == nil {

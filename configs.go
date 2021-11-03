@@ -13,8 +13,7 @@ import (
 
 // This file stores ALL method configs
 
-// functions which startswith New and method name
-// uses for creating configs which stores ONLY required paramters
+// functions with New prefix, use with Context.Reply method
 
 // Configurable is interface for using by method
 type Configurable interface {
@@ -198,10 +197,9 @@ func (smc *SendMessageConfig) method() string {
 	return "sendMessage"
 }
 
-func NewSendMessage(chat_id int64, text string) *SendMessageConfig {
+func NewSendMessage(text string) *SendMessageConfig {
 	return &SendMessageConfig{
-		ChatID: chat_id,
-		Text:   text,
+		Text: text,
 	}
 }
 
@@ -268,10 +266,10 @@ func (spc *SendPhotoConfig) params() (map[string]string, error) {
 	return v, nil
 }
 
-func NewSendPhoto(chat_id int64, photo *objects.InputFile) *SendPhotoConfig {
+func NewSendPhoto(photo *objects.InputFile) *SendPhotoConfig {
 	return &SendPhotoConfig{
 		BaseFile: &BaseFile{
-			BaseChat: BaseChat{ChatID: chat_id},
+			BaseChat: BaseChat{},
 			File:     photo,
 		},
 	}
@@ -332,10 +330,10 @@ func (sac *SendAudioConfig) getFiles() []*objects.InputFile {
 	return []*objects.InputFile{sac.File, sac.Thumb}
 }
 
-func NewSendAudio(chatId int64, audio *objects.InputFile) *SendAudioConfig {
+func NewSendAudio(audio *objects.InputFile) *SendAudioConfig {
 	return &SendAudioConfig{
 		BaseFile: BaseFile{
-			BaseChat:    BaseChat{ChatID: chatId},
+			BaseChat:    BaseChat{},
 			File:        audio,
 			UseExisting: false,
 		},
@@ -564,10 +562,10 @@ func (svnc *SendVideoNoteConfig) method() string {
 	return "sendVideoName"
 }
 
-func NewSendVideoNote(chat_id int64, video_note *objects.InputFile) *SendVideoNoteConfig {
+func NewSendVideoNote(video_note *objects.InputFile) *SendVideoNoteConfig {
 	return &SendVideoNoteConfig{
 		BaseFile: &BaseFile{
-			BaseChat: BaseChat{ChatID: chat_id},
+			BaseChat: BaseChat{},
 			File:     video_note,
 		},
 	}
@@ -605,10 +603,9 @@ func (smgc *SendMediaGroupConfig) method() string {
 	return "sendMediaGroup"
 }
 
-func NewSendMediaGroupConfig(chat_id int64, media []interface{}) *SendMediaGroupConfig {
+func NewSendMediaGroupConfig(media []interface{}) *SendMediaGroupConfig {
 	return &SendMediaGroupConfig{
-		ChatID: chat_id,
-		Media:  media,
+		Media: media,
 	}
 }
 
@@ -655,9 +652,8 @@ func (slc *SendLocationConfig) values() (url.Values, error) {
 	return v, nil
 }
 
-func NewSendLocationConf(chat_id int64, latitude float32, longitude float32) *SendLocationConfig {
+func NewSendLocationConf(latitude float32, longitude float32) *SendLocationConfig {
 	return &SendLocationConfig{
-		ChatID:    chat_id,
 		Latitude:  latitude,
 		Longitude: longitude,
 	}
@@ -740,8 +736,12 @@ type GetUpdatesConfig struct {
 
 func (guc *GetUpdatesConfig) values() (url.Values, error) {
 	v := url.Values{}
-	v.Add("offset", strconv.Itoa(guc.Offset))
-	v.Add("limit", strconv.FormatUint(uint64(guc.Limit), 10))
+	if guc.Offset != 0 {
+		v.Add("offset", strconv.Itoa(guc.Offset))
+	}
+	if guc.Limit != 0 {
+		v.Add("limit", strconv.FormatUint(uint64(guc.Limit), 10))
+	}
 	if guc.Timeout != 0 {
 		v.Add("timeout", strconv.FormatUint(uint64(guc.Timeout), 10))
 	}
@@ -894,10 +894,9 @@ func (sdc *SendDiceConfig) method() string {
 	return "sendDice"
 }
 
-func NewSendDice(chatid int64, emoji string) *SendDiceConfig {
+func NewSendDice(emoji string) *SendDiceConfig {
 	return &SendDiceConfig{
-		ChatID: chatid,
-		Emoji:  emoji,
+		Emoji: emoji,
 	}
 }
 
@@ -964,9 +963,8 @@ func (spc *SendPollConfig) method() string {
 	return "sendPoll"
 }
 
-func NewSendPoll(chatid int64, question string, options []string) *SendPollConfig {
+func NewSendPoll(question string, options []string) *SendPollConfig {
 	return &SendPollConfig{
-		ChatID:   chatid,
 		Question: question,
 		Options:  options,
 	}

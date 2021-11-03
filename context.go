@@ -3,6 +3,7 @@ package tgp
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -157,7 +158,21 @@ func (ctx *Context) IsMessageToMe(message *objects.Message) bool {
 	return strings.Contains(message.Text, "@"+ctx.Bot.Me.Username)
 }
 
-// for context.Context interface{}
+// Sends message request, which must return Message object.
+// if request type is not correct, will return error
+func (c *Context) Send(config Configurable) (*objects.Message, error) {
+	return c.Bot.Send(config)
+}
+
+// Reply to this context object
+func (c *Context) Reply(config Configurable) (*objects.Message, error) {
+	v, _ := config.values()
+
+	v.Set("chat_id", strconv.FormatInt(c.Message.Chat.ID, 10))
+	return c.Send(config)
+}
+
+// TODO:
 // func (c *Context) Deadline() (deadline time.Time, ok bool) {}
 // func (c *Context) Done() <-chan struct{}                   {}
 // func (c *Context) Err() error                              {}
