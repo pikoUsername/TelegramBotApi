@@ -15,7 +15,7 @@ build-run:
 	$(MAKE) run-exe args=""
 
 run-exe: 
-	cd .sandbox/ && . .sandbox ${args}
+	cd .sandbox/ && ./.sandbox ${args}
 		
 # =============================
 # 			TESTS 
@@ -26,3 +26,6 @@ run-package-tests:
 
 run-tests: 
 	$(MAKE) run-package-tests package="."
+
+run-benchmarks: 
+	go test -bench=. -benchmem -v 

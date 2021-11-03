@@ -6,11 +6,11 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
-type Regexp struct {
+type RegexpFilter struct {
 	Regexp *regexp.Regexp
 }
 
-func (r *Regexp) Check(u *objects.Update) bool {
+func (r *RegexpFilter) Check(u *objects.Update) bool {
 	var content string
 	if u.Message != nil {
 		content = u.Message.Text
@@ -26,13 +26,13 @@ func (r *Regexp) Check(u *objects.Update) bool {
 	return match != ""
 }
 
-func NewRegexp(re string) (*Regexp, error) {
+func Regexp(re string) (*RegexpFilter, error) {
 	rex, err := regexp.Compile(re)
 	if err != nil {
-		return &Regexp{}, err
+		return &RegexpFilter{}, err
 	}
 
-	return &Regexp{
+	return &RegexpFilter{
 		Regexp: rex,
 	}, nil
 }

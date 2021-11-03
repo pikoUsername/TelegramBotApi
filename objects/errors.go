@@ -1,7 +1,6 @@
 package objects
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -31,18 +30,17 @@ func (e *TelegramApiError) Error() string {
 // a error with prefix and splited up with separator
 // used in errors variable, lol
 type ErrorPrefix struct {
-	prefix    string
-	separator string
+	prefix string
 }
 
 func (eg *ErrorPrefix) New(text string) error {
-	return errors.New(eg.prefix + eg.separator + text)
+	return fmt.Errorf("%s: %s", eg.prefix, text)
 }
 
-func NewErrorPrefix(prefix, sep string) *ErrorPrefix {
-	return &ErrorPrefix{prefix: prefix, separator: sep}
+func NewErrorPrefix(prefix string) *ErrorPrefix {
+	return &ErrorPrefix{prefix: prefix}
 }
 
 var (
-	Errors = NewErrorPrefix("tgp", ": ")
+	Errors = NewErrorPrefix("tgp")
 )

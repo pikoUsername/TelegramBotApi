@@ -9,9 +9,21 @@ import (
 
 var (
 	httpRegex = getHTTPRegex()
-
-// 	HTML_QUOTES_MAP = map[interface{}]string{"<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;"}
 )
+
+type parseMode interface {
+	Link(link, text string)
+
+	Bold(text ...string)
+	UnderLine(text ...string)
+	StrikeThrough(text ...string)
+
+	Pre(text ...string)
+	Code(code string, language string)
+	PreCode(code string, language string)
+
+	mode() string
+}
 
 func getHTTPRegex() *regexp.Regexp {
 	regex, _ := regexp.Compile("^(http|https)://")
@@ -21,7 +33,7 @@ func getHTTPRegex() *regexp.Regexp {
 type HTMLMarkdown struct{}
 
 // Link check out the link for http and https starting with
-func (hm *HTMLMarkdown) Link(link string, text string) (string, error) {
+func (hm *HTMLMarkdown) Link(link, text string) (string, error) {
 	if !httpRegex.MatchString(link) {
 		return "", errors.New("link is not valid")
 	}
@@ -58,8 +70,12 @@ func (hm *HTMLMarkdown) Bold(text ...string) string {
 	return "<b>" + strings.Join(text, " ") + "</b>"
 }
 
-func (hm *HTMLMarkdown) tag(tag string, text ...string) string {
-	return tag + strings.Join(text, " ") + tag
+func (hm *HTMLMarkdown) UnderLine(text ...string) string {
+	return "<u>" + strings.Join(text, " ") + "</u>"
+}
+
+func (hm *HTMLMarkdown) StrikeThrough(text ...string) string {
+	return "<s>" + strings.Join(text, " ") + "</b>"
 }
 
 func NewHTMLMarkdown() *HTMLMarkdown {
@@ -103,3 +119,8 @@ func (md *Markdown2) Bold(text ...string) string {
 func NewMarkdown2() *Markdown2 {
 	return &Markdown2{}
 }
+
+var (
+	MarkdownDecoration = NewMarkdown2()
+	HTMLDecoration     = NewHTMLMarkdown()
+)

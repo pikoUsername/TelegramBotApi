@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
+	"unsafe"
 
 	"github.com/pikoUsername/tgp/objects"
 )
@@ -150,18 +152,18 @@ func ObjectToJson(obj interface{}) string {
 	if err != nil {
 		return ""
 	}
-	return (string)(marshal)
+	return BytesToString(marshal)
 }
 
-func MarkupToString(obj interface{}) string {
+func FormatMarkup(obj interface{}) string {
 	t, ok := obj.(*objects.InlineKeyboardMarkup)
 	if ok {
-		return ObjectToJson(t)
+		return t.String()
 	}
 
 	t2, ok := obj.(*objects.ReplyKeyboardMarkup)
 	if ok {
-		return ObjectToJson(t2)
+		return t2.String()
 	}
 
 	return ""
@@ -176,12 +178,12 @@ func getUidAndCidFromUpd(u *objects.Update) (cid_, uid_ int64) {
 	} else if u.EditedMessage != nil {
 		cid = u.EditedMessage.Chat.ID
 		uid = u.EditedMessage.From.ID
-	} else if u.PinnedMessage != nil {
-		cid = u.PinnedMessage.Chat.ID
-		uid = u.PinnedMessage.From.ID
-	} else if u.ReplyToMessage != nil {
-		cid = u.ReplyToMessage.Chat.ID
-		uid = u.ReplyToMessage.From.ID
+	} else if u.Message.PinnedMessage != nil {
+		cid = u.Message.PinnedMessage.Chat.ID
+		uid = u.Message.PinnedMessage.From.ID
+	} else if u.Message.ReplyToMessage != nil {
+		cid = u.Message.ReplyToMessage.Chat.ID
+		uid = u.Message.ReplyToMessage.From.ID
 	}
 
 	return cid, uid
@@ -200,7 +202,9 @@ func fileToBytes(f interface{}, compress bool) ([]byte, error) {
 		if compress {
 			compressed := &bytes.Buffer{}
 			cw, err := gzip.NewWriterLevel(compressed, gzip.BestCompression)
+
 			defer cw.Close()
+
 			if err != nil {
 				return []byte{}, err
 			}
@@ -211,11 +215,8 @@ func fileToBytes(f interface{}, compress bool) ([]byte, error) {
 		}
 
 		return ioutil.ReadAll(fp)
-	case os.File:
-	case *os.File:
+	case io.Reader:
 		return ioutil.ReadAll(f)
-	case []byte:
-		return f, nil
 	}
 
 	return bs, nil
@@ -251,16 +252,17 @@ func guessFileName(f interface{}) (string, error) {
 			return "", err
 		}
 		if info.IsDir() {
-			return "", errors.New("path is directory")
+			return "", tgpErr.New("path is directory")
 		}
 		s = info.Name()
+
 	default:
-		return "", errors.New("reached, not reachable")
 	}
 
-	return s, nil
+	return s, tgpErr.New("incorrect object type A , type must be in os.File, tgp.InputFile, string, os.FileInfo")
 }
 
+// Just write to map from url.Values
 func urlValuesToMapString(v url.Values, w map[string]string) {
 	for key, value := range v {
 		if len(v[key]) > 0 {
@@ -282,10 +284,101 @@ func responseDecode(respBody io.ReadCloser) (*objects.TelegramResponse, error) {
 	return &tgresp, nil
 }
 
-// ReadFromInputFile call InputFile.Read method and for more shorter code this function was created
-// using in Values() in SendDocumentConfig struct
-func readFromInputFile(v *InputFile, compress bool) (p []byte, err error) {
-	bs := make([]byte, v.Length)
-	_, err = v.Read(bs)
-	return bs, err
+// CheckToken Check out for a Space containing, and token correct
+func checkToken(token string) error {
+	// Checks for space in token
+	if strings.Contains(token, " ") {
+		return tgpErr.New("token is invalid! token contains space")
+	}
+	token_parts := strings.Split(token, ":")
+	if len(token_parts) != 2 {
+		return tgpErr.New("token contains more than 2 parts")
+	}
+	// Checks for empty token
+	if token_parts[0] == "" || token_parts[1] == "" {
+		return tgpErr.New("token is empty")
+	}
+	return nil
 }
+
+// Checks Statuscode and if Error then creates new Error with Error Description
+func checkResult(resp *objects.TelegramResponse) (*objects.TelegramResponse, error) {
+	// Check for Status, When StatusCode is 0 is default value
+	// and Check is complete, and why so?
+	// Telegram sends OK instead StatusCode 200
+	if !resp.Ok {
+		parameters := objects.ResponseParameters{}
+		if resp.Parametrs != nil {
+			parameters = *resp.Parametrs
+		}
+		return resp, &objects.TelegramApiError{
+			Code:               resp.ErrorCode,
+			Description:        resp.Description,
+			ResponseParameters: parameters,
+		}
+	}
+
+	return resp, nil
+}
+
+// From gin-gonic/internal/bytesconv/bytesconv.go
+
+// StringToBytes converts string to byte slice without a memory allocation.
+func StringToBytes(x string) []byte {
+	return *(*[]byte)(unsafe.Pointer(
+		&struct {
+			string
+			Cap int
+		}{x, len(x)},
+	))
+}
+
+// BytesToString converts byte slice to string without a memory allocation.
+func BytesToString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+// // Golang example that creates an http client that leverages a SOCKS5 proxy and a DialContext
+// func NewClientFromEnv() (*http.Client, error) {
+// 	proxyHost := os.Getenv("PROXY_HOST")
+
+// 	baseDialer := &net.Dialer{
+// 		Timeout:   30 * time.Second,
+// 		KeepAlive: 30 * time.Second,
+// 	}
+// 	var dialContext DialContext
+
+// 	if proxyHost != "" {
+// 		dialSocksProxy, err := proxy.SOCKS5("tcp", proxyHost, nil, baseDialer)
+// 		if err != nil {
+// 			return nil, errors.Wrap(err, "Error creating SOCKS5 proxy")
+// 		}
+// 		if contextDialer, ok := dialSocksProxy.(proxy.ContextDialer); ok {
+// 			dialContext = contextDialer.DialContext
+// 		} else {
+// 			return nil, errors.New("Failed type assertion to DialContext")
+// 		}
+// 		logger.Debug("Using SOCKS5 proxy for http client",
+// 			zap.String("host", proxyHost),
+// 		)
+// 	} else {
+// 		dialContext = (baseDialer).DialContext
+// 	}
+
+// 	httpClient = newClient(dialContext)
+// 	return httpClient, nil
+// }
+
+// func newClient(dialContext DialContext) *http.Client {
+// 	return &http.Client{
+// 		Transport: &http.Transport{
+// 			Proxy:                 http.ProxyFromEnvironment,
+// 			DialContext:           dialContext,
+// 			MaxIdleConns:          10,
+// 			IdleConnTimeout:       60 * time.Second,
+// 			TLSHandshakeTimeout:   10 * time.Second,
+// 			ExpectContinueTimeout: 1 * time.Second,
+// 			MaxIdleConnsPerHost:   runtime.GOMAXPROCS(0) + 1,
+// 		},
+// 	}
+// }

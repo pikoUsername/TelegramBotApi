@@ -1,6 +1,10 @@
 package tgp
 
 import (
+	"fmt"
+	"reflect"
+	"sync"
+
 	"github.com/pikoUsername/tgp/objects"
 )
 
@@ -9,16 +13,16 @@ type HandlerFunc interface{}
 
 // Another level of abstraction
 // Filters field is interface{}, types:
-// func(u *objects.Update) and Just Filter interface
+// func(u *objects.Update) and Filter interface
 //
-// example: ```go
+// ```go
 // 	dp.MessageHandler.Register(
-//		func(m *objects.Message) {...},
-// 		func(u *objects.Update) {return u.Message.From.ID == <owner_id>},
+//		func(bot *tgp.Bot, m *objects.Message) {...}, // handler
+// 		func(u *objects.Update) {return u.Message.From.ID == <owner_id>}, // filter
 // 	)
 // ```
 type HandlerType struct {
-	Callback *HandlerFunc
+	Callback HandlerFunc
 	Filters  []interface{}
 }
 
@@ -43,63 +47,83 @@ func (ht *HandlerType) CheckForFilters(u *objects.Update) bool {
 }
 
 // Call uses for checking using filters
-func (ht *HandlerType) Call(u *objects.Update, f func(), sync bool) {
+func (ht *HandlerType) Call(u *objects.Update, f func()) {
 	fr := ht.CheckForFilters(u)
 	if !fr {
 		return
 	}
 
-	if sync {
-		f()
-	} else {
-		go f()
-	}
-}
-
-// Interface for creating custom HandlerObj
-type HandlerObj interface {
-	Register(handler HandlerFunc, filters ...interface{})
-	Unregister(handler *HandlerFunc)
-	RegisterMiddleware(middlewares ...MiddlewareFunc)
-	GetHandlers() []*HandlerType
-	TriggerMiddleware(bot *Bot, update *objects.Update, typ string) error
+	go f()
 }
 
 // HandlerObj uses for save Callback
-type DefaultHandlerObj struct {
-	handlers   []*HandlerType
-	Middleware MiddlewareManager
+type HandlerObj struct {
+	handlers    []*HandlerType
+	errHandlers []*HandlerType
+	Middleware  *DefaultMiddlewareManager
+	mu          *sync.Mutex
 }
 
-// NEwDHandlerObj creates new DefaultHandlerObj
-func NewDHandlerObj(dp *Dispatcher) *DefaultHandlerObj {
-	return &DefaultHandlerObj{
-		Middleware: NewMiddlewareManager(dp),
-	}
+// NewHandlerObj creates new DefaultHandlerObj
+func NewHandlerObj(dp *Dispatcher) *HandlerObj {
+	md := NewMiddlewareManager(dp)
+	return &HandlerObj{Middleware: md, mu: &sync.Mutex{}}
 }
 
 // Register, append to Callbacks, e.g handler functions
-func (ho *DefaultHandlerObj) Register(f HandlerFunc, filters ...interface{}) {
+func (ho *HandlerObj) Register(f HandlerFunc, filters ...interface{}) {
+	t := reflect.TypeOf(f)
+	if t.Kind() != reflect.Func {
+		return
+	}
+
 	ht := HandlerType{
 		Callback: &f,
 		Filters:  filters,
 	}
 
+	ho.mu.Lock()
 	ho.handlers = append(ho.handlers, &ht)
+	ho.mu.Unlock()
+}
+
+func (ho *HandlerObj) CheckAndErrTrigger(err error, update *objects.Update, sync bool) error {
+	if err == nil {
+		return nil
+	}
+	var cb func(upd *objects.Update)
+	var ok bool
+
+	for _, h := range ho.errHandlers {
+		cb, ok = h.Callback.(func(upd *objects.Update))
+		if !ok {
+			return tgpErr.New("failed convert to func(Update) from " + fmt.Sprintln(h.Callback))
+		}
+		h.Call(update, func() { cb(update) })
+	}
+	return nil
 }
 
 // Unregister checkout to memory address
 // and cut up it if find something, with same address
-func (ho *DefaultHandlerObj) Unregister(handler *HandlerFunc) {
+func (ho *HandlerObj) Unregister(handler *HandlerFunc) {
+	t := reflect.TypeOf(handler)
+	if t.Kind() != reflect.Func {
+		return
+	}
+	var s, s2 uintptr
 	var index int
+	s = reflect.ValueOf(handler).Pointer()
+
 	for i, h := range ho.handlers {
-		if h.Callback == handler {
-			// deleting from slice
+		s2 = reflect.ValueOf(h).Pointer()
+		if s == s2 {
+			// pop up from slice
 			index = i - 1
 			if index < 0 {
 				index = 0
 			}
-			ho.handlers = append(ho.handlers[:index], ho.handlers[i:]...)
+			ho.handlers = append(ho.handlers[:index], ho.handlers[index:]...)
 		}
 	}
 }
@@ -108,16 +132,10 @@ func (ho *DefaultHandlerObj) Unregister(handler *HandlerFunc) {
 // for example, you want to register every user which writed to you bot
 // You can registerMiddleware for MessageHandler, not for all handlers
 // Or maybe want to make throttling middleware, just Registers middleware
-//
-// Example of middlware see in handler_test.go
-func (ho *DefaultHandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
+func (ho *HandlerObj) RegisterMiddleware(f ...MiddlewareFunc) {
 	ho.Middleware.Register(f...)
 }
 
-func (ho *DefaultHandlerObj) GetHandlers() []*HandlerType {
-	return ho.handlers
-}
-
-func (ho *DefaultHandlerObj) TriggerMiddleware(bot *Bot, update *objects.Update, typ string) error {
+func (ho *HandlerObj) TriggerMiddleware(bot *Bot, update *objects.Update, typ string) error {
 	return ho.Middleware.Trigger(bot, update, typ)
 }

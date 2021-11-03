@@ -1,9 +1,11 @@
 package tgp
 
 import (
+	"fmt"
 	"io"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/pikoUsername/tgp/objects"
 )
@@ -15,59 +17,48 @@ import (
 
 // Configurable is interface for using by method
 type Configurable interface {
-	Values() (url.Values, error)
-	Method() string
+	values() (url.Values, error)
+	method() string
 }
 
 // FileableConf config using for Files storing
 type FileableConf interface {
 	Configurable
-	Params() (map[string]string, error)
-	Name() string
-	Path() string
-	GetFile() io.Reader
-}
-
-// InputFile interaced by FileableConf
-// Uses as Abstract level for real file
-type InputFile struct {
-	Name   string
-	URL    string
-	Length uint
-	File   io.Reader
-}
-
-// Read ...
-// No compress choice
-func (f *InputFile) Read(p []byte) (n int, err error) {
-	if f.File != nil && f.URL == "" {
-		return f.File.Read(p)
-	}
-	bs, err := fileToBytes(f.Name, true)
-	if err != nil {
-		return 0, err
-	}
-	p = append(p[:0], bs...)
-	return len(bs), nil
+	params() (map[string]string, error)
+	getFiles() []*objects.InputFile
 }
 
 // BaseChat taken from go-telegram-bot-api
 type BaseChat struct {
 	ChatID              int64
 	ChannelUsername     string
-	ReplyToMessageID    int
+	ReplyToMessageID    int64
 	ReplyMarkup         interface{}
 	DisableNotification bool
 }
 
-func (chat *BaseChat) Params() (map[string]string, error) {
+func (c *BaseChat) params() (map[string]string, error) {
 	params := make(map[string]string)
+
+	if c.ChannelUsername != "" {
+		params["chat_id"] = strconv.FormatInt(c.ChatID, 10)
+	} else {
+		params["chat_id"] = c.ChannelUsername
+	}
+	if c.ReplyToMessageID != 0 {
+		params["reply_to_message_id"] = strconv.FormatInt(c.ChatID, 10)
+	}
+
+	if c.ReplyMarkup != nil {
+		params["reply_markup"] = FormatMarkup(c.ReplyMarkup)
+	}
+	params["disable_notification"] = strconv.FormatBool(c.DisableNotification)
 
 	return params, nil
 }
 
 // values returns url.Values representation of BaseChat
-func (c *BaseChat) Values() (url.Values, error) {
+func (c *BaseChat) values() (url.Values, error) {
 	v := url.Values{}
 	if c.ChannelUsername != "" {
 		v.Add("chat_id", c.ChannelUsername)
@@ -76,11 +67,11 @@ func (c *BaseChat) Values() (url.Values, error) {
 	}
 
 	if c.ReplyToMessageID != 0 {
-		v.Add("reply_to_message_id", strconv.Itoa(c.ReplyToMessageID))
+		v.Add("reply_to_message_id", strconv.FormatInt(c.ReplyToMessageID, 10))
 	}
 
 	if c.ReplyMarkup != nil {
-		v.Add("reply_markup", MarkupToString(c.ReplyMarkup))
+		v.Add("reply_markup", FormatMarkup(c.ReplyMarkup))
 	}
 
 	v.Add("disable_notification", strconv.FormatBool(c.DisableNotification))
@@ -91,56 +82,52 @@ func (c *BaseChat) Values() (url.Values, error) {
 // BaseFile taken from go-telegram-bot-api
 type BaseFile struct {
 	BaseChat
-	File        *InputFile
+	File        *objects.InputFile
 	FileID      string
 	UseExisting bool
 	MimeType    string
 	FileSize    int
 }
 
-func (bf *BaseFile) Params() (v map[string]string, err error) {
+// params ...
+func (bf *BaseFile) params() (v map[string]string, err error) {
 	v = make(map[string]string)
 
-	return v, nil
-}
-
-func (bf *BaseFile) Path() string {
-	var path string
-	if bf.File.Name != "" {
-		path = bf.File.Name
-	} else if bf.File.URL != "" {
-		path = bf.File.URL
+	if bf.FileID != "" {
+		v["file_id"] = bf.FileID
 	}
-	path = bf.FileID
-	return path
-}
+	v["use_existing"] = strconv.FormatBool(bf.UseExisting)
+	if bf.MimeType != "" {
+		v["mime_type"] = bf.MimeType
+	}
+	if bf.FileSize != 0 {
+		v["file_size"] = strconv.Itoa(bf.FileSize)
+	}
 
-func (bf *BaseFile) Name() string {
-	return bf.File.Name
-}
+	cv, _ := bf.values()
+	urlValuesToMapString(cv, v)
 
-func (bf *BaseFile) GetFile() io.Reader {
-	return bf.File
+	return v, nil
 }
 
 // For CopyMessage method config
 // https://core.telegram.org/bots/api#copymessage
 type CopyMessageConfig struct {
+	DisableNotifications  bool
+	AllowSendingWithReply bool
+	Caption               string
 	ChatID                int64 // required
 	FromChatID            int64 // required
 	MessageID             int64 // required
-	Caption               string
-	CaptionEntities       []*objects.MessageEntity
-	DisableNotifications  bool
 	ReplyToMessageId      int64
-	AllowSendingWithReply bool
+	CaptionEntities       []*objects.MessageEntity
 
 	// Note: Interface here is simple need
 	// type: Union[objects.InlineKeyboardMarkup, ReplyKeyboardMarkup]
 	ReplyMarkup interface{}
 }
 
-func (cmc *CopyMessageConfig) Values() (url.Values, error) {
+func (cmc *CopyMessageConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(cmc.ChatID, 10))
 	v.Add("from_chat_id", strconv.FormatInt(cmc.ChatID, 10))
@@ -151,20 +138,18 @@ func (cmc *CopyMessageConfig) Values() (url.Values, error) {
 	if cmc.CaptionEntities != nil {
 		v.Add("caption_entities", ObjectToJson(cmc.CaptionEntities))
 	}
-	if !cmc.DisableNotifications {
-		v.Add("disable_notifications", strconv.FormatBool(cmc.DisableNotifications))
-	}
+	v.Add("disable_notifications", strconv.FormatBool(cmc.DisableNotifications))
 	if cmc.ReplyToMessageId != 0 {
 		v.Add("reply_to_message_id", strconv.FormatInt(cmc.ReplyToMessageId, 10))
 	}
 	v.Add("allow_sending_with_reply", strconv.FormatBool(cmc.AllowSendingWithReply))
 	if cmc.ReplyMarkup != nil {
-		v.Add("reply_keyboards", MarkupToString(cmc.ReplyMarkup))
+		v.Add("reply_keyboards", FormatMarkup(cmc.ReplyMarkup))
 	}
 	return v, nil
 }
 
-func (cmc *CopyMessageConfig) Method() string {
+func (cmc *CopyMessageConfig) method() string {
 	return "copyMessage"
 }
 
@@ -182,15 +167,11 @@ type SendMessageConfig struct {
 	DisableWebPagePreview bool
 
 	DisableNotifiaction bool
-
-	// ReplyKeyboard types:
-	// InlineKeyboardMarkup
-	// ReplyKeyboardMarkup
-	ReplyKeyboard interface{}
+	ReplyKeyboard       *objects.InlineKeyboardMarkup
 }
 
 // values ...
-func (smc *SendMessageConfig) Values() (url.Values, error) {
+func (smc *SendMessageConfig) values() (url.Values, error) {
 	result := url.Values{}
 	result.Add("chat_id", strconv.FormatInt(smc.ChatID, 10))
 
@@ -200,15 +181,19 @@ func (smc *SendMessageConfig) Values() (url.Values, error) {
 		result.Add("parse_mode", smc.ParseMode)
 	}
 
-	result.Add("reply_markup", MarkupToString(smc.ReplyKeyboard))
+	if smc.ReplyKeyboard != nil {
+		result.Add("reply_markup", FormatMarkup(smc.ReplyKeyboard))
+	}
 	result.Add("disable_web_page_preview", strconv.FormatBool(smc.DisableWebPagePreview))
-	// Must be work!
-	result.Add("entities", ObjectToJson(smc.Entities))
+	if smc.Entities != nil {
+		// Must be work!
+		result.Add("entities", ObjectToJson(smc.Entities))
+	}
 
 	return result, nil
 }
 
-func (smc *SendMessageConfig) Method() string {
+func (smc *SendMessageConfig) method() string {
 	return "sendMessage"
 }
 
@@ -219,33 +204,33 @@ func NewSendMessage(chat_id int64, text string) *SendMessageConfig {
 	}
 }
 
-// WebhookConfig uses for Using as arguemnt
+// SetWebhookConfig uses for Using as arguemnt
 // You may not fill all fields in struct
 // https://core.telegram.org/bots/api#setwebhook
 type SetWebhookConfig struct {
 	URL                string // required
-	Certificate        interface{}
 	Offset             int
 	MaxConnections     int
 	AllowedUpdates     bool
 	DropPendingUpdates bool
 	IP                 string // if you need u can use it ;)
+	Certificate        *objects.InputFile
 }
 
-func (wc *SetWebhookConfig) Values() (url.Values, error) {
-	result := url.Values{}
-	result.Add("url", wc.URL)
-	result.Add("ip_address", wc.IP) // required field
+func (wc *SetWebhookConfig) values() (url.Values, error) {
+	v := url.Values{}
+	v.Add("url", wc.URL)
+	v.Add("ip_address", wc.IP) // required field
 	if wc.MaxConnections != 0 {
-		result.Add("max_connections", strconv.Itoa(wc.MaxConnections))
+		v.Add("max_connections", strconv.Itoa(wc.MaxConnections))
 	}
-	result.Add("allowed_updates", strconv.FormatBool(wc.AllowedUpdates))
-	result.Add("drop_pending_updates", strconv.FormatBool(wc.DropPendingUpdates))
+	v.Add("allowed_updates", strconv.FormatBool(wc.AllowedUpdates))
+	v.Add("drop_pending_updates", strconv.FormatBool(wc.DropPendingUpdates))
 
-	return result, nil
+	return v, nil
 }
 
-func (wc *SetWebhookConfig) Method() string {
+func (wc *SetWebhookConfig) method() string {
 	return "setWebhook"
 }
 
@@ -255,17 +240,40 @@ func NewSetWebhook(url string) *SetWebhookConfig {
 	}
 }
 
-// Here starts a stubs
-// SendPhotoConfig ...
+// SendPhotoConfig represnts telegram api method fields
+// https://core.telegram.org/bots/api#sendphoto
 type SendPhotoConfig struct {
+	BaseFile
+	Caption string
 }
 
-func (spc *SendPhotoConfig) Values() (url.Values, error) {
-	return url.Values{}, nil
+func (spc *SendPhotoConfig) values() (url.Values, error) {
+	v, _ := spc.BaseChat.values()
+	if spc.Caption != "" {
+		v.Add("caption", spc.Caption)
+	}
+	return v, nil
 }
 
-func (spc *SendPhotoConfig) Method() string {
+func (spc *SendPhotoConfig) method() string {
 	return "sendPhoto"
+}
+
+func (spc *SendPhotoConfig) params() (map[string]string, error) {
+	v, _ := spc.BaseFile.params()
+	if spc.Caption != "" {
+		v["caption"] = spc.Caption
+	}
+	return v, nil
+}
+
+func NewSendPhoto(chat_id int64, photo *objects.InputFile) *SendPhotoConfig {
+	return &SendPhotoConfig{
+		BaseFile: BaseFile{
+			BaseChat: BaseChat{ChatID: chat_id},
+			File:     photo,
+		},
+	}
 }
 
 // represents a sendAudio fields
@@ -273,15 +281,15 @@ type SendAudioConfig struct {
 	BaseFile
 	Caption         string
 	ParseMode       string
-	CaptionEntities []*objects.MessageEntity
 	Duration        uint
 	Performer       string
 	Title           string
-	Thumb           *InputFile
+	Thumb           *objects.InputFile
+	CaptionEntities []*objects.MessageEntity
 }
 
-func (sac *SendAudioConfig) Values() (url.Values, error) {
-	v, _ := sac.BaseFile.Values()
+func (sac *SendAudioConfig) values() (url.Values, error) {
+	v, _ := sac.BaseFile.values()
 
 	v.Add("chat_id", strconv.FormatInt(sac.ChatID, 10))
 
@@ -290,34 +298,54 @@ func (sac *SendAudioConfig) Values() (url.Values, error) {
 		if sac.ParseMode != "" {
 			v.Add("parse_mode", sac.ParseMode)
 		}
+		if sac.CaptionEntities != nil {
+			v.Add("caption_entities", ObjectToJson(sac.CaptionEntities))
+		}
 	}
-	v.Add("duration", strconv.FormatUint(uint64(sac.Duration), 10))
-	v.Add("performer", sac.Performer)
+	if sac.Duration != 0 {
+		v.Add("duration", strconv.FormatUint(uint64(sac.Duration), 10))
+	}
+	if sac.Performer != "" {
+		v.Add("performer", sac.Performer)
+	}
 	if sac.Title != "" {
 		v.Add("title", sac.Title)
 	}
-	v.Add("caption_entities", ObjectToJson(sac.CaptionEntities))
 	return v, nil
 }
 
-func (sac *SendAudioConfig) Method() string {
+func (sac *SendAudioConfig) params() (map[string]string, error) {
+	v, _ := sac.values()
+	m := make(map[string]string)
+
+	urlValuesToMapString(v, m)
+
+	return m, nil
+}
+
+func (sac *SendAudioConfig) method() string {
 	return "sendAudio"
 }
 
-func NewSendAudio(chatId int64, file *InputFile) *SendAudioConfig {
+func (sac *SendAudioConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{sac.File, sac.Thumb}
+}
+
+func NewSendAudio(chatId int64, audio *objects.InputFile) *SendAudioConfig {
 	return &SendAudioConfig{
 		BaseFile: BaseFile{
 			BaseChat:    BaseChat{ChatID: chatId},
-			File:        file,
-			UseExisting: false},
+			File:        audio,
+			UseExisting: false,
+		},
 	}
 }
 
 // SendDocumentConfig represents sendDoucument method fields
 type SendDocumentConfig struct {
-	ChatID                      int64      // required
-	Document                    *InputFile // required
-	Thumb                       *InputFile
+	ChatID                      int64              // required
+	Document                    *objects.InputFile // required
+	Thumb                       *objects.InputFile
 	Caption                     string
 	ParseMode                   string
 	CaptionEntities             []*objects.MessageEntity
@@ -328,15 +356,10 @@ type SendDocumentConfig struct {
 	ReplyMarkup                 interface{}
 }
 
-func (sdc *SendDocumentConfig) Values() (v url.Values, err error) {
+func (sdc *SendDocumentConfig) values() (v url.Values, err error) {
 	v = url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(sdc.ChatID, 10))
-	bs, err := readFromInputFile(sdc.Document, true)
-	if err != nil {
-		return v, err
-	}
-	v.Add("document", (string)(bs))
 	if sdc.Caption != "" {
 		v.Add("caption", sdc.Caption)
 		if sdc.ParseMode != "" {
@@ -352,40 +375,29 @@ func (sdc *SendDocumentConfig) Values() (v url.Values, err error) {
 	}
 	v.Add("allow_sending_without_reply", strconv.FormatBool(sdc.AllowSendingWithoutReply))
 	if sdc.ReplyMarkup != nil {
-		v.Add("reply_markup", MarkupToString(sdc.ReplyMarkup))
+		v.Add("reply_markup", FormatMarkup(sdc.ReplyMarkup))
 	}
 	return v, nil
 }
 
-func (sdc *SendDocumentConfig) Name() string {
-	return sdc.Document.Name
+func (sdc *SendDocumentConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{sdc.Document, sdc.Thumb}
 }
 
-func (sdc *SendDocumentConfig) GetFile() io.Reader {
-	return sdc.Document
-}
-
-func (sdc *SendDocumentConfig) Path() string {
-	if sdc.Document != nil {
-		return sdc.Document.Name
-	}
-	return sdc.Thumb.Name
-}
-
-func (sdc *SendDocumentConfig) Params() (map[string]string, error) {
+func (sdc *SendDocumentConfig) params() (map[string]string, error) {
 	params := make(map[string]string)
 
-	v, _ := sdc.Values()
+	v, _ := sdc.values()
 	urlValuesToMapString(v, params)
 
 	return params, nil
 }
 
-func (sdc *SendDocumentConfig) Method() string {
+func (sdc *SendDocumentConfig) method() string {
 	return "sendDocument"
 }
 
-func NewDocumentConfig(cid int64, r *InputFile) *SendDocumentConfig {
+func NewDocumentConfig(cid int64, r *objects.InputFile) *SendDocumentConfig {
 	return &SendDocumentConfig{
 		ChatID:   cid,
 		Document: r,
@@ -395,15 +407,15 @@ func NewDocumentConfig(cid int64, r *InputFile) *SendDocumentConfig {
 // SendVideoConfig Represents sendVideo fields
 // https://core.telegram.org/bots/api#sendvideo
 type SendVideoConfig struct {
-	BaseFile
+	*BaseFile
 	Duration uint32
 	Width    uint16
 	Height   uint16
-	Thumb    *InputFile
+	Thumb    *objects.InputFile
 }
 
-func (svc *SendVideoConfig) Values() (url.Values, error) {
-	v, _ := svc.BaseFile.Values()
+func (svc *SendVideoConfig) values() (url.Values, error) {
+	v, _ := svc.BaseFile.values()
 	if svc.Duration != 0 {
 		v.Add("duration", strconv.FormatUint((uint64)(svc.Duration), 10))
 	}
@@ -418,28 +430,39 @@ func (svc *SendVideoConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (svc *SendVideoConfig) Method() string {
+func (svc *SendVideoConfig) params() (map[string]string, error) {
+	v, _ := svc.BaseFile.params()
+	uv, _ := svc.values()
+
+	urlValuesToMapString(uv, v)
+
+	return v, nil
+}
+
+func (svc *SendVideoConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{svc.File, svc.Thumb}
+}
+
+func (svc *SendVideoConfig) method() string {
 	return "sendVideo"
 }
 
 // Represents Method SendAnimation Fields
 // https://core.telegram.org/bots/api#sendanimation
 type SendAnimationConfig struct {
-	ChatId    int64      // ChatId might be a minus, or something like this
-	Animation *InputFile // type: InputFile or string
+	ChatId    int64
+	Animation *objects.InputFile
 
-	// Using unsigned, bc Duration width,
-	// and height could be ONLY positive number
 	Duration uint32
-	Width    uint32 // Animation Width, what?
+	Width    uint32
 	Height   uint32
 
-	Thumb     *InputFile
+	Thumb     *objects.InputFile
 	Caption   string
 	ParseMode string
 }
 
-func (sac *SendAnimationConfig) Values() (url.Values, error) {
+func (sac *SendAnimationConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(sac.ChatId, 10))
 	v.Add("duration", strconv.FormatUint(uint64(sac.Duration), 10))
@@ -455,12 +478,23 @@ func (sac *SendAnimationConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (sac *SendAnimationConfig) Method() string {
+func (sac *SendAnimationConfig) method() string {
 	return "sendAnimation"
 }
 
+func (sac *SendAnimationConfig) params() (map[string]string, error) {
+	m := map[string]string{}
+	v, _ := sac.values()
+	urlValuesToMapString(v, m)
+	return m, nil
+}
+
+func (sac *SendAnimationConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{sac.Animation, sac.Thumb}
+}
+
 type SendVoiceConfig struct {
-	BaseFile
+	*BaseFile
 	ChatId               int64
 	Caption              string
 	ParseMode            string
@@ -469,12 +503,12 @@ type SendVoiceConfig struct {
 	DisableNotifications bool
 	ReplyToMessageID     int64
 
-	// Must be generic object, but for first time you can use InlineKeyboardMarkup
+	// for first time you can use InlineKeyboardMarkup
 	// TODO
 	ReplyMarkup *objects.InlineKeyboardMarkup
 }
 
-func (svc *SendVoiceConfig) Values() (url.Values, error) {
+func (svc *SendVoiceConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(svc.ChatId, 10))
 	v.Add("caption", svc.Caption)
@@ -487,25 +521,55 @@ func (svc *SendVoiceConfig) Values() (url.Values, error) {
 	}
 
 	v.Add("caption_entities", ObjectToJson(svc.CaptionEntities))
-	// TODO: reply Markup parsing function
+	if svc.ReplyMarkup != nil {
+		v.Add("reply_markup", FormatMarkup(svc.ReplyMarkup))
+	}
 
 	return v, nil
 }
 
-func (svc *SendVoiceConfig) Method() string {
+func (s *SendVoiceConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{s.File}
+}
+
+func (svc *SendVoiceConfig) method() string {
 	return "sendVoice"
 }
 
 type SendVideoNoteConfig struct {
-	BaseFile
+	*BaseFile
+	Duration                 time.Duration
+	Length                   int64
+	Thumb                    io.Reader
+	DisableNotification      bool
+	ReplyToMessageID         int64
+	AllowSendingWithoutReply bool
+	ReplyMarkup              objects.InlineKeyboardMarkup
 }
 
-func (svnc *SendVideoNoteConfig) Values() (url.Values, error) {
+func (svnc *SendVideoNoteConfig) values() (url.Values, error) {
 	return url.Values{}, nil
 }
 
-func (svnc *SendVideoNoteConfig) Method() string {
+func (svnc *SendVideoNoteConfig) params() (v map[string]string, err error) {
+	v, _ = svnc.BaseFile.params()
+	uv, _ := svnc.values()
+	urlValuesToMapString(uv, v)
+
+	return
+}
+
+func (svnc *SendVideoNoteConfig) method() string {
 	return "sendVideoName"
+}
+
+func NewSendVideoNote(chat_id int64, video_note *objects.InputFile) *SendVideoNoteConfig {
+	return &SendVideoNoteConfig{
+		BaseFile: &BaseFile{
+			BaseChat: BaseChat{ChatID: chat_id},
+			File:     video_note,
+		},
+	}
 }
 
 type SendMediaGroupConfig struct {
@@ -519,7 +583,7 @@ type SendMediaGroupConfig struct {
 	AllowSendingWithoutReply bool
 }
 
-func (smgc *SendMediaGroupConfig) Values() (url.Values, error) {
+func (smgc *SendMediaGroupConfig) values() (url.Values, error) {
 	v := url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(smgc.ChatID, 10))
@@ -536,7 +600,7 @@ func (smgc *SendMediaGroupConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (smgc *SendMediaGroupConfig) Method() string {
+func (smgc *SendMediaGroupConfig) method() string {
 	return "sendMediaGroup"
 }
 
@@ -560,7 +624,7 @@ type SendLocationConfig struct {
 	AllowSendingWithoutReply bool
 }
 
-func (slc *SendLocationConfig) Values() (url.Values, error) {
+func (slc *SendLocationConfig) values() (url.Values, error) {
 	v := url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(slc.ChatID, 10))
@@ -598,7 +662,7 @@ func NewSendLocationConf(chat_id int64, latitude float32, longitude float32) *Se
 	}
 }
 
-func (slc *SendLocationConfig) Method() string {
+func (slc *SendLocationConfig) method() string {
 	return "sendLocation"
 }
 
@@ -612,12 +676,12 @@ type EditMessageLLConf struct { // too long name anyway
 }
 
 // Values is stub!!
-func (llc *EditMessageLLConf) Values() (url.Values, error) {
+func (llc *EditMessageLLConf) values() (url.Values, error) {
 	v := url.Values{}
 	return v, nil // stub
 }
 
-func (llc *EditMessageLLConf) Method() string {
+func (llc *EditMessageLLConf) method() string {
 	return "editMessageLiveLocation"
 }
 
@@ -631,6 +695,13 @@ func NewEditMessageLL(longitude float32, latit float32, chat_id int64, message_i
 	}
 }
 
+type StopMessageLiveLocation struct {
+	ChatID          int64
+	MessageID       int64
+	InlineMessageID int64
+	ReplyMarkup     objects.InlineKeyboardMarkup
+}
+
 // GetUpdate method fields
 type GetUpdatesConfig struct {
 	Offset         int
@@ -639,7 +710,7 @@ type GetUpdatesConfig struct {
 	AllowedUpdates []string
 }
 
-func (guc *GetUpdatesConfig) Values() (url.Values, error) {
+func (guc *GetUpdatesConfig) values() (url.Values, error) {
 	v := url.Values{}
 	if guc.Offset != 0 {
 		v.Add("offset", strconv.Itoa(guc.Offset))
@@ -650,7 +721,7 @@ func (guc *GetUpdatesConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (guc *GetUpdatesConfig) Method() string {
+func (guc *GetUpdatesConfig) method() string {
 	return "getUpdates"
 }
 
@@ -668,7 +739,7 @@ type GetMyCommandsConfig struct {
 	LanguageCode string                  // optional
 }
 
-func (gmcc *GetMyCommandsConfig) Values() (url.Values, error) {
+func (gmcc *GetMyCommandsConfig) values() (url.Values, error) {
 	v := url.Values{}
 	if gmcc.Scope != nil {
 		v.Add("scope", ObjectToJson(gmcc.Scope))
@@ -679,7 +750,7 @@ func (gmcc *GetMyCommandsConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (gmcc *GetMyCommandsConfig) Method() string {
+func (gmcc *GetMyCommandsConfig) method() string {
 	return "getMyCommands"
 }
 
@@ -689,7 +760,7 @@ type DeleteMyCommandsConfig struct {
 	LanguageCode string                  // optional
 }
 
-func (dmcc *DeleteMyCommandsConfig) Values() (url.Values, error) {
+func (dmcc *DeleteMyCommandsConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("scope", ObjectToJson(dmcc.Scope))
 	if dmcc.LanguageCode != "" {
@@ -698,7 +769,7 @@ func (dmcc *DeleteMyCommandsConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (dmcc *DeleteMyCommandsConfig) Method() string {
+func (dmcc *DeleteMyCommandsConfig) method() string {
 	return "deleteMyCommands"
 }
 
@@ -713,7 +784,7 @@ type SetMyCommandsConfig struct {
 	LanguageCode string
 }
 
-func (smcc *SetMyCommandsConfig) Values() (url.Values, error) {
+func (smcc *SetMyCommandsConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("commands", ObjectToJson(smcc.Commands))
 	if smcc.LanguageCode != "" {
@@ -725,7 +796,7 @@ func (smcc *SetMyCommandsConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (smcc *SetMyCommandsConfig) Method() string {
+func (smcc *SetMyCommandsConfig) method() string {
 	return "setMyCommands"
 }
 
@@ -740,13 +811,13 @@ type DeleteWebhookConfig struct {
 	DropPendingUpdates bool
 }
 
-func (dwc *DeleteWebhookConfig) Values() (url.Values, error) {
+func (dwc *DeleteWebhookConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("drop_pending_updates", strconv.FormatBool(dwc.DropPendingUpdates))
 	return v, nil
 }
 
-func (dwc *DeleteWebhookConfig) Method() string {
+func (dwc *DeleteWebhookConfig) method() string {
 	return "deleteWebhook"
 }
 
@@ -767,7 +838,7 @@ type SendDiceConfig struct {
 	ReplyMarkup interface{}
 }
 
-func (sdc *SendDiceConfig) Values() (url.Values, error) {
+func (sdc *SendDiceConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(sdc.ChatID, 10))
 	if sdc.Emoji != "" {
@@ -779,12 +850,12 @@ func (sdc *SendDiceConfig) Values() (url.Values, error) {
 	}
 	v.Add("allow_sending_without_reply", strconv.FormatBool(sdc.AllowSendingWithoutReply))
 	if sdc.ReplyMarkup != nil {
-		v.Add("reply_markup", MarkupToString(sdc.ReplyMarkup))
+		v.Add("reply_markup", FormatMarkup(sdc.ReplyMarkup))
 	}
 	return v, nil
 }
 
-func (sdc *SendDiceConfig) Method() string {
+func (sdc *SendDiceConfig) method() string {
 	return "sendDice"
 }
 
@@ -824,7 +895,7 @@ type SendPollConfig struct {
 	// ReplyMarkup              *objects.KeyboardMarkup
 }
 
-func (spc *SendPollConfig) Values() (url.Values, error) {
+func (spc *SendPollConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(spc.ChatID, 10))
 	v.Add("question", spc.Question)
@@ -854,7 +925,7 @@ func (spc *SendPollConfig) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (spc *SendPollConfig) Method() string {
+func (spc *SendPollConfig) method() string {
 	return "sendPoll"
 }
 
@@ -866,20 +937,6 @@ func NewSendPoll(chatid int64, question string, options []string) *SendPollConfi
 	}
 }
 
-type GetChat struct {
-	ChatID int64
-}
-
-func (gc *GetChat) Values() (url.Values, error) {
-	v := url.Values{}
-	v.Add("chat_id", strconv.FormatInt(gc.ChatID, 10))
-	return v, nil
-}
-
-func (gc *GetChat) Method() string {
-	return "NONE"
-}
-
 // GetUserProfilePhotosConf represents getUserProfilePhotos method fields
 // https://core.telegram.org/bots/api#getUserProfilePhotos
 type GetUserProfilePhotosConf struct {
@@ -888,7 +945,7 @@ type GetUserProfilePhotosConf struct {
 	Limit  int
 }
 
-func (guppc *GetUserProfilePhotosConf) Values() (url.Values, error) {
+func (guppc *GetUserProfilePhotosConf) values() (url.Values, error) {
 	v := url.Values{}
 
 	v.Add("user_id", strconv.FormatInt(guppc.UserId, 10))
@@ -898,7 +955,7 @@ func (guppc *GetUserProfilePhotosConf) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (guppc *GetUserProfilePhotosConf) Method() string {
+func (guppc *GetUserProfilePhotosConf) method() string {
 	return "getUserProfilePhotos"
 }
 
@@ -907,7 +964,7 @@ type SendChatActionConf struct {
 	Action string // see utils for actions type
 }
 
-func (scac *SendChatActionConf) Values() (url.Values, error) {
+func (scac *SendChatActionConf) values() (url.Values, error) {
 	v := url.Values{}
 
 	v.Add("chat_id", strconv.FormatInt(scac.ChatID, 10))
@@ -916,7 +973,7 @@ func (scac *SendChatActionConf) Values() (url.Values, error) {
 	return v, nil
 }
 
-func (scac *SendChatActionConf) Method() string {
+func (scac *SendChatActionConf) method() string {
 	return "sendChatAction"
 }
 
@@ -932,7 +989,7 @@ type SendContactConfig struct {
 	ReplyKeyboard            interface{}
 }
 
-func (scc *SendContactConfig) Values() (url.Values, error) {
+func (scc *SendContactConfig) values() (url.Values, error) {
 	v := url.Values{}
 	switch t := scc.ChatID.(type) {
 	case int64:
@@ -953,12 +1010,12 @@ func (scc *SendContactConfig) Values() (url.Values, error) {
 		v.Add("reply_to_message_id", strconv.FormatInt(scc.ReplyToMessageID, 10))
 	}
 	if scc.ReplyKeyboard != nil {
-		v.Add("reply_keyboard", MarkupToString(scc.ReplyKeyboard))
+		v.Add("reply_keyboard", FormatMarkup(scc.ReplyKeyboard))
 	}
 	return v, nil
 }
 
-func (scc *SendContactConfig) Method() string {
+func (scc *SendContactConfig) method() string {
 	return "sendContact"
 }
 
@@ -979,7 +1036,7 @@ type SendVenueConfig struct {
 	ReplyMarkup              interface{}
 }
 
-func (svc *SendVenueConfig) Values() (url.Values, error) {
+func (svc *SendVenueConfig) values() (url.Values, error) {
 	v := url.Values{}
 	switch t := svc.ChatID.(type) {
 	case int64:
@@ -1009,12 +1066,77 @@ func (svc *SendVenueConfig) Values() (url.Values, error) {
 		v.Add("four_square_type", svc.FoursQuareType)
 	}
 	if svc.ReplyMarkup != nil {
-		v.Add("reply_markup", MarkupToString(svc.ReplyMarkup))
+		v.Add("reply_markup", FormatMarkup(svc.ReplyMarkup))
 	}
 
 	return v, nil
 }
 
-func (svc *SendVenueConfig) Method() string {
+func (svc *SendVenueConfig) method() string {
 	return "sendVenue"
+}
+
+// BanChatMemberConfig ...
+type BanChatMemberConfig struct {
+	ChatID         int64
+	UserID         int64
+	UntilDate      time.Duration
+	RevokeMessages bool
+}
+
+func (bcm *BanChatMemberConfig) values() (url.Values, error) {
+	v := url.Values{}
+
+	v.Add("chat_id", strconv.FormatInt(bcm.ChatID, 10))
+	v.Add("user_id", strconv.FormatInt(bcm.UserID, 10))
+
+	if bcm.UntilDate != 0 {
+		v.Add("until_date", strconv.FormatInt((int64)(bcm.UntilDate), 10))
+	}
+	v.Add("revoke_messages", strconv.FormatBool(bcm.RevokeMessages))
+
+	return v, nil
+}
+
+func (bcm *BanChatMemberConfig) method() string {
+	return "banChatMember"
+}
+
+func NewBanChatMember(chat_id int64, user_id int64) *BanChatMemberConfig {
+	return &BanChatMemberConfig{
+		ChatID: chat_id,
+		UserID: user_id,
+	}
+}
+
+type RestrictChatMemberConfig struct {
+	ChatID      int64
+	UserID      int64
+	Permissions *objects.ChatMemberPermissions
+	UntilDate   time.Duration
+}
+
+func (rc *RestrictChatMemberConfig) method() string {
+	return "restrictChatMember"
+}
+
+func (rc *RestrictChatMemberConfig) values() (url.Values, error) {
+	v := url.Values{}
+
+	v.Add("chat_id", strconv.FormatInt(rc.ChatID, 10))
+	v.Add("user_id", strconv.FormatInt(rc.UserID, 10))
+	v.Add("permissions", ObjectToJson(rc.Permissions))
+	if rc.UntilDate != 0 {
+		v.Add("until_date", fmt.Sprintln(rc.UntilDate))
+	}
+
+	return v, nil
+}
+
+func NewRestrictMember(chat_id, user_id int64, perms *objects.ChatMemberPermissions) *RestrictChatMemberConfig {
+	return &RestrictChatMemberConfig{
+		ChatID:      chat_id,
+		UserID:      user_id,
+		Permissions: perms,
+	}
 }
