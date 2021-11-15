@@ -27,18 +27,10 @@ var (
 // ```
 // Can be used as handlers chain, e.g registered by ResgisterChain()
 type HandlerType struct {
-	Handlers []HandlerFunc
-	Filters  []interface{}
+	Handler HandlerFunc
+	Filters []interface{}
 
 	mu sync.Mutex
-}
-
-func (h *HandlerType) Add(handlers ...HandlerFunc) {
-	if len(handlers) != 0 {
-		h.mu.Lock()
-		h.Handlers = append(h.Handlers, handlers...)
-		h.mu.Unlock()
-	}
 }
 
 func (h *HandlerType) AddFilters(filters ...interface{}) {
@@ -49,16 +41,22 @@ func (h *HandlerType) AddFilters(filters ...interface{}) {
 	}
 }
 
-// NewHandlerType returns a HandlerType instance
-func NewHandlerType(handlers ...HandlerFunc) *HandlerType {
-	return &HandlerType{
-		Handlers: handlers,
-		Filters:  []interface{}{},
-		mu:       sync.Mutex{},
+func (h *HandlerType) apply(c *Context) {
+	if len(h.Filters) == 0 || checkFilters(h.Filters, c.Update) {
+		h.Handler(c)
 	}
 }
 
-// HandlerObj uses for save Callback
+// NewHandlerType returns a HandlerType instance
+func NewHandlerType(handler HandlerFunc) *HandlerType {
+	return &HandlerType{
+		Handler: handler,
+		Filters: []interface{}{},
+		mu:      sync.Mutex{},
+	}
+}
+
+// HandlerObj ...
 type HandlerObj struct {
 	handlers []*HandlerType
 	mu       *sync.Mutex
@@ -70,29 +68,11 @@ func NewHandlerObj() *HandlerObj {
 }
 
 func (ho *HandlerObj) Trigger(c *Context) {
-	var filtersResult bool
-	var nextIndex int
-	var handlers []HandlerFunc
-
+	c.handlers = ho.handlers
 	for i, h := range ho.handlers {
-		if h != nil {
-			nextIndex = i + 1
-			if nextIndex >= len(ho.handlers) {
-				nextIndex = i
-			}
-			handlers = ho.handlers[nextIndex].Handlers
-			if len(handlers) == 0 {
-				continue
-			}
-			c.handlers = handlers
-
-			filtersResult = checkFilters(h.Filters, c.Update)
-
-			if !filtersResult {
-				c.Next()
-				continue
-			}
-			c.GetCurrent()(c)
+		if len(h.Filters) == 0 || checkFilters(h.Filters, c.Update) {
+			h.Handler(c)
+			c.cursor = i
 		}
 	}
 }
@@ -103,28 +83,26 @@ func (ho *HandlerObj) Trigger(c *Context) {
 // 2. registers handlerchain instantly
 // works for every functions argument
 func (ho *HandlerObj) Register(callbacks ...interface{}) error {
-	var handler *HandlerType
 	var partial bool
-
-	handler = &HandlerType{}
+	handler := &HandlerType{}
 
 	for _, elem := range callbacks {
 		ho.mu.Lock()
 
 		// := using this, type checking will not work
-		switch elem.(type) {
+		switch conv := elem.(type) {
 		case func(*objects.Update) error:
 			partial = true
-			handler.AddFilters(elem.(func(*objects.Update) error))
+			handler.AddFilters(conv)
 
-		case HandlerFunc:
+		case func(*Context):
 			partial = true
-			handler.Add(elem.(HandlerFunc))
+			handler.Handler = conv
 
 		case *HandlerType:
-			ho.handlers = append(ho.handlers, elem.(*HandlerType))
+			ho.handlers = append(ho.handlers, conv)
 		default:
-			return tgpErr.New("only tgp.Filter, tgp.HandlerFunc, or *tgp.HandlerType types.")
+			return tgpErr.New("only func(*objects.Update), func(*tgp.Context), or *tgp.HandlerType types.")
 		}
 
 		ho.mu.Unlock()

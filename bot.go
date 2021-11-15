@@ -34,9 +34,7 @@ type StdLogger interface {
 }
 
 var (
-	DefaultClient = &http.Client{
-		Timeout: 5 * time.Second,
-	}
+	DefaultClient = &http.Client{}
 )
 
 // Bot can be created using Json config,
@@ -108,6 +106,10 @@ func (bot *Bot) debugLog(text string, v url.Values, message ...interface{}) {
 	}
 }
 
+func (bot *Bot) Logger() StdLogger {
+	return bot.logger
+}
+
 // ===================
 // sending requests
 // ===================
@@ -160,7 +162,7 @@ func (bot *Bot) BoolRequest(method string, params url.Values) (bool, error) {
 }
 
 // DownloadFile uses for download file from any URL,
-func (bot *Bot) DownloadFile(path string, w io.Writer, seek bool) error {
+func (bot *Bot) DownloadFile(path string, w io.Writer) error {
 	request, err := http.NewRequest("GET", path, nil)
 	if err != nil {
 		return err
@@ -546,21 +548,20 @@ func (bot *Bot) DeleteWebhook(c *DeleteWebhookConfig) (*objects.TelegramResponse
 // https://core.telegram.org/bots/api#getupdates
 // Telegram will hold updates only on 24 hours
 func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
-	v, _ := c.values()
+	var updates []*objects.Update
+	v, err := c.values()
+	if err != nil {
+		return updates, err
+	}
 	resp, err := bot.Request(c.method(), v)
 	if err != nil {
-		return []*objects.Update{}, &objects.TelegramApiError{
-			Code:               resp.ErrorCode,
-			Description:        resp.Description,
-			ResponseParameters: objects.ResponseParameters{},
-		}
+		return updates, err
 	}
-	var upd []*objects.Update
-	err = json.Unmarshal(resp.Result, &upd)
+	err = json.Unmarshal(resp.Result, &updates)
 	if err != nil {
-		return upd, err
+		return updates, err
 	}
-	return upd, nil
+	return updates, nil
 }
 
 // SetWebhook make subscribe to telegram events

@@ -38,15 +38,12 @@ type Context struct {
 	Bot      *Bot
 	Storage  storage.Storage
 	data     dataContext
-	index    int32
-	cursor   int32
-	handlers []HandlerFunc
+	index    int
+	cursor   int
+	handlers []*HandlerType
 
 	calledErrors []error
-
-	// ListenChannel <-chan struct{}
-
-	mu sync.Mutex
+	mu           sync.Mutex
 }
 
 // Context.Set just set ctxVar to key in data context
@@ -81,24 +78,19 @@ func (c *Context) Errors() []error {
 func (c *Context) Next() {
 	if c.index >= AcceptIndex {
 		c.cursor++
-		c.GetCurrent()(c)
-	}
-}
-
-// Calls pervious handler, and decrement cursor
-func (c *Context) Pervious() {
-	if c.index >= AcceptIndex {
-		c.cursor--
-		c.GetCurrent()(c)
+		if c.cursor >= len(c.handlers)-1 {
+			return
+		}
+		c.GetCurrent().apply(c)
 	}
 }
 
 // Returns Context cursor
-func (c *Context) Cursor() int32 {
+func (c *Context) Cursor() int {
 	return c.cursor
 }
 
-func (c *Context) GetCurrent() HandlerFunc {
+func (c *Context) GetCurrent() *HandlerType {
 	return c.handlers[c.cursor]
 }
 

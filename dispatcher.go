@@ -1,9 +1,9 @@
 package tgp
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -33,6 +33,7 @@ type Dispatcher struct {
 
 	// Storage interface
 	Storage storage.Storage
+	logger  StdLogger
 
 	// for FSM usage
 	currentUpdate *objects.Update
@@ -48,6 +49,7 @@ type Dispatcher struct {
 	polling bool
 	webhook bool
 
+	closeChan   chan struct{}
 	functionsWG *sync.WaitGroup
 }
 
@@ -59,14 +61,14 @@ var (
 type OnStartAndShutdownFunc func(dp *Dispatcher)
 
 // NewDispathcer get a new Dispatcher with default values
-// settings -
-// 		syncronus: true
-// 		welcome: true
 func NewDispatcher(bot *Bot, storage storage.Storage) *Dispatcher {
 	dp := &Dispatcher{
-		Bot:     bot,
-		Storage: storage,
-		Welcome: true,
+		Bot:         bot,
+		Storage:     storage,
+		Welcome:     true,
+		logger:      bot.logger, // pointer to logger
+		functionsWG: &sync.WaitGroup{},
+		closeChan:   make(chan struct{}),
 	}
 
 	dp.MessageHandler = NewHandlerObj()
@@ -114,9 +116,9 @@ func callListFuncs(funcs []OnStartAndShutdownFunc, dp *Dispatcher) {
 }
 
 // Config for start polling method
-// idk where to put this config, configs or dispatcher?
 type StartPollingConfig struct {
-	GetUpdatesConfig
+	*GetUpdatesConfig
+	Context      context.Context
 	SkipUpdates  bool
 	SafeExit     bool
 	ResetWebhook bool
@@ -127,10 +129,10 @@ type StartPollingConfig struct {
 
 func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 	return &StartPollingConfig{
-		GetUpdatesConfig: GetUpdatesConfig{
-			Timeout: 20,
+		GetUpdatesConfig: &GetUpdatesConfig{
+			Timeout: 5,
 		},
-		Relax:        time.Second / 10, // 0.1
+		Relax:        1 * time.Second, // 0.1
 		ResetWebhook: false,
 		ErrorSleep:   1,
 		SkipUpdates:  skip_updates,
@@ -139,6 +141,7 @@ func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
 	}
 }
 
+// StartWebhookConfig uses for start bot using webhooks
 type StartWebhookConfig struct {
 	*SetWebhookConfig
 	Handler            http.Handler
@@ -171,42 +174,39 @@ func (dp *Dispatcher) ResetWebhook(check bool) error {
 	return err
 }
 
-// ProcessOneUpdate you guess, processes ONLY one comming update
-// Support only one Message update
+// ProcessOneUpdate processes only one comming update
 func (dp *Dispatcher) ProcessOneUpdate(upd *objects.Update) error {
-	ctx := dp.Context(upd)
+	local_ctx := dp.Context(upd)
 
-	// very bad code, please dont see this bullshit
-	// ============================================
-	if ctx.Message != nil {
-		dp.CallbackQueryHandler.Trigger(ctx)
-	} else if ctx.CallbackQuery != nil {
-		dp.CallbackQueryHandler.Trigger(ctx)
-	} else if ctx.ChannelPost != nil {
-		dp.ChannelPostHandler.Trigger(ctx)
-	} else if ctx.Poll != nil {
-		dp.PollHandler.Trigger(ctx)
-	} else if ctx.PollAnswer != nil {
-		dp.CallbackQueryHandler.Trigger(ctx)
-	} else if ctx.ChatMember != nil {
-		dp.ChatMemberHandler.Trigger(ctx)
-	} else if ctx.MyChatMember != nil {
-		dp.MyChatMemberHandler.Trigger(ctx)
+	if upd.Message != nil {
+		dp.MessageHandler.Trigger(local_ctx)
+	} else if upd.CallbackQuery != nil {
+		dp.CallbackQueryHandler.Trigger(local_ctx)
+	} else if upd.ChannelPost != nil {
+		dp.ChannelPostHandler.Trigger(local_ctx)
+	} else if upd.Poll != nil {
+		dp.PollHandler.Trigger(local_ctx)
+	} else if upd.PollAnswer != nil {
+		dp.PollAnswerHandler.Trigger(local_ctx)
+	} else if upd.ChatMember != nil {
+		dp.ChatMemberHandler.Trigger(local_ctx)
+	} else if upd.MyChatMember != nil {
+		dp.MyChatMemberHandler.Trigger(local_ctx)
 	} else {
 		text := "detected not supported type of updates, seems like telegram bot api updated before this package updated"
 		return tgpErr.New(text)
 	}
 
-	// end of adventure
 	return nil
 }
 
 // SkipUpdates skip comming updates, sending to telegram servers
-func (dp *Dispatcher) SkipUpdates() {
-	dp.Bot.GetUpdates(&GetUpdatesConfig{
+func (dp *Dispatcher) SkipUpdates() (err error) {
+	_, err = dp.Bot.GetUpdates(&GetUpdatesConfig{
 		Offset:  -1,
 		Timeout: 1,
 	})
+	return
 }
 
 func (dp *Dispatcher) Context(upd *objects.Update) *Context {
@@ -246,25 +246,37 @@ func (dp *Dispatcher) ResetState() error {
 // Shutdown calls when you enter ^C(which means SIGINT)
 // And SafeExit catch it, before you exit
 func (dp *Dispatcher) shutdownPolling() {
+	if len(dp.OnPollingShutdown) == 0 {
+		return
+	}
 	callListFuncs(dp.OnPollingShutdown, dp)
 }
 
 // startUpPolling function, iterate over a callbacks from OnStartupCallbacks
 // Calls in StartPolling function
 func (dp *Dispatcher) startupPolling() {
-	callListFuncs(dp.OnPollingStartup, dp)
 	go dp.welcome()
+	if len(dp.OnPollingStartup) == 0 {
+		return
+	}
+	callListFuncs(dp.OnPollingStartup, dp)
 }
 
 // shutdownWebhook method, iterate over a callbacks from OnWebhookShutdown
 func (dp *Dispatcher) shutdownWebhook() {
+	if len(dp.OnWebhookShutdown) == 0 {
+		return
+	}
 	callListFuncs(dp.OnWebhookShutdown, dp)
 }
 
 // startupPolling method, iterate over a callbacks from OnWebhookStartup
 func (dp *Dispatcher) startupWebhook() {
-	callListFuncs(dp.OnWebhookStartup, dp)
 	go dp.welcome()
+	if len(dp.OnWebhookStartup) == 0 {
+		return
+	}
+	callListFuncs(dp.OnWebhookStartup, dp)
 }
 
 // Onstartup method append to OnStartupCallbaks a callbacks
@@ -272,7 +284,7 @@ func (dp *Dispatcher) startupWebhook() {
 // And golang doesnot support generics, and type equals
 func (dp *Dispatcher) OnStartup(c *OnConfig) {
 	if !c.Webhook && !c.Polling {
-		dp.Bot.logger.Println("this expression have not got any effect")
+		dp.logger.Println("this expression have not got any effect")
 	}
 
 	if c.Webhook {
@@ -287,7 +299,7 @@ func (dp *Dispatcher) OnStartup(c *OnConfig) {
 // Same code like OnStartup
 func (dp *Dispatcher) OnShutdown(c *OnConfig) {
 	if !c.Webhook && !c.Polling {
-		dp.Bot.logger.Println("!polling and !webhook expression have not got any effect")
+		dp.logger.Println("!polling and !webhook expression have not got any effect")
 	}
 
 	if c.Webhook {
@@ -307,7 +319,7 @@ func (dp *Dispatcher) Start() {
 	}
 }
 
-func (dp *Dispatcher) Shutdown() {
+func (dp *Dispatcher) runShutDown() {
 	if dp.polling {
 		dp.shutdownPolling()
 	}
@@ -320,26 +332,30 @@ func (dp *Dispatcher) Shutdown() {
 // Thanks: https://stackoverflow.com/questions/11268943/is-it-possible-to-capture-a-ctrlc-signal-and-run-a-cleanup-function-in-a-defe
 func (dp *Dispatcher) SafeExit() {
 	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
 		<-c
-		dp.shutDown()
+		dp.ShutDown()
 		os.Exit(0)
 	}()
 }
 
-// ShutDownDP calls ResetWebhook for reset webhook in telegram servers, if yes
-func (dp *Dispatcher) shutDown() {
-	dp.Bot.logger.Println("Stop polling!")
+// ShutDownDP calls ResetWebhook
+func (dp *Dispatcher) ShutDown() {
+	dp.logger.Println("Stop polling!")
 	dp.ResetWebhook(true)
 	dp.Storage.Close()
-	dp.Shutdown()
+	dp.runShutDown()
 }
 
 func (dp *Dispatcher) welcome() {
 	if dp.Welcome {
-		dp.Bot.GetMe()
-		dp.Bot.logger.Println("Bot: ", dp.Bot.Me.Username)
+		_, err := dp.Bot.GetMe()
+		if err != nil {
+			dp.logger.Printf("tgp: %s", err)
+			return
+		}
+		dp.logger.Println("Bot: ", dp.Bot.Me.Username)
 	}
 }
 
@@ -359,10 +375,10 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Up
 				time.Sleep(c.Relax)
 			}
 
-			updates, err := dp.Bot.GetUpdates(&c.GetUpdatesConfig)
+			updates, err := dp.Bot.GetUpdates(c.GetUpdatesConfig)
 			if err != nil {
-				dp.Bot.logger.Println(err.Error())
-				dp.Bot.logger.Println("Error with getting updates")
+				dp.logger.Println(err.Error())
+				dp.logger.Println("Error with getting updates")
 				time.Sleep(time.Duration(c.ErrorSleep))
 
 				continue
@@ -380,18 +396,25 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Up
 
 // ProcessUpdates iterates <-chan *objects.Update
 func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
-	for upd := range ch {
+	cherr := make(chan error, 1)
+
+	for {
+		upd := <-ch
 		if upd == nil {
 			continue
 		}
-		dp.currentUpdate = upd
-		err := dp.ProcessOneUpdate(upd)
-		if err != nil {
-			return err
+		go func() { cherr <- dp.ProcessOneUpdate(upd) }()
+
+		select {
+		case err := <-cherr:
+			if err != nil {
+				return err
+			}
+		case <-dp.closeChan:
+			dp.ShutDown()
+			return nil
 		}
 	}
-
-	return nil
 }
 
 // StartPolling check out to comming updates
@@ -399,8 +422,9 @@ func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 // Using GetUpdates method in Bot structure
 // GetUpdates config using for getUpdates method
 func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
+	var err error
 	if dp.webhook {
-		panic(ErrorConflictModes)
+		return ErrorConflictModes
 	}
 
 	dp.polling = true
@@ -409,18 +433,24 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 		dp.SafeExit()
 	}
 	if c.ResetWebhook {
-		dp.ResetWebhook(true)
+		err = dp.ResetWebhook(true)
+		if err != nil {
+			return err
+		}
 	}
 
 	if c.SkipUpdates {
-		dp.SkipUpdates()
+		err = dp.SkipUpdates()
+		if err != nil {
+			return err
+		}
 	}
 
 	ch := make(chan *objects.Update)
-
 	dp.MakeUpdatesChan(c, ch)
 
-	return dp.ProcessUpdates(ch)
+	dp.ProcessUpdates(ch)
+	return nil
 }
 
 // MakeWebhookChan adds a http Handler with c.BotURL path
@@ -460,17 +490,15 @@ func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
 	http.HandleFunc(c.BotURL, func(wr http.ResponseWriter, req *http.Request) {
 		update, err := requestToUpdate(req)
 		if err != nil {
-			errMsg, _ := json.Marshal(map[string]string{"error": err.Error()})
-			wr.WriteHeader(http.StatusBadRequest)
-			wr.Header().Set("Content-Type", "application/json")
-			wr.Write(errMsg)
+			WriteRequestError(wr, err)
 			return
 		}
 
 		dp.currentUpdate = update
-		err = dp.ProcessOneUpdate(update)
+		err = dp.ProcessOneUpdate(update) // will run in stock mode
 		if err != nil {
-			fmt.Println(err)
+			WriteRequestError(wr, err)
+			return
 		}
 	})
 	certPath, err := guessFileName(c.Certificate)

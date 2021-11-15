@@ -8,7 +8,25 @@ import "github.com/pikoUsername/tgp/objects"
 // if you need aleardy ready filters check filters/
 //
 // and this filter have second type is: func(u *objects.Update) bool
-// more simpler choice, but you cannot set filter for special situation
+// more simpler choice, but you cannot set variables to it
 type Filter interface {
 	Check(update *objects.Update) bool
+}
+
+// check out for filters
+func checkFilters(filters []interface{}, upd *objects.Update) bool {
+	var filtersResult bool
+
+	for _, ifilter := range filters {
+		switch filter := ifilter.(type) {
+		case func(*objects.Update) bool:
+			filtersResult = filter(upd)
+		case Filter:
+			filtersResult = filter.Check(upd)
+		}
+		if !filtersResult {
+			return false
+		}
+	}
+	return true
 }

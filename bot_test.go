@@ -67,7 +67,7 @@ func TestDownloadFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = b.DownloadFile(downloadFromURL, f, true)
+	err = b.DownloadFile(downloadFromURL, f)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestDownloadFile(t *testing.T) {
 	}
 	bs := make([]byte, stat.Size())
 	f.Read(bs)
-	if bs == nil || strings.Compare(string(bs), "") == -1 && downloadFromURL != "" {
+	if len(bs) == 0 || strings.Compare(string(bs), "") == -1 && downloadFromURL != "" {
 		t.Fatal(
 			"Cannot download file from ethernet, debug: file - ", bs,
 			", URL: ", downloadFromURL, ", Directory: ", stat.Name(), ", Bot: ", b)
