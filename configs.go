@@ -1173,3 +1173,32 @@ func NewRestrictMember(chat_id, user_id int64, perms *objects.ChatMemberPermissi
 		Permissions: perms,
 	}
 }
+
+type EditInviteLinkConf struct {
+	ChatID             int64
+	InviteLink         string
+	Name               string
+	ExpireDate         int64
+	MemberLimit        int
+	CreatesJoinRequest bool
+}
+
+func (eilc *EditInviteLinkConf) values() (v url.Values, _ error) {
+	v.Add("chat_id", strconv.FormatInt(eilc.ChatID, 10))
+	v.Add("invite_link", eilc.InviteLink)
+	if eilc.Name != "" {
+		v.Add("name", eilc.Name)
+	}
+	if eilc.ExpireDate != 0 {
+		v.Add("expire_date", strconv.FormatInt(eilc.ExpireDate, 10))
+	}
+	if eilc.MemberLimit != 0 {
+		v.Add("member_limit", strconv.Itoa(eilc.MemberLimit))
+	}
+	v.Add("creates_join_request", strconv.FormatBool(eilc.CreatesJoinRequest))
+	return
+}
+
+func (eilc *EditInviteLinkConf) method() string {
+	return "editInviteLink"
+}

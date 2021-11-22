@@ -23,13 +23,14 @@ import (
 type Dispatcher struct {
 	Bot *Bot
 	// Handlers
-	MessageHandler       *HandlerObj
-	CallbackQueryHandler *HandlerObj
-	ChannelPostHandler   *HandlerObj
-	PollHandler          *HandlerObj
-	ChatMemberHandler    *HandlerObj
-	PollAnswerHandler    *HandlerObj
-	MyChatMemberHandler  *HandlerObj
+	MessageHandler         *HandlerObj
+	CallbackQueryHandler   *HandlerObj
+	ChannelPostHandler     *HandlerObj
+	PollHandler            *HandlerObj
+	ChatMemberHandler      *HandlerObj
+	PollAnswerHandler      *HandlerObj
+	MyChatMemberHandler    *HandlerObj
+	ChatJoinRequestHandler *HandlerObj
 
 	// Storage interface
 	Storage storage.Storage
@@ -192,6 +193,8 @@ func (dp *Dispatcher) ProcessOneUpdate(upd *objects.Update) error {
 		dp.ChatMemberHandler.Trigger(local_ctx)
 	} else if upd.MyChatMember != nil {
 		dp.MyChatMemberHandler.Trigger(local_ctx)
+	} else if upd.ChatJoinRequest != nil {
+		dp.ChatJoinRequestHandler.Trigger(local_ctx)
 	} else {
 		text := "detected not supported type of updates, seems like telegram bot api updated before this package updated"
 		return tgpErr.New(text)

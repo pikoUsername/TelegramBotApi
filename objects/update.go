@@ -22,4 +22,5 @@ type Update struct {
 	ForwardFrom        *User              `json:"forward_from"`
 	ForwardDate        time.Duration      `json:"forward_date"`
 	Dice               *Dice              `json:"dice"`
+	ChatJoinRequest    *ChatJoinRequest   `json:"chat_join_request"`
 }

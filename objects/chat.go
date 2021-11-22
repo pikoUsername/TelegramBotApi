@@ -40,12 +40,15 @@ type ChatMember struct {
 // ChatInviteLink represents ChatInvite object
 // https://core.telegram.org/bots/api#chatinvitelink
 type ChatInviteLink struct {
-	InviteLink  string `json:"invite_link"`
-	Creator     *User  `json:"creator"`
-	IsPrimary   bool   `json:"is_primary"`
-	IsRevoked   bool   `json:"is_revoked"`
-	ExpireDate  int64  `json:"expire_date"`
-	MemberLimit uint   `json:"member_limit"`
+	InviteLink              string `json:"invite_link"`
+	Creator                 *User  `json:"creator"`
+	CreatesJoinRequest      bool   `json:"creates_join_request"`
+	IsPrimary               bool   `json:"is_primary"`
+	IsRevoked               bool   `json:"is_revoked"`
+	Name                    string `json:"name"`
+	ExpireDate              int64  `json:"expire_date"`
+	MemberLimit             uint   `json:"member_limit"`
+	PendingJoinRequestCount int    `json:"pending_join_request_count"`
 }
 
 // ChatMemberUpdated object represents changes in the status of a chat member.
@@ -77,4 +80,12 @@ type ChatMemberPermissions struct {
 	CanChangeInfo         bool `json:"can_change_info"`
 	CanInviteUsers        bool `json:"can_invite_users"`
 	CanPinMessages        bool `json:"can_pin_messages"`
+}
+
+type ChatJoinRequest struct {
+	Chat       *Chat          `json:"chat"`
+	From       *User          `json:"from"`
+	Date       int64          `json:"date"`
+	Bio        string         `json:"bio"`
+	InviteLink ChatInviteLink `json:"invite_link"`
 }

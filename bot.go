@@ -541,17 +541,9 @@ func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
 	if err != nil {
 		return updates, err
 	}
-<<<<<<< Updated upstream
-	err = json.Unmarshal(resp.Result, &updates)
-	if err != nil {
-		return updates, err
-	}
-	return updates, nil
-=======
 	var upd []*objects.Update
 	json.Unmarshal(resp.Result, &upd)
 	return upd, nil
->>>>>>> Stashed changes
 }
 
 // SetWebhook make subscribe to telegram events
@@ -691,6 +683,7 @@ func (bot *Bot) SetChatAdministratorCustomTitle(chat_id, user_id int64, title st
 	return bot.BoolRequest("setChatAdministratorCustomTitle", v)
 }
 
+// ExportchatInviteLink ...
 func (bot *Bot) ExportChatInviteLink(chat_id int64) (string, error) {
 	v := make(url.Values)
 
@@ -706,6 +699,17 @@ func (bot *Bot) ExportChatInviteLink(chat_id int64) (string, error) {
 	return val, err
 }
 
+// EditInviteLink ...
+func (bot *Bot) EditInviteLink(c *EditInviteLinkConf) (cil *objects.ChatInviteLink, err error) {
+	v, _ := c.values()
+	resp, err := bot.Request(c.method(), v)
+	if err != nil {
+		return cil, err
+	}
+	json.Unmarshal(resp.Result, cil)
+	return
+}
+
 func (bot *Bot) SetChatPhoto(chat_id int64, file *objects.InputFile) (bool, error) {
 	v := make(map[string]string)
 
@@ -714,6 +718,26 @@ func (bot *Bot) SetChatPhoto(chat_id int64, file *objects.InputFile) (bool, erro
 	bot.UploadFile("setChatPhoto", v, file)
 
 	return false, nil
+}
+
+func (bot *Bot) RevokeChatInviteLink(chat_id int64, invoke string) (val *objects.ChatInviteLink, err error) {
+	v := url.Values{}
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+	v.Add("invoke", invoke)
+
+	resp, err := bot.Request("revokeChatInviteLink", v)
+	if err != nil {
+		return val, err
+	}
+	json.Unmarshal(resp.Result, val)
+	return
+}
+
+func (bot *Bot) ApproveChatJoinRequest(chat_id int64, user_id int64) (bool, error) {
+	v := url.Values{}
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+	v.Add("user_id", strconv.FormatInt(user_id, 10))
+	return bot.BoolRequest("approveChatJoinRequest", v)
 }
 
 // ================
