@@ -154,10 +154,7 @@ func (bot *Bot) BoolRequest(method string, params url.Values) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	err = json.Unmarshal(resp.Result, &ok)
-	if err != nil {
-		return false, err
-	}
+	json.Unmarshal(resp.Result, &ok)
 	return ok, err
 }
 
@@ -247,11 +244,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 		return new(objects.User), err
 	}
 	var user objects.User
-	err = json.Unmarshal(resp.Result, &user)
-	if err != nil {
-		return &user, err
-	}
-
+	json.Unmarshal(resp.Result, &user)
 	bot.Me = &user // caching result
 	return &user, nil
 }
@@ -364,11 +357,8 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 		return &objects.Message{}, err
 	}
 	var msg objects.Message
-	err = json.Unmarshal(resp.Result, &msg)
+	json.Unmarshal(resp.Result, &msg)
 	bot.debugLog("SendMessageable function activated:", v, &msg)
-	if err != nil {
-		return &msg, err
-	}
 	return &msg, nil
 }
 
@@ -418,10 +408,7 @@ func (bot *Bot) CopyMessage(config *CopyMessageConfig) (*objects.MessageID, erro
 	}
 	var msg objects.MessageID
 
-	err = json.Unmarshal(resp.Result, &msg)
-	if err != nil {
-		return &msg, err
-	}
+	json.Unmarshal(resp.Result, &msg)
 	return &msg, nil
 }
 
@@ -519,10 +506,7 @@ func (bot *Bot) GetMyCommands(c *GetMyCommandsConfig) ([]objects.BotCommand, err
 		return []objects.BotCommand{}, err
 	}
 	var cmds []objects.BotCommand
-	err = json.Unmarshal(resp.Result, &cmds)
-	if err != nil {
-		return cmds, err
-	}
+	json.Unmarshal(resp.Result, &cmds)
 	return cmds, nil
 }
 
@@ -557,11 +541,17 @@ func (bot *Bot) GetUpdates(c *GetUpdatesConfig) ([]*objects.Update, error) {
 	if err != nil {
 		return updates, err
 	}
+<<<<<<< Updated upstream
 	err = json.Unmarshal(resp.Result, &updates)
 	if err != nil {
 		return updates, err
 	}
 	return updates, nil
+=======
+	var upd []*objects.Update
+	json.Unmarshal(resp.Result, &upd)
+	return upd, nil
+>>>>>>> Stashed changes
 }
 
 // SetWebhook make subscribe to telegram events
@@ -600,10 +590,7 @@ func (bot *Bot) GetWebhookInfo() (*objects.WebhookInfo, error) {
 		return &objects.WebhookInfo{}, err
 	}
 	var wi objects.WebhookInfo
-	err = json.Unmarshal(resp.Result, &wi)
-	if err != nil {
-		return &wi, err
-	}
+	json.Unmarshal(resp.Result, &wi)
 	return &wi, nil
 }
 
@@ -645,12 +632,7 @@ func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
 	}
 
 	var chat objects.Chat
-	err = json.Unmarshal(resp.Result, &chat)
-
-	if err != nil {
-		return &chat, nil
-	}
-
+	json.Unmarshal(resp.Result, &chat)
 	return &chat, nil
 }
 
@@ -658,6 +640,18 @@ func (bot *Bot) GetChat(chat_id int64) (*objects.Chat, error) {
 func (bot *Bot) BanChatMember(c *BanChatMemberConfig) (bool, error) {
 	v, _ := c.values()
 	return bot.BoolRequest(c.method(), v)
+}
+
+func (bot *Bot) GetChatMemberCount(chat_id int64) (int, error) {
+	var count int
+	v := url.Values{}
+	v.Add("chat_id", strconv.FormatInt(chat_id, 10))
+	resp, err := bot.Request("getChatMemberCount", v)
+	if err != nil {
+		return count, err
+	}
+	json.Unmarshal(resp.Result, &count)
+	return count, nil
 }
 
 // UnbanChatMember ...
@@ -708,10 +702,7 @@ func (bot *Bot) ExportChatInviteLink(chat_id int64) (string, error) {
 	}
 
 	var val string
-	err = json.Unmarshal(resp.Result, &val)
-	if err != nil {
-		return "", err
-	}
+	json.Unmarshal(resp.Result, &val)
 	return val, err
 }
 
@@ -740,11 +731,7 @@ func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserP
 	}
 
 	var photos objects.UserProfilePhotos
-	err = json.Unmarshal(resp.Result, &photos)
-
-	if err != nil {
-		return &photos, err
-	}
+	json.Unmarshal(resp.Result, &photos)
 
 	return &photos, nil
 }
@@ -763,11 +750,6 @@ func (bot *Bot) GetFile(file_id string) (*objects.File, error) {
 	}
 
 	var file *objects.File
-	err = json.Unmarshal(resp.Result, &file)
-
-	if err != nil {
-		return file, err
-	}
-
+	json.Unmarshal(resp.Result, &file)
 	return file, nil
 }
