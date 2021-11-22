@@ -110,6 +110,30 @@ func (bf *BaseFile) params() (v map[string]string, err error) {
 	return v, nil
 }
 
+type UserPermissionsConfig struct {
+	CanManageChat       bool `json:"can_manage_chat"`
+	CanPostMessage      bool `json:"can_post_message"`
+	CanEditMessages     bool `json:"can_edit_messages"`
+	CanDeleteMessages   bool `json:"can_delete_messages"`
+	CanManageVoiceChats bool `json:"can_manage_voice_chats"`
+	CanRestrictMembers  bool `json:"can_restrict_members"`
+	CanPromoteMembers   bool `json:"can_promote_members"`
+	CanChangeInfo       bool `json:"can_change_info"`
+	CanInviteUsers      bool `json:"can_invite_users"`
+	CanPinMessages      bool `json:"can_pin_messages"`
+}
+
+func (upc *UserPermissionsConfig) values() (url.Values, error) {
+	v := url.Values{}
+
+	// TODO:
+	// f := func(n string, b bool, iv url.Values) {
+	// 	iv.Add(n, strconv.FormatBool(b))
+	// }
+
+	return v, nil
+}
+
 // For CopyMessage method config
 // https://core.telegram.org/bots/api#copymessage
 type CopyMessageConfig struct {
@@ -247,7 +271,7 @@ type SendPhotoConfig struct {
 }
 
 func (spc *SendPhotoConfig) values() (url.Values, error) {
-	v, _ := spc.BaseChat.values()
+	v, _ := spc.BaseFile.values()
 	if spc.Caption != "" {
 		v.Add("caption", spc.Caption)
 	}
@@ -1201,4 +1225,26 @@ func (eilc *EditInviteLinkConf) values() (v url.Values, _ error) {
 
 func (eilc *EditInviteLinkConf) method() string {
 	return "editInviteLink"
+}
+
+type PromoteChatMemberConfig struct {
+	UserPermissionsConfig
+
+	IsAnonymous bool  `json:"is_anonymous"`
+	ChatID      int64 `json:"chat_id"` // required
+	UserID      int64 `json:"user_id"` // required
+}
+
+func (pcmc PromoteChatMemberConfig) values() (url.Values, error) {
+	v, _ := pcmc.UserPermissionsConfig.values()
+
+	v.Add("chat_id", strconv.FormatInt(pcmc.ChatID, 10))
+	v.Add("user_id", strconv.FormatInt(pcmc.ChatID, 10))
+	v.Add("is_anonymous", strconv.FormatBool(pcmc.IsAnonymous))
+
+	return v, nil
+}
+
+func (pcmc PromoteChatMemberConfig) method() string {
+	return "promoteChatMember"
 }

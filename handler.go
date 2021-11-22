@@ -93,8 +93,8 @@ func (ho *HandlerObj) Register(callbacks ...interface{}) error {
 	for _, elem := range callbacks {
 		ho.mu.Lock()
 
-		// := using this, type checking will not work
 		switch conv := elem.(type) {
+		case Filter:
 		case func(*objects.Update) error:
 			partial = true
 			handler.AddFilters(conv)

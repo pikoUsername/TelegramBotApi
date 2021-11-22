@@ -777,3 +777,20 @@ func (bot *Bot) GetFile(file_id string) (*objects.File, error) {
 	json.Unmarshal(resp.Result, &file)
 	return file, nil
 }
+
+func (bot *Bot) PromoteChatMember(config PromoteChatMemberConfig) (bool, error) {
+	var ok bool
+	v, err := config.values()
+	if err != nil {
+		return false, err
+	}
+	resp, err := bot.Request(config.method(), v)
+	if err != nil {
+		return false, err
+	}
+	err = json.Unmarshal(resp.Result, &ok)
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
+}
