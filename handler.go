@@ -27,8 +27,8 @@ var (
 // ```
 // Can be used as handlers chain, e.g registered by ResgisterChain()
 type HandlerType struct {
-	Handler HandlerFunc
-	Filters []interface{}
+	handler HandlerFunc
+	filters []interface{}
 
 	mu sync.Mutex
 }
@@ -36,22 +36,26 @@ type HandlerType struct {
 func (h *HandlerType) AddFilters(filters ...interface{}) {
 	if len(filters) != 0 {
 		h.mu.Lock()
-		h.Filters = append(h.Filters, filters...)
+		h.filters = append(h.filters, filters...)
 		h.mu.Unlock()
 	}
 }
 
+func (ht *HandlerType) SetHandler(h HandlerFunc) {
+	ht.handler = h
+}
+
 func (h *HandlerType) apply(c *Context) {
-	if len(h.Filters) == 0 || checkFilters(h.Filters, c.Update) {
-		h.Handler(c)
+	if len(h.filters) == 0 || checkFilters(h.filters, c.Update) {
+		h.handler(c)
 	}
 }
 
 // NewHandlerType returns a HandlerType instance
 func NewHandlerType(handler HandlerFunc) *HandlerType {
 	return &HandlerType{
-		Handler: handler,
-		Filters: []interface{}{},
+		handler: handler,
+		filters: []interface{}{},
 		mu:      sync.Mutex{},
 	}
 }
@@ -70,8 +74,8 @@ func NewHandlerObj() *HandlerObj {
 func (ho *HandlerObj) Trigger(c *Context) {
 	c.handlers = ho.handlers
 	for i, h := range ho.handlers {
-		if len(h.Filters) == 0 || checkFilters(h.Filters, c.Update) {
-			h.Handler(c)
+		if len(h.filters) == 0 || checkFilters(h.filters, c.Update) {
+			h.handler(c)
 			c.cursor = i
 		}
 	}
@@ -97,7 +101,7 @@ func (ho *HandlerObj) Register(callbacks ...interface{}) error {
 
 		case func(*Context):
 			partial = true
-			handler.Handler = conv
+			handler.handler = conv
 
 		case *HandlerType:
 			ho.handlers = append(ho.handlers, conv)
