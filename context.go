@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pikoUsername/tgp/fsm"
 	"github.com/pikoUsername/tgp/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
 )
@@ -162,6 +163,19 @@ func (c *Context) Reply(config Configurable) (*objects.Message, error) {
 
 	v.Set("chat_id", strconv.FormatInt(c.Message.Chat.ID, 10))
 	return c.Send(config)
+}
+
+// SetState set a state which passed for a current user in current chat
+// works only in handler, or in middleware, nor outside
+func (ctx *Context) SetState(state *fsm.State) error {
+	cid, uid := getUidAndCidFromUpd(ctx.Update)
+	return ctx.Storage.SetState(cid, uid, state.GetFullState())
+}
+
+// ResetState reset state for current user, and current chat
+func (ctx *Context) ResetState() error {
+	cid, uid := getUidAndCidFromUpd(ctx.Update)
+	return ctx.Storage.SetState(cid, uid, fsm.DefaultState.GetFullState())
 }
 
 // TODO:

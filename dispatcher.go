@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pikoUsername/tgp/fsm"
 	"github.com/pikoUsername/tgp/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
 )
@@ -35,9 +34,6 @@ type Dispatcher struct {
 	// Storage interface
 	Storage storage.Storage
 	logger  StdLogger
-
-	// for FSM usage
-	currentUpdate *objects.Update
 
 	// If you want to add onshutdown function
 	// just append to this object, :P
@@ -221,25 +217,6 @@ func (dp *Dispatcher) Context(upd *objects.Update) *Context {
 		Storage: dp.Storage,
 		mu:      sync.Mutex{},
 	}
-}
-
-// SetState set a state which passed for a current user in current chat
-// works only in handler, or in middleware, nor outside
-func (dp *Dispatcher) SetState(state *fsm.State) error {
-	if dp.currentUpdate != nil {
-		cid, uid := getUidAndCidFromUpd(dp.currentUpdate)
-		return dp.Storage.SetState(cid, uid, state.GetFullState())
-	}
-	return nil
-}
-
-// ResetState reset state for current user, and current chat
-func (dp *Dispatcher) ResetState() error {
-	if dp.currentUpdate != nil {
-		cid, uid := getUidAndCidFromUpd(dp.currentUpdate)
-		return dp.Storage.SetState(cid, uid, fsm.DefaultState.GetFullState())
-	}
-	return nil
 }
 
 // ========================================
@@ -497,7 +474,6 @@ func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
 			return
 		}
 
-		dp.currentUpdate = update
 		err = dp.ProcessOneUpdate(update) // will run in stock mode
 		if err != nil {
 			WriteRequestError(wr, err)
