@@ -1,35 +1,27 @@
-package storage_test
+package storage
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/pikoUsername/tgp/fsm/storage"
 )
 
 var (
 	// redis_addr = os.Getenv("redis_addr")
-	redis_addr = "127.0.0.1:6379"
-	// redis_password = os.Getenv("redis_password")
-	redis_password = "Aa90041312"
+	redis_addr     = "127.0.0.1:6379"
+	redis_password = os.Getenv("redis_password")
 )
-
-func assert(b bool, t testing.T) {
-	if !b {
-		t.Error("Assert failed")
-		t.Fail()
-	}
-}
 
 func TestRedisSetData(t *testing.T) {
 	cl := redis.NewClient(&redis.Options{
 		Addr:     redis_addr,
 		Password: redis_password,
 	})
-	st := storage.NewRedisStorage(cl)
-	ptt := storage.PackType{}
+	st := NewRedisStorage(cl)
+	ptt := PackType{}
 	text := "LOL"
 	ptt["1"] = text
 	err := st.SetData(0, 0, ptt)
@@ -49,9 +41,9 @@ func TestRedisSetData(t *testing.T) {
 }
 
 func TestRedisResolveKey(t *testing.T) {
-	rs := &storage.RedisStorage{}
-	cid, uid := 0, 0
-	key := rs.ResolveKey(cid, uid)
+	rs := &RedisStorage{}
+	var cid, uid int64 = 0, 0
+	key := rs.resolveKey(cid, uid)
 	key2 := strings.Join([]string{fmt.Sprintln(cid), fmt.Sprintln(uid)}, ":")
 	if key != key2 {
 		t.Error("Key is not same Key2!")

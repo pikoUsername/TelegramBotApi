@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"strings"
 
 	"github.com/go-redis/redis/v8"
@@ -28,13 +29,8 @@ func (rs *RedisStorage) Close() {
 }
 
 // ResolveKey ...
-func (rs *RedisStorage) ResolveKey(raw_parts ...interface{}) string {
-	var parts []string
-
-	for _, r_part := range raw_parts {
-		b, _ := json.Marshal(r_part)
-		parts = append(parts, (string)(b))
-	}
+func (rs *RedisStorage) resolveKey(cid, uid int64) string {
+	parts := []string{strconv.FormatInt(cid, 10), strconv.FormatInt(uid, 10)}
 
 	return strings.Join(parts, ":")
 }
@@ -49,7 +45,7 @@ func (rs *RedisStorage) SetData(cid, uid int64, pt PackType) error {
 		Data:  pt,
 		State: state,
 	}
-	return rs.client.Set(rs.Context, rs.ResolveKey(cid, uid), v, 0).Err()
+	return rs.client.Set(rs.Context, rs.resolveKey(cid, uid), v, 0).Err()
 }
 
 // SetState ...
@@ -62,7 +58,7 @@ func (rs *RedisStorage) SetState(cid, uid int64, state string) error {
 		Data:  data,
 		State: state,
 	}
-	return rs.client.Set(rs.Context, rs.ResolveKey(cid, uid), v, 0).Err()
+	return rs.client.Set(rs.Context, rs.resolveKey(cid, uid), v, 0).Err()
 }
 
 // GetData ...
@@ -85,7 +81,7 @@ func (rs *RedisStorage) GetState(cid, uid int64) (string, error) {
 
 // GetValue ...
 func (rs *RedisStorage) GetValue(cid, uid int64) (*StorageRecord, error) {
-	val := rs.client.Get(rs.Context, rs.ResolveKey(cid, uid))
+	val := rs.client.Get(rs.Context, rs.resolveKey(cid, uid))
 	v, err := val.Result()
 	if err != nil {
 		return (*StorageRecord)(nil), err
