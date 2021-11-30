@@ -119,19 +119,26 @@ type StartPollingConfig struct {
 	SkipUpdates  bool
 	SafeExit     bool
 	ResetWebhook bool
-	ErrorSleep   uint
+	ErrorSleep   time.Duration
 	Relax        time.Duration
 	Timeout      time.Duration
 }
 
-func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
+// returns config which filled by default values, except skip updates
+// values:
+//  Relax - 1 sec
+//  ResetWebhook - false
+//  Error Sleep - 0.5 second
+//  SafeExit - true
+//  Timeout - 5 seconds
+func NewPollingConfig(skip_updates bool) *StartPollingConfig {
 	return &StartPollingConfig{
 		GetUpdatesConfig: &GetUpdatesConfig{
 			Timeout: 5,
 		},
 		Relax:        1 * time.Second, // 0.1
 		ResetWebhook: false,
-		ErrorSleep:   1,
+		ErrorSleep:   500 * time.Millisecond,
 		SkipUpdates:  skip_updates,
 		SafeExit:     true,
 		Timeout:      5 * time.Second,
@@ -149,10 +156,12 @@ type StartWebhookConfig struct {
 	SafeExit           bool
 }
 
-func NewStartWebhookConf(url string, address string) *StartWebhookConfig {
+func NewWebhookConfig(url string, address string) *StartWebhookConfig {
 	return &StartWebhookConfig{
-		BotURL:  url,
-		Address: address,
+		BotURL:             url,
+		Address:            address,
+		SafeExit:           true,
+		DropPendingUpdates: false,
 	}
 }
 
@@ -224,7 +233,7 @@ func (dp *Dispatcher) Context(upd *objects.Update) *Context {
 // ========================================
 
 // Shutdown calls when you enter ^C(which means SIGINT)
-// And SafeExit catch it, before you exit
+// And SafeExit catch it, before OS terminate program
 func (dp *Dispatcher) shutdownPolling() {
 	if len(dp.OnPollingShutdown) == 0 {
 		return
@@ -359,7 +368,7 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Up
 			if err != nil {
 				dp.logger.Println(err.Error())
 				dp.logger.Println("Error with getting updates")
-				time.Sleep(time.Duration(c.ErrorSleep))
+				time.Sleep(c.ErrorSleep)
 
 				continue
 			}

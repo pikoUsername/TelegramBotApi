@@ -63,12 +63,12 @@ func NewHandlerType(handler HandlerFunc) *HandlerType {
 // HandlerObj ...
 type HandlerObj struct {
 	handlers []*HandlerType
-	mu       *sync.Mutex
+	mu       sync.Mutex
 }
 
 // NewHandlerObj creates new DefaultHandlerObj
 func NewHandlerObj() *HandlerObj {
-	return &HandlerObj{mu: &sync.Mutex{}}
+	return &HandlerObj{mu: sync.Mutex{}}
 }
 
 func (ho *HandlerObj) Trigger(c *Context) {
@@ -91,7 +91,6 @@ func (ho *HandlerObj) Register(callbacks ...interface{}) error {
 	handler := &HandlerType{}
 
 	for _, elem := range callbacks {
-		ho.mu.Lock()
 
 		switch conv := elem.(type) {
 		case Filter:
@@ -104,15 +103,17 @@ func (ho *HandlerObj) Register(callbacks ...interface{}) error {
 			handler.handler = conv
 
 		case *HandlerType:
+			ho.mu.Lock()
 			ho.handlers = append(ho.handlers, conv)
+			ho.mu.Unlock()
 		default:
 			return tgpErr.New("only func(*objects.Update), func(*tgp.Context), or *tgp.HandlerType types.")
 		}
-
-		ho.mu.Unlock()
 	}
 	if partial {
+		ho.mu.Lock()
 		ho.handlers = append(ho.handlers, handler)
+		ho.mu.Unlock()
 	}
 	return nil
 }

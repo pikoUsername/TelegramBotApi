@@ -3,7 +3,6 @@ package tgp
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -33,18 +32,11 @@ type StdLogger interface {
 	Panicln(...interface{})
 }
 
-var (
-	DefaultClient = &http.Client{}
-)
-
 // Bot can be created using Json config,
 // Copy-pasted from go-telegram-bot-api
 //
 // Client field have timeout, and default timeout is 5 second
 type Bot struct {
-	// For DebugLog in console
-	Debug bool `json:"debug"`
-
 	// Token uses for authonificate using URL
 	// Url template {api_url}/bot{bot_token}/{method}?{args}
 	Token string `json:"token"`
@@ -78,13 +70,11 @@ type Bot struct {
 // Bot structure should provide only Telegram bot API methods
 func NewBot(token string, parseMode string, client *http.Client) (*Bot, error) {
 	// Check out for correct token
-	err := checkToken(token)
-	if err != nil {
-		return nil, err
+	if strings.Contains(token, " ") {
+		return nil, tgpErr.New("token is invalid! token contains space")
 	}
-	// will be by default
 	if client == nil {
-		client = DefaultClient
+		client = &http.Client{}
 	}
 	return &Bot{
 		Token:     token,
@@ -97,13 +87,6 @@ func NewBot(token string, parseMode string, client *http.Client) (*Bot, error) {
 
 func (bot *Bot) SetTimeout(dur time.Duration) {
 	bot.Client.Timeout = dur
-}
-
-func (bot *Bot) debugLog(text string, v url.Values, message ...interface{}) {
-	if bot.Debug {
-		bot.logger.Printf("%s req : %+v\n", text, v)
-		bot.logger.Printf("%s resp: %+v\n", text, message)
-	}
 }
 
 func (bot *Bot) Logger() StdLogger {
@@ -223,7 +206,6 @@ func (b *Bot) UploadFile(method string, v map[string]string, data ...*objects.In
 		return &objects.TelegramResponse{}, err
 	}
 	// closing body
-	b.debugLog("Response as bytes: ", nil, fmt.Sprintln(resp))
 	defer resp.Body.Close()
 	tgresp, err := responseDecode(resp.Body)
 	if err != nil {
@@ -358,7 +340,6 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 	}
 	var msg objects.Message
 	json.Unmarshal(resp.Result, &msg)
-	bot.debugLog("SendMessageable function activated:", v, &msg)
 	return &msg, nil
 }
 
@@ -377,9 +358,6 @@ func (bot *Bot) UploadAndSend(config FileableConf) (*objects.Message, error) {
 
 	var message *objects.Message
 	json.Unmarshal(resp.Result, &message)
-
-	bot.debugLog(method, nil, message)
-
 	return message, nil
 }
 
@@ -565,7 +543,6 @@ func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, erro
 	}
 	params := make(map[string]string)
 	urlValuesToMapString(v, params)
-	bot.debugLog("Params: ", nil, params)
 	// uploads a certificate file, with other parametrs
 	resp, err := bot.UploadFile(meth, params, c.Certificate)
 	if err != nil {

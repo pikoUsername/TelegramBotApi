@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"unsafe"
 
 	"github.com/pikoUsername/tgp/objects"
@@ -69,9 +68,8 @@ func ObjectToJson(obj interface{}) string {
 
 func FormatMarkup(obj interface{}) string {
 	switch t := obj.(type) {
-	case *objects.InlineKeyboardMarkup:
-		return t.String()
 	case *objects.ReplyKeyboardMarkup:
+	case *objects.InlineKeyboardMarkup:
 		return t.String()
 	default:
 	}
@@ -152,30 +150,13 @@ func urlValuesToMapString(v url.Values, w map[string]string) {
 // For next step parsing, in other function
 // Result of Reponse saves in TelegramResponse.Result
 func responseDecode(respBody io.ReadCloser) (*objects.TelegramResponse, error) {
-	var tgresp objects.TelegramResponse
+	var tgresp *objects.TelegramResponse
 	// Maybe use the Unmarshal ...
 	err := json.NewDecoder(respBody).Decode(&tgresp)
 	if err != nil {
-		return &tgresp, err
+		return tgresp, err
 	}
-	return &tgresp, nil
-}
-
-// CheckToken Check out for a Space containing, and token correct
-func checkToken(token string) error {
-	// Checks for space in token
-	if strings.Contains(token, " ") {
-		return tgpErr.New("token is invalid! token contains space")
-	}
-	token_parts := strings.Split(token, ":")
-	if len(token_parts) != 2 {
-		return tgpErr.New("token contains more than 2 parts")
-	}
-	// Checks for empty token
-	if token_parts[0] == "" || token_parts[1] == "" {
-		return tgpErr.New("token is empty")
-	}
-	return nil
+	return tgresp, nil
 }
 
 // Checks Statuscode and if Error then creates new Error with Error Description

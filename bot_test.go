@@ -34,7 +34,6 @@ func getBot(t *testing.T) *Bot {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b.Debug = true
 	return b
 }
 
