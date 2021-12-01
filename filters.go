@@ -1,6 +1,8 @@
 package tgp
 
-import "github.com/pikoUsername/tgp/objects"
+import (
+	"github.com/pikoUsername/tgp/objects"
+)
 
 // Filter uses for filtering comming text, data and etc.
 // When Filter check is not success handler will not pass

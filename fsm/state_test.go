@@ -8,8 +8,9 @@ import (
 
 func TestGetFullState(t *testing.T) {
 	// * is any state
-	test_state := fsm.NewState("*", "")
-	test_state1 := fsm.NewState("LOLLOLOLLOLLOLLOLLOLLOLLOLLOL", "kekek")
+	test_state := fsm.NewState("*")
+	test_state1 := fsm.NewState("LOLLOLOLLOLLOLLOLLOLLOLLOLLOL")
+	test_state1.GroupState = "kekek"
 
 	// getting all states strings, huh
 	fs := test_state.GetFullState()

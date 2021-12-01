@@ -2,8 +2,6 @@ package tgp
 
 import (
 	"sync"
-
-	"github.com/pikoUsername/tgp/objects"
 )
 
 type HandlerFunc func(*Context)
@@ -91,10 +89,8 @@ func (ho *HandlerObj) Register(callbacks ...interface{}) error {
 	handler := &HandlerType{}
 
 	for _, elem := range callbacks {
-
 		switch conv := elem.(type) {
 		case Filter:
-		case func(*objects.Update) error:
 			partial = true
 			handler.AddFilters(conv)
 

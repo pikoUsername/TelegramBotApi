@@ -160,7 +160,6 @@ func (c *Context) Send(config Configurable) (*objects.Message, error) {
 // Reply to this context object
 func (c *Context) Reply(config Configurable) (*objects.Message, error) {
 	v, _ := config.values()
-
 	v.Set("chat_id", strconv.FormatInt(c.Message.Chat.ID, 10))
 	return c.Send(config)
 }
