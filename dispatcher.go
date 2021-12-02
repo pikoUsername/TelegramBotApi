@@ -387,8 +387,7 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Up
 func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 	cherr := make(chan error, 1)
 
-	for {
-		upd := <-ch
+	for upd := range ch {
 		if upd == nil {
 			continue
 		}
@@ -404,6 +403,7 @@ func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 			return nil
 		}
 	}
+	return nil
 }
 
 // StartPolling check out to comming updates

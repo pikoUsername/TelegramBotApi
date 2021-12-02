@@ -159,21 +159,49 @@ func (c *Context) Send(config Configurable) (*objects.Message, error) {
 
 // Reply to this context object
 func (c *Context) Reply(config Configurable) (*objects.Message, error) {
+	var u = c.Update
+	var chat *objects.Chat
+
 	v, _ := config.values()
-	v.Set("chat_id", strconv.FormatInt(c.Message.Chat.ID, 10))
+
+	if u.EditedMessage != nil {
+		chat = u.EditedMessage.Chat
+	} else if u.ChannelPost != nil {
+		chat = u.ChannelPost.Chat
+	} else if u.Message != nil {
+		chat = u.Message.Chat
+	} else {
+		return &objects.Message{}, tgpErr.New("Update is empty")
+	}
+	v.Set("chat_id", strconv.FormatInt(chat.ID, 10))
 	return c.Send(config)
 }
 
 // SetState set a state which passed for a current user in current chat
 // works only in handler, or in middleware, nor outside
 func (ctx *Context) SetState(state *fsm.State) error {
-	cid, uid := getUidAndCidFromUpd(ctx.Update)
+	cid, uid := extractIds(ctx.Update)
 	return ctx.Storage.SetState(cid, uid, state.GetFullState())
+}
+
+func (ctx *Context) GetState() (*fsm.State, error) {
+	var state, group string
+	cid, uid := extractIds(ctx.Update)
+	st, err := ctx.Storage.GetState(cid, uid)
+	if err != nil {
+		return &fsm.State{}, err
+	}
+	s := strings.Split(st, ":")
+	if len(s) < 2 {
+		return &fsm.State{}, tgpErr.New("Uncorrect state string format")
+	}
+	state, group = s[0], s[1]
+	return &fsm.State{State: state, GroupState: group}, nil
 }
 
 // ResetState reset state for current user, and current chat
 func (ctx *Context) ResetState() error {
-	cid, uid := getUidAndCidFromUpd(ctx.Update)
+	cid, uid := extractIds(ctx.Update)
 	return ctx.Storage.SetState(cid, uid, fsm.DefaultState.GetFullState())
 }
 

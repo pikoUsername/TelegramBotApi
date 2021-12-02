@@ -77,7 +77,7 @@ func FormatMarkup(obj interface{}) string {
 	return ""
 }
 
-func getUidAndCidFromUpd(u *objects.Update) (cid_, uid_ int64) {
+func extractIds(u *objects.Update) (cid_, uid_ int64) {
 	var cid, uid int64
 
 	if u.Message != nil {
