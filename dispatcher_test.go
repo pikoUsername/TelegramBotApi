@@ -60,16 +60,15 @@ func BenchmarkProcessOneUpdate(b *testing.B) {
 		b.Fail()
 	}
 
-	dp.MessageHandler.Register(func(ctx *Context) { ctx.Next() })
+	dp.MessageHandler.Register(func(ctx *Context) {})
+
+	upd := &objects.Update{
+		UpdateID: 100,
+		Message:  &objects.Message{},
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		upd := &objects.Update{
-			UpdateID: i,
-			Message:  &objects.Message{},
-		}
-		b.StartTimer()
 		dp.ProcessOneUpdate(upd)
 	}
 }

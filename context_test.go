@@ -30,7 +30,6 @@ func TestContextHandlerAbility(t *testing.T) {
 func TestResetState(t *testing.T) {
 	testCtx.Storage = storage.NewMemoryStorage()
 	testCtx.SetState(fsm.AnyState)
-	//
 	s, err := testCtx.Storage.GetState(testCtx.Message.Chat.ID, testCtx.Message.From.ID)
 	if err != nil {
 		t.Fatal(err)

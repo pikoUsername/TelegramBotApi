@@ -68,3 +68,25 @@ func TestHandlerTrigger(t *testing.T) {
 		t.Error("callederror is nil")
 	}
 }
+
+// go test -bench -benchmem
+
+func BenchmarkTriggerHandler(b *testing.B) {
+	dp, err := GetDispatcher(false)
+	if err != nil {
+		b.Error(err)
+		b.Fail()
+	}
+
+	dp.MessageHandler.Register(func(ctx *Context) {})
+
+	upd := &objects.Update{
+		UpdateID: 100,
+		Message:  &objects.Message{},
+	}
+	c := dp.Context(upd)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		dp.MessageHandler.Trigger(c)
+	}
+}

@@ -1,5 +1,7 @@
 # TGP 
 
+| golang version 1.15+ 
+
 > Telegram Golang Package
 
 > go get -u github.com/pikoUsername/tgp

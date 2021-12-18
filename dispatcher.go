@@ -65,7 +65,7 @@ func NewDispatcher(bot *Bot, storage storage.Storage) *Dispatcher {
 		Welcome:     true,
 		logger:      bot.logger, // pointer to logger
 		functionsWG: &sync.WaitGroup{},
-		closeChan:   make(chan struct{}),
+		closeChan:   make(chan struct{}, 1),
 	}
 
 	dp.MessageHandler = NewHandlerObj()
@@ -113,7 +113,7 @@ func callListFuncs(funcs []OnStartAndShutdownFunc, dp *Dispatcher) {
 }
 
 // Config for start polling method
-type StartPollingConfig struct {
+type PollingConfig struct {
 	*GetUpdatesConfig
 	Context      context.Context
 	SkipUpdates  bool
@@ -131,12 +131,12 @@ type StartPollingConfig struct {
 //  Error Sleep - 0.5 second
 //  SafeExit - true
 //  Timeout - 5 seconds
-func NewPollingConfig(skip_updates bool) *StartPollingConfig {
-	return &StartPollingConfig{
+func NewPollingConfig(skip_updates bool) *PollingConfig {
+	return &PollingConfig{
 		GetUpdatesConfig: &GetUpdatesConfig{
 			Timeout: 5,
 		},
-		Relax:        1 * time.Second, // 0.1
+		Relax:        1 * time.Second,
 		ResetWebhook: false,
 		ErrorSleep:   500 * time.Millisecond,
 		SkipUpdates:  skip_updates,
@@ -148,9 +148,10 @@ func NewPollingConfig(skip_updates bool) *StartPollingConfig {
 // StartWebhookConfig uses for start bot using webhooks
 type StartWebhookConfig struct {
 	*SetWebhookConfig
-	Handler            http.Handler
-	KeyFile            interface{}
-	BotURL             string
+	Handler http.Handler
+	KeyFile interface{}
+
+	// e.g your machine address
 	Address            string
 	DropPendingUpdates bool
 	SafeExit           bool
@@ -158,7 +159,6 @@ type StartWebhookConfig struct {
 
 func NewWebhookConfig(url string, address string) *StartWebhookConfig {
 	return &StartWebhookConfig{
-		BotURL:             url,
 		Address:            address,
 		SafeExit:           true,
 		DropPendingUpdates: false,
@@ -201,8 +201,8 @@ func (dp *Dispatcher) ProcessOneUpdate(upd *objects.Update) error {
 	} else if upd.ChatJoinRequest != nil {
 		dp.ChatJoinRequestHandler.Trigger(local_ctx)
 	} else {
-		text := "detected not supported type of updates, seems like telegram bot api updated before this package updated"
-		return tgpErr.New(text)
+		return tgpErr.New(
+			"detected not supported type of updates, seems like telegram bot api updated before this package updated")
 	}
 
 	return nil
@@ -220,7 +220,7 @@ func (dp *Dispatcher) SkipUpdates() (err error) {
 func (dp *Dispatcher) Context(upd *objects.Update) *Context {
 	return &Context{
 		Update:  upd,
-		data:    dataContext{},
+		data:    make(map[string]interface{}),
 		index:   AcceptIndex,
 		Bot:     dp.Bot,
 		Storage: dp.Storage,
@@ -320,7 +320,7 @@ func (dp *Dispatcher) runShutDown() {
 // SafeExit method uses for notify about exit from program
 // Thanks: https://stackoverflow.com/questions/11268943/is-it-possible-to-capture-a-ctrlc-signal-and-run-a-cleanup-function-in-a-defe
 func (dp *Dispatcher) SafeExit() {
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
 		<-c
@@ -334,6 +334,7 @@ func (dp *Dispatcher) ShutDown() {
 	dp.logger.Println("Stop polling!")
 	dp.ResetWebhook(true)
 	dp.Storage.Close()
+	close(dp.closeChan)
 	dp.runShutDown()
 }
 
@@ -357,7 +358,7 @@ func (dp *Dispatcher) welcome() {
 // Time.Sleep here for stop goroutine for a c.Relax time
 //
 // yeah it bad, and works only on crutches, but works
-func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Update) {
+func (dp *Dispatcher) MakeUpdatesChan(c *PollingConfig, ch chan *objects.Update) {
 	go func() {
 		for {
 			if c.Relax != 0 {
@@ -399,7 +400,6 @@ func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 				return err
 			}
 		case <-dp.closeChan:
-			dp.ShutDown()
 			return nil
 		}
 	}
@@ -410,7 +410,7 @@ func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 // If yes, Telegram Get to your bot a Update
 // Using GetUpdates method in Bot structure
 // GetUpdates config using for getUpdates method
-func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
+func (dp *Dispatcher) StartPolling(c *PollingConfig) error {
 	var err error
 	if dp.webhook {
 		return ErrorConflictModes
@@ -435,7 +435,7 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 		}
 	}
 
-	ch := make(chan *objects.Update)
+	ch := make(chan *objects.Update, 1)
 	dp.MakeUpdatesChan(c, ch)
 
 	dp.ProcessUpdates(ch)
@@ -444,7 +444,7 @@ func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
 
 // MakeWebhookChan adds a http Handler with c.BotURL path
 func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig, ch chan *objects.Update) {
-	http.HandleFunc(c.BotURL, func(wr http.ResponseWriter, req *http.Request) {
+	http.HandleFunc(c.URL, func(wr http.ResponseWriter, req *http.Request) {
 		update, err := requestToUpdate(req)
 		if err != nil {
 			errMsg, _ := json.Marshal(map[string]string{"error": err.Error()})
@@ -476,7 +476,7 @@ func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
 	if c.SafeExit {
 		dp.SafeExit()
 	}
-	http.HandleFunc(c.BotURL, func(wr http.ResponseWriter, req *http.Request) {
+	http.HandleFunc(c.URL, func(wr http.ResponseWriter, req *http.Request) {
 		update, err := requestToUpdate(req)
 		if err != nil {
 			WriteRequestError(wr, err)
