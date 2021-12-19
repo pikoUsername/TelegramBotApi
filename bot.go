@@ -194,7 +194,7 @@ func (b *Bot) UploadFile(method string, v map[string]string, data ...*objects.In
 	}
 	tgurl := b.server.ApiURL(b.Token, name)
 
-	req, err := http.NewRequest(method, tgurl, nil)
+	req, err := http.NewRequest("POST", tgurl+method, nil)
 	if err != nil {
 		return &objects.TelegramResponse{}, err
 	}
@@ -211,6 +211,7 @@ func (b *Bot) UploadFile(method string, v map[string]string, data ...*objects.In
 	if err != nil {
 		return tgresp, err
 	}
+
 	// returns response instant
 	return checkResult(tgresp)
 }
