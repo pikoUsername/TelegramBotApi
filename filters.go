@@ -16,17 +16,9 @@ type Filter interface {
 }
 
 // check out for filters
-func checkFilters(filters []interface{}, upd *objects.Update) bool {
-	var filtersResult bool
-
-	for _, ifilter := range filters {
-		switch filter := ifilter.(type) {
-		case func(*objects.Update) bool:
-			filtersResult = filter(upd)
-		case Filter:
-			filtersResult = filter.Check(upd)
-		}
-		if !filtersResult {
+func checkFilters(filters []Filter, upd *objects.Update) bool {
+	for _, filter := range filters {
+		if !filter.Check(upd) {
 			return false
 		}
 	}

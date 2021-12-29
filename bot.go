@@ -2,35 +2,17 @@ package tgp
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/pikoUsername/multipartreader"
+	multipartreader "github.com/pikoUsername/MultipartReader"
 	"github.com/pikoUsername/tgp/objects"
 )
-
-// StdLogger taken from logrus
-type StdLogger interface {
-	Print(...interface{})
-	Printf(string, ...interface{})
-	Println(...interface{})
-
-	Fatal(...interface{})
-	Fatalf(string, ...interface{})
-	Fatalln(...interface{})
-
-	Panic(...interface{})
-	Panicf(string, ...interface{})
-	Panicln(...interface{})
-}
 
 // Bot can be created using Json config,
 // Copy-pasted from go-telegram-bot-api
@@ -49,9 +31,6 @@ type Bot struct {
 	// if you wanna create own, just create
 	// using this structure instead of NewBot function
 	server *TelegramAPIServer
-
-	// logger is one for dispatcher and Bot
-	logger StdLogger
 
 	// Using prefix Bot, for avoid names conflict
 	// and golang dont love name conflicts
@@ -80,17 +59,12 @@ func NewBot(token string, parseMode string, client *http.Client) (*Bot, error) {
 		Token:     token,
 		ParseMode: parseMode,
 		server:    DefaultTelegramServer,
-		logger:    log.New(os.Stderr, "", log.LstdFlags),
 		Client:    client,
 	}, nil
 }
 
 func (bot *Bot) SetTimeout(dur time.Duration) {
 	bot.Client.Timeout = dur
-}
-
-func (bot *Bot) Logger() StdLogger {
-	return bot.logger
 }
 
 // ===================
@@ -107,7 +81,7 @@ func (bot *Bot) Request(Method string, params url.Values) (*objects.TelegramResp
 
 	request, err := http.NewRequest("POST", tgurl, strings.NewReader(params.Encode()))
 	if err != nil {
-		return &objects.TelegramResponse{}, err
+		return nil, err
 	}
 	// Using Content-Type x-www-form-urlencoded
 	// bc URL limitations, only 2048 charecters
@@ -117,14 +91,14 @@ func (bot *Bot) Request(Method string, params url.Values) (*objects.TelegramResp
 	// Sending Request to Telegram servers
 	resp, err := bot.Client.Do(request)
 	if err != nil {
-		return &objects.TelegramResponse{}, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	// make eatable
 	tgresp, err := responseDecode(resp.Body)
 	if err != nil {
-		return tgresp, err
+		return nil, err
 	}
 	return checkResult(tgresp)
 }
@@ -170,46 +144,58 @@ func (bot *Bot) DownloadFile(path string, w io.Writer) error {
 // Upload file uploads file to telegram server
 func (b *Bot) UploadFile(method string, v map[string]string, data ...*objects.InputFile) (*objects.TelegramResponse, error) {
 	var name string
+	var err error
+
 	ms := multipartreader.New()
+	err = ms.WriteFields(v)
+	if err != nil {
+		return nil, err
+	}
 	values := make(map[string]string)
 
 	for _, value := range data {
-		if value.URL == "" && value.Name == "" && value.File == nil {
-			return &objects.TelegramResponse{}, tgpErr.New("inputfile is empty")
+		defer value.Close()
+		if value.URL == "" && value.Name == "" && value.File == nil && value.Path == "" {
+			return nil, tgpErr.New("err while uploading inputfile, file is empty")
 		}
 		if value.URL != "" && value.Name != "" {
 			values[value.Name] = value.URL
 
-			ms.WriteFields(values)
+			err = ms.WriteFields(values)
+			if err != nil {
+				return nil, err
+			}
 		}
 		if value.File != nil && value.Name != "" {
 			ms.AddFormReader(value.Name, value.Path, int64(value.Length), value.File)
 		}
-		if value.Path != "" && value.Name != "" {
-			err := ms.WriteFile(value.Name, value.Path)
+		if value.Path != "" && value.Name != "" && value.File == nil {
+			err = ms.WriteFile(value.Name, value.Path)
 			if err != nil {
-				return &objects.TelegramResponse{}, err
+				return nil, err
 			}
 		}
 	}
+	// ms.AddValuesReader(f_v)
 	tgurl := b.server.ApiURL(b.Token, name)
 
 	req, err := http.NewRequest("POST", tgurl+method, nil)
 	if err != nil {
-		return &objects.TelegramResponse{}, err
+		return nil, err
 	}
 	ms.SetupRequest(req)
 
 	// sending request
 	resp, err := b.Client.Do(req)
 	if err != nil {
-		return &objects.TelegramResponse{}, err
+		return nil, err
 	}
+
 	// closing body
 	defer resp.Body.Close()
 	tgresp, err := responseDecode(resp.Body)
 	if err != nil {
-		return tgresp, err
+		return nil, err
 	}
 
 	// returns response instant
@@ -224,7 +210,7 @@ func (bot *Bot) GetMe() (*objects.User, error) {
 	}
 	resp, err := bot.Request("getMe", url.Values{})
 	if err != nil {
-		return new(objects.User), err
+		return nil, err
 	}
 	var user objects.User
 	json.Unmarshal(resp.Result, &user)
@@ -252,7 +238,7 @@ func (bot *Bot) DeleteChatPhoto(ChatId int64) (*objects.TelegramResponse, error)
 	resp, err := bot.Request("deleteChatPhoto", v)
 
 	if err != nil {
-		return resp, err
+		return nil, err
 	}
 
 	return resp, nil
@@ -269,7 +255,7 @@ func (bot *Bot) SetChatTitle(ChatId int64, Title string) (*objects.TelegramRespo
 	resp, err := bot.Request("setChatTitle", v)
 
 	if err != nil {
-		return resp, err
+		return nil, err
 	}
 
 	return resp, nil
@@ -283,7 +269,7 @@ func (bot *Bot) SetChatDescription(ChatId int64, Description string) (*objects.T
 	v.Add("description", Description)
 	resp, err := bot.Request("setChatDescription", v)
 	if err != nil {
-		return resp, err
+		return nil, err
 	}
 	return resp, nil
 }
@@ -328,7 +314,7 @@ func (bot *Bot) UnpinAllChatMessages(ChatId int64) (*objects.TelegramResponse, e
 func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 	v, err := c.values()
 	if err != nil {
-		return &objects.Message{}, err
+		return nil, err
 	}
 	// Check out for parse_mode and set bot.ParseMode if config parse_mode is empty
 	if v.Get("parse_mode") == "" {
@@ -337,7 +323,7 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 	resp, err := bot.Request(c.method(), v)
 
 	if err != nil {
-		return &objects.Message{}, err
+		return nil, err
 	}
 	var msg objects.Message
 	json.Unmarshal(resp.Result, &msg)
@@ -348,13 +334,13 @@ func (bot *Bot) SendMessageable(c Configurable) (*objects.Message, error) {
 func (bot *Bot) UploadAndSend(config FileableConf) (*objects.Message, error) {
 	params, err := config.params()
 	if err != nil {
-		return &objects.Message{}, err
+		return nil, err
 	}
 
 	method := config.method()
 	resp, err := bot.UploadFile(method, params, config.getFiles()...)
 	if err != nil {
-		return &objects.Message{}, err
+		return nil, err
 	}
 
 	var message *objects.Message
@@ -370,7 +356,7 @@ func (bot *Bot) Send(config Configurable) (*objects.Message, error) {
 	case Configurable:
 		return bot.SendMessageable(c)
 	}
-	return &objects.Message{}, errors.New("config is not correct")
+	return nil, tgpErr.New("config is not correct")
 }
 
 // CopyMessage copies message
@@ -422,7 +408,7 @@ func (bot *Bot) SendVoice(config *SendVoiceConfig) (*objects.Message, error) {
 }
 
 // SendVideoName ...
-func (bot *Bot) SendVideoName(config *SendVideoNoteConfig) (*objects.Message, error) {
+func (bot *Bot) SendVideoNote(config *SendVideoNoteConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
@@ -544,6 +530,7 @@ func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, erro
 	}
 	params := make(map[string]string)
 	urlValuesToMapString(v, params)
+
 	// uploads a certificate file, with other parametrs
 	resp, err := bot.UploadFile(meth, params, c.Certificate)
 	if err != nil {
@@ -682,7 +669,7 @@ func (bot *Bot) EditInviteLink(c *EditInviteLinkConf) (cil *objects.ChatInviteLi
 	v, _ := c.values()
 	resp, err := bot.Request(c.method(), v)
 	if err != nil {
-		return cil, err
+		return nil, err
 	}
 	json.Unmarshal(resp.Result, cil)
 	return
@@ -705,7 +692,7 @@ func (bot *Bot) RevokeChatInviteLink(chat_id int64, invoke string) (val *objects
 
 	resp, err := bot.Request("revokeChatInviteLink", v)
 	if err != nil {
-		return val, err
+		return nil, err
 	}
 	json.Unmarshal(resp.Result, val)
 	return
@@ -748,7 +735,7 @@ func (bot *Bot) GetFile(file_id string) (*objects.File, error) {
 	resp, err := bot.Request("getFile", v)
 
 	if err != nil {
-		return &objects.File{}, err
+		return nil, err
 	}
 
 	var file *objects.File

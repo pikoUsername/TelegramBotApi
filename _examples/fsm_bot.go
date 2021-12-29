@@ -31,5 +31,5 @@ func main() {
 		ctx.SetState(second_state)
 	}, filters.StateFilter(first_state, dp.Storage))
 
-	dp.StartPolling(tgp.NewPollingConfig(true))
+	dp.RunPolling(tgp.NewPollingConfig(true))
 }

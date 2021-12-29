@@ -23,7 +23,7 @@ func main() {
 	// because handler havenot got any filters
 	dp.MessageHandler.Register(func(ctx *tgp.Context) {
 		// returning message text to same chat
-		_, err := ctx.Reply(tgp.NewSendMessage(ctx.Message.Text))
+		_, err := ctx.Reply(tgp.NewReplyMessage(ctx.Message.Text))
 		if err != nil {
 			// you can use a more complex logging systems
 			// it s just example
@@ -32,5 +32,5 @@ func main() {
 	})
 
 	// if your bot has a payment or something important, then put skip_updates on false
-	dp.StartPolling(tgp.NewPollingConfig(true))
+	dp.RunPolling(tgp.NewPollingConfig(true))
 }

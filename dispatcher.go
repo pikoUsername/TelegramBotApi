@@ -3,7 +3,7 @@ package tgp
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,6 +15,12 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
+// StdLogger taken from logrus
+type Logger interface {
+	Printf(string, ...interface{})
+	Println(...interface{})
+}
+
 // Dispatcher's purpose is run bot, and comfortable pipeline
 // Bot struct uses as API wrapper
 // Dispatcher uses as Bot starter
@@ -22,18 +28,18 @@ import (
 type Dispatcher struct {
 	Bot *Bot
 	// Handlers
-	MessageHandler         *HandlerObj
-	CallbackQueryHandler   *HandlerObj
-	ChannelPostHandler     *HandlerObj
-	PollHandler            *HandlerObj
-	ChatMemberHandler      *HandlerObj
-	PollAnswerHandler      *HandlerObj
-	MyChatMemberHandler    *HandlerObj
-	ChatJoinRequestHandler *HandlerObj
+	MessageHandler         HandlerObj
+	CallbackQueryHandler   HandlerObj
+	ChannelPostHandler     HandlerObj
+	PollHandler            HandlerObj
+	ChatMemberHandler      HandlerObj
+	PollAnswerHandler      HandlerObj
+	MyChatMemberHandler    HandlerObj
+	ChatJoinRequestHandler HandlerObj
 
 	// Storage interface
 	Storage storage.Storage
-	logger  StdLogger
+	logger  Logger
 
 	// If you want to add onshutdown function
 	// just append to this object, :P
@@ -42,6 +48,7 @@ type Dispatcher struct {
 	OnWebhookStartup  []OnStartAndShutdownFunc
 	OnPollingStartup  []OnStartAndShutdownFunc
 
+	isClose bool
 	Welcome bool
 	polling bool
 	webhook bool
@@ -63,9 +70,9 @@ func NewDispatcher(bot *Bot, storage storage.Storage) *Dispatcher {
 		Bot:         bot,
 		Storage:     storage,
 		Welcome:     true,
-		logger:      bot.logger, // pointer to logger
 		functionsWG: &sync.WaitGroup{},
 		closeChan:   make(chan struct{}, 1),
+		logger:      log.New(os.Stderr, "", log.LstdFlags),
 	}
 
 	dp.MessageHandler = NewHandlerObj()
@@ -83,8 +90,7 @@ func NewDispatcher(bot *Bot, storage storage.Storage) *Dispatcher {
 // You can add multiple functions to startup, or shutdown mthds
 // Example:
 // c := &OnConfig{}
-// // could be added a multiple functions in one call
-// c.Add(func(...) {})
+// c.Add(func(...) {...})
 // dp.OnStartup(c)
 type OnConfig struct {
 	Polling bool
@@ -97,11 +103,7 @@ func (oc *OnConfig) Add(cb OnStartAndShutdownFunc) {
 }
 
 func NewOnConf(cb OnStartAndShutdownFunc) *OnConfig {
-	return &OnConfig{
-		cb:      []OnStartAndShutdownFunc{cb},
-		Webhook: true,
-		Polling: true,
-	}
+	return &OnConfig{cb: []OnStartAndShutdownFunc{cb}}
 }
 
 func callListFuncs(funcs []OnStartAndShutdownFunc, dp *Dispatcher) {
@@ -151,17 +153,21 @@ type StartWebhookConfig struct {
 	Handler http.Handler
 	KeyFile interface{}
 
-	// e.g your machine address
+	// your domain, or 0.0.0.0 interface
 	Address            string
+	URI                string
 	DropPendingUpdates bool
 	SafeExit           bool
 }
 
+// NewWebhookConfig url is webhook url, address is host address
 func NewWebhookConfig(url string, address string) *StartWebhookConfig {
 	return &StartWebhookConfig{
+		SetWebhookConfig:   NewSetWebhook(address + url),
 		Address:            address,
 		SafeExit:           true,
 		DropPendingUpdates: false,
+		URI:                url,
 	}
 }
 
@@ -173,7 +179,7 @@ func (dp *Dispatcher) ResetWebhook(check bool) error {
 			return err
 		}
 		if wi.URL == "" {
-			return errors.New("url is nothing")
+			return tgpErr.New("url is nothing")
 		}
 	}
 	_, err := dp.Bot.DeleteWebhook(&DeleteWebhookConfig{})
@@ -235,37 +241,33 @@ func (dp *Dispatcher) Context(upd *objects.Update) *Context {
 // Shutdown calls when you enter ^C(which means SIGINT)
 // And SafeExit catch it, before OS terminate program
 func (dp *Dispatcher) shutdownPolling() {
-	if len(dp.OnPollingShutdown) == 0 {
-		return
+	if len(dp.OnPollingShutdown) > 0 {
+		callListFuncs(dp.OnPollingShutdown, dp)
 	}
-	callListFuncs(dp.OnPollingShutdown, dp)
 }
 
 // startUpPolling function, iterate over a callbacks from OnStartupCallbacks
 // Calls in StartPolling function
 func (dp *Dispatcher) startupPolling() {
 	go dp.welcome()
-	if len(dp.OnPollingStartup) == 0 {
-		return
+	if len(dp.OnPollingStartup) > 0 {
+		callListFuncs(dp.OnPollingStartup, dp)
 	}
-	callListFuncs(dp.OnPollingStartup, dp)
 }
 
 // shutdownWebhook method, iterate over a callbacks from OnWebhookShutdown
 func (dp *Dispatcher) shutdownWebhook() {
-	if len(dp.OnWebhookShutdown) == 0 {
-		return
+	if len(dp.OnWebhookShutdown) > 0 {
+		callListFuncs(dp.OnWebhookShutdown, dp)
 	}
-	callListFuncs(dp.OnWebhookShutdown, dp)
 }
 
 // startupPolling method, iterate over a callbacks from OnWebhookStartup
 func (dp *Dispatcher) startupWebhook() {
 	go dp.welcome()
-	if len(dp.OnWebhookStartup) == 0 {
-		return
+	if len(dp.OnWebhookStartup) > 0 {
+		callListFuncs(dp.OnWebhookStartup, dp)
 	}
-	callListFuncs(dp.OnWebhookStartup, dp)
 }
 
 // Onstartup method append to OnStartupCallbaks a callbacks
@@ -273,7 +275,7 @@ func (dp *Dispatcher) startupWebhook() {
 // And golang doesnot support generics, and type equals
 func (dp *Dispatcher) OnStartup(c *OnConfig) {
 	if !c.Webhook && !c.Polling {
-		dp.logger.Println("this expression have not got any effect")
+		return
 	}
 
 	if c.Webhook {
@@ -288,7 +290,7 @@ func (dp *Dispatcher) OnStartup(c *OnConfig) {
 // Same code like OnStartup
 func (dp *Dispatcher) OnShutdown(c *OnConfig) {
 	if !c.Webhook && !c.Polling {
-		dp.logger.Println("!polling and !webhook expression have not got any effect")
+		return
 	}
 
 	if c.Webhook {
@@ -299,7 +301,7 @@ func (dp *Dispatcher) OnShutdown(c *OnConfig) {
 	}
 }
 
-func (dp *Dispatcher) Start() {
+func (dp *Dispatcher) start() {
 	if dp.polling {
 		dp.startupPolling()
 	}
@@ -317,36 +319,43 @@ func (dp *Dispatcher) runShutDown() {
 	}
 }
 
-// SafeExit method uses for notify about exit from program
-// Thanks: https://stackoverflow.com/questions/11268943/is-it-possible-to-capture-a-ctrlc-signal-and-run-a-cleanup-function-in-a-defe
-func (dp *Dispatcher) SafeExit() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	go func() {
-		<-c
-		dp.ShutDown()
-		os.Exit(0)
-	}()
-}
-
-// ShutDownDP calls ResetWebhook
-func (dp *Dispatcher) ShutDown() {
-	dp.logger.Println("Stop polling!")
-	dp.ResetWebhook(true)
-	dp.Storage.Close()
-	close(dp.closeChan)
+// stop ...
+func (dp *Dispatcher) stop() {
+	// bad design
+	dp.isClose = true
+	if dp.webhook {
+		errCh := make(chan error)
+		go func() { errCh <- dp.ResetWebhook(true) }()
+		<-errCh
+		close(errCh)
+	}
+	if dp.Storage != nil {
+		dp.Storage.Close()
+	}
 	dp.runShutDown()
+	dp.closeChan <- struct{}{}
 }
 
-func (dp *Dispatcher) welcome() {
+func (dp *Dispatcher) welcome() error {
 	if dp.Welcome {
 		_, err := dp.Bot.GetMe()
 		if err != nil {
-			dp.logger.Printf("tgp: %s", err)
-			return
+			return err
 		}
 		dp.logger.Println("Bot: ", dp.Bot.Me.Username)
 	}
+	return nil
+}
+
+func (dp *Dispatcher) safeExit() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT)
+	go func() {
+		for range signals {
+			dp.stop()
+			os.Exit(0)
+		}
+	}()
 }
 
 // =========================================
@@ -410,17 +419,14 @@ func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 // If yes, Telegram Get to your bot a Update
 // Using GetUpdates method in Bot structure
 // GetUpdates config using for getUpdates method
-func (dp *Dispatcher) StartPolling(c *PollingConfig) error {
+func (dp *Dispatcher) RunPolling(c *PollingConfig) error {
 	var err error
 	if dp.webhook {
 		return ErrorConflictModes
 	}
 
 	dp.polling = true
-	dp.Start()
-	if c.SafeExit {
-		dp.SafeExit()
-	}
+	dp.start()
 	if c.ResetWebhook {
 		err = dp.ResetWebhook(true)
 		if err != nil {
@@ -435,7 +441,7 @@ func (dp *Dispatcher) StartPolling(c *PollingConfig) error {
 		}
 	}
 
-	ch := make(chan *objects.Update, 1)
+	ch := make(chan *objects.Update)
 	dp.MakeUpdatesChan(c, ch)
 
 	dp.ProcessUpdates(ch)
@@ -463,7 +469,7 @@ func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig, ch chan *objects.Up
 // Startup method executes after SetWebhook method call
 //
 // NOTE: you should to add a webhook close callback function, using OnShutdown
-func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
+func (dp *Dispatcher) RunWebhook(c *StartWebhookConfig) error {
 	if dp.polling {
 		panic(ErrorConflictModes)
 	}
@@ -472,11 +478,11 @@ func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
 		return err
 	}
 	dp.webhook = true
-	dp.Start()
 	if c.SafeExit {
-		dp.SafeExit()
+		dp.safeExit()
 	}
-	http.HandleFunc(c.URL, func(wr http.ResponseWriter, req *http.Request) {
+	dp.start()
+	http.HandleFunc(c.URI, func(wr http.ResponseWriter, req *http.Request) {
 		update, err := requestToUpdate(req)
 		if err != nil {
 			WriteRequestError(wr, err)

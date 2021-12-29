@@ -45,7 +45,7 @@ func TestRegister(t *testing.T) {
 		}
 		fmt.Println(msg.Text)
 	}, filters.CommandStart())
-	if len(dp.MessageHandler.handlers) == 0 {
+	if len(dp.MessageHandler.Handlers()) == 0 {
 		t.Fatal("No handlers has been registered")
 	}
 }

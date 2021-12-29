@@ -38,19 +38,6 @@ func TestProcessOneUpdate(t *testing.T) {
 	dp.ProcessOneUpdate(fakeUpd)
 }
 
-func TestProcessUpdates(t *testing.T) {
-	dp, err := GetDispatcher(false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ch := make(chan *objects.Update)
-	ch <- fakeUpd
-	err = dp.ProcessUpdates(ch)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 // go test -bench -benchmem
 
 func BenchmarkProcessOneUpdate(b *testing.B) {
@@ -60,7 +47,8 @@ func BenchmarkProcessOneUpdate(b *testing.B) {
 		b.Fail()
 	}
 
-	dp.MessageHandler.Register(func(ctx *Context) {})
+	dp.MessageHandler.Register(func(ctx *Context) {
+	})
 
 	upd := &objects.Update{
 		UpdateID: 100,

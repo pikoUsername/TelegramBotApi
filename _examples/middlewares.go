@@ -26,5 +26,5 @@ func main() {
 	dp.MessageHandler.Register(func(c *tgp.Context) {
 		c.Reply(tgp.NewSendMessage("Welcome to the Moscow"))
 	})
-	log.Fatal(dp.StartPolling(tgp.NewPollingConfig(true)))
+	log.Fatal(dp.RunPolling(tgp.NewPollingConfig(true)))
 }

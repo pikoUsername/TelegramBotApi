@@ -26,6 +26,8 @@ type Context struct {
 
 	Bot      *Bot
 	Storage  storage.Storage
+	Markdown *Markdown2
+
 	data     map[string]interface{}
 	index    int
 	cursor   int
@@ -58,11 +60,6 @@ func (ctx *Context) MustGet(key string) (v interface{}) {
 	return
 }
 
-// Err returns error which raised in pervious handlers
-func (ctx *Context) Errors() []error {
-	return ctx.calledErrors
-}
-
 // Next calls next handler, and increment cursor
 func (ctx *Context) Next() {
 	if ctx.index >= AcceptIndex {
@@ -70,13 +67,21 @@ func (ctx *Context) Next() {
 		if ctx.cursor >= len(ctx.handlers)-1 {
 			return
 		}
-		ctx.GetCurrent().apply(ctx)
+		hand := ctx.GetCurrent()
+		if len(hand.filters) == 0 || checkFilters(hand.filters, ctx.Update) {
+			hand.GetHandler()(ctx)
+		}
 	}
 }
 
 // Returns Context cursor
 func (ctx *Context) Cursor() int {
 	return ctx.cursor
+}
+
+// Err returns error which raised in pervious handlers
+func (ctx *Context) GetErrors() []error {
+	return ctx.calledErrors
 }
 
 func (ctx *Context) GetCurrent() *HandlerType {
@@ -143,15 +148,15 @@ func (ctx *Context) Send(config Configurable) (*objects.Message, error) {
 
 // Reply to this context object
 func (ctx *Context) Reply(config Configurable) (*objects.Message, error) {
-	var u = ctx.Update
+	var upd = ctx.Update
 	var chat *objects.Chat
 
-	if u.EditedMessage != nil {
-		chat = u.EditedMessage.Chat
-	} else if u.ChannelPost != nil {
-		chat = u.ChannelPost.Chat
-	} else if u.Message != nil {
-		chat = u.Message.Chat
+	if upd.EditedMessage != nil {
+		chat = upd.EditedMessage.Chat
+	} else if upd.ChannelPost != nil {
+		chat = upd.ChannelPost.Chat
+	} else if upd.Message != nil {
+		chat = upd.Message.Chat
 	} else {
 		return &objects.Message{}, tgpErr.New("Update is empty")
 	}
@@ -222,6 +227,13 @@ func (ctx *Context) GetState() (*fsm.State, error) {
 func (ctx *Context) ResetState() error {
 	cid, uid := extractIds(ctx.Update)
 	return ctx.Storage.SetState(cid, uid, fsm.DefaultState.GetFullState())
+}
+
+func (ctx *Context) Reset() {
+	ctx.calledErrors = ctx.calledErrors[:0]
+	ctx.data = nil
+	ctx.handlers = ctx.handlers[:0]
+	ctx.Update = nil
 }
 
 // TODO:

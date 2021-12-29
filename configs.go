@@ -3,7 +3,6 @@ package tgp
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/url"
 	"strconv"
 	"time"
@@ -37,6 +36,7 @@ type BaseChat struct {
 	DisableNotification bool
 }
 
+// helper method
 func (c *BaseChat) params() (map[string]string, error) {
 	params := make(map[string]string)
 
@@ -221,7 +221,14 @@ func (smc *SendMessageConfig) method() string {
 	return "sendMessage"
 }
 
-func NewSendMessage(text string) *SendMessageConfig {
+func NewSendMessage(text string, chat_id int64) *SendMessageConfig {
+	return &SendMessageConfig{
+		Text:   text,
+		ChatID: chat_id,
+	}
+}
+
+func NewReplyMessage(text string) *SendMessageConfig {
 	return &SendMessageConfig{
 		Text: text,
 	}
@@ -234,7 +241,7 @@ type SetWebhookConfig struct {
 	URL                string // required
 	Offset             int
 	MaxConnections     int
-	AllowedUpdates     bool
+	AllowedUpdates     []string
 	DropPendingUpdates bool
 	IP                 string // if you need u can use it ;)
 	Certificate        *objects.InputFile
@@ -243,11 +250,19 @@ type SetWebhookConfig struct {
 func (wc *SetWebhookConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("url", wc.URL)
-	v.Add("ip_address", wc.IP) // required field
+	if wc.IP != "" {
+		v.Add("ip_address", wc.IP) // required field
+	}
 	if wc.MaxConnections != 0 {
 		v.Add("max_connections", strconv.Itoa(wc.MaxConnections))
 	}
-	v.Add("allowed_updates", strconv.FormatBool(wc.AllowedUpdates))
+	if len(wc.AllowedUpdates) != 0 {
+		bs, err := json.Marshal(wc.AllowedUpdates)
+		if err != nil {
+			return nil, err
+		}
+		v.Add("allowed_updates", BytesToString(bs))
+	}
 	v.Add("drop_pending_updates", strconv.FormatBool(wc.DropPendingUpdates))
 
 	return v, nil
@@ -257,6 +272,7 @@ func (wc *SetWebhookConfig) method() string {
 	return "setWebhook"
 }
 
+// URL must be full URL to your domain
 func NewSetWebhook(url string) *SetWebhookConfig {
 	return &SetWebhookConfig{
 		URL: url,
@@ -288,6 +304,10 @@ func (spc *SendPhotoConfig) params() (map[string]string, error) {
 		v["caption"] = spc.Caption
 	}
 	return v, nil
+}
+
+func (spc *SendPhotoConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{spc.File}
 }
 
 func NewSendPhoto(photo *objects.InputFile) *SendPhotoConfig {
@@ -563,7 +583,7 @@ type SendVideoNoteConfig struct {
 	*BaseFile
 	Duration                 time.Duration
 	Length                   int64
-	Thumb                    io.Reader
+	Thumb                    *objects.InputFile
 	DisableNotification      bool
 	ReplyToMessageID         int64
 	AllowSendingWithoutReply bool
@@ -582,6 +602,9 @@ func (svnc *SendVideoNoteConfig) params() (v map[string]string, err error) {
 	return
 }
 
+func (svnc *SendVideoNoteConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{svnc.File, svnc.Thumb}
+}
 func (svnc *SendVideoNoteConfig) method() string {
 	return "sendVideoName"
 }
@@ -752,7 +775,7 @@ type StopMessageLiveLocation struct {
 // GetUpdate method fields
 // https://core.telegram.org/bots/api#getting-updates
 type GetUpdatesConfig struct {
-	Offset         int
+	Offset         int64
 	Limit          uint
 	Timeout        uint
 	AllowedUpdates []string
@@ -761,7 +784,7 @@ type GetUpdatesConfig struct {
 func (guc *GetUpdatesConfig) values() (url.Values, error) {
 	v := url.Values{}
 	if guc.Offset != 0 {
-		v.Add("offset", strconv.Itoa(guc.Offset))
+		v.Add("offset", strconv.FormatInt(guc.Offset, 10))
 	}
 	if guc.Limit != 0 {
 		v.Add("limit", strconv.FormatUint(uint64(guc.Limit), 10))
@@ -769,7 +792,7 @@ func (guc *GetUpdatesConfig) values() (url.Values, error) {
 	if guc.Timeout != 0 {
 		v.Add("timeout", strconv.FormatUint(uint64(guc.Timeout), 10))
 	}
-	if len(guc.AllowedUpdates) != 0 {
+	if len(guc.AllowedUpdates) > 0 {
 		bs, err := json.Marshal(guc.AllowedUpdates)
 		if err != nil {
 			return v, err
@@ -785,7 +808,7 @@ func (guc *GetUpdatesConfig) method() string {
 }
 
 // Uses for default values for Sending updates
-func NewGetUpdateConfig(Offset int) *GetUpdatesConfig {
+func NewGetUpdateConfig(Offset int64) *GetUpdatesConfig {
 	return &GetUpdatesConfig{
 		Offset:  Offset,
 		Limit:   20,
