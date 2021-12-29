@@ -5,7 +5,7 @@ import "time"
 // Update Represents telegram Update object
 // https://core.telegram.org/bots/api#update
 type Update struct {
-	UpdateID           int                 `json:"update_id"`
+	UpdateID           int64               `json:"update_id"`
 	Message            *Message            `json:"message"`
 	EditedMessage      *Message            `json:"edited_message"`
 	ChannelPost        *Message            `json:"channel_post"`
