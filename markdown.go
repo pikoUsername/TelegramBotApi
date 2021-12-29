@@ -16,6 +16,18 @@ func getHTTPRegex() *regexp.Regexp {
 	return regex
 }
 
+type Markdown interface {
+	Link(string, string) (string, error)
+	Strong(...string) string
+	Italic(...string) string
+	Code(string, ...string) string
+	Pre(...string) string
+	PreCode(string, string) string
+	Bold(...string) string
+	UnderLine(...string) string
+	StrikeThrough(...string) string
+}
+
 type HTMLMarkdown struct{}
 
 // Link check out the link for http and https starting with
@@ -37,9 +49,9 @@ func (ht *HTMLMarkdown) Italic(text ...string) string {
 }
 
 // Code is Code, telegram only lanuage- startswith classes for code
-func (hm *HTMLMarkdown) Code(code string, language string) string {
+func (hm *HTMLMarkdown) Code(language string, code ...string) string {
 	return fmt.Sprintf(
-		"<code class='language-%s'>%s</code>", language, code,
+		"<code class='language-%s'>%s</code>", language, strings.Join(code, ""),
 	)
 }
 
@@ -70,8 +82,8 @@ func NewHTMLMarkdown() *HTMLMarkdown {
 
 type Markdown2 struct{}
 
-func (md *Markdown2) Link(url string, text ...string) string {
-	return "[" + fmt.Sprintln(text) + "](" + url + ")"
+func (md *Markdown2) Link(url string, text string) (string, error) {
+	return "[" + fmt.Sprintln(text) + "](" + url + ")", nil
 }
 
 func (md *Markdown2) Pre(text ...string) string {
@@ -100,6 +112,10 @@ func (md *Markdown2) Italic(text ...string) string {
 
 func (md *Markdown2) Bold(text ...string) string {
 	return "*" + fmt.Sprintln(text) + "*"
+}
+
+func (md *Markdown2) Strong(text ...string) string {
+	return "#" + fmt.Sprintln(text) + "#"
 }
 
 func NewMarkdown2() *Markdown2 {
