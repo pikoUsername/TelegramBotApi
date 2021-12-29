@@ -29,7 +29,7 @@ func (r *RegexpFilter) Check(u *objects.Update) bool {
 func Regexp(re string) (*RegexpFilter, error) {
 	rex, err := regexp.Compile(re)
 	if err != nil {
-		return &RegexpFilter{}, err
+		return nil, err
 	}
 
 	return &RegexpFilter{

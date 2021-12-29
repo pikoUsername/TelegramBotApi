@@ -1,8 +1,6 @@
 package filters
 
 import (
-	"fmt"
-
 	"github.com/pikoUsername/tgp/fsm"
 	"github.com/pikoUsername/tgp/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
@@ -45,7 +43,6 @@ func (sf *FSMStateFilter) checkState(state string) bool {
 func (sf *FSMStateFilter) Check(u *objects.Update) bool {
 	state := sf.GetState(u)
 	h := sf.checkState(state) || state == "*"
-	fmt.Println(h)
 	return h
 }
 
