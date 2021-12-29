@@ -11,6 +11,8 @@ TGP(bad name) - telegram bot api client library.
 Developed as better version of other same libraries, 
 but not tested, made of shit and sticks, and not optimized version. 
 
+Requires golang 1.15+ version 
+
 # Examples
 Here is simple example of echo bot: 
 ```go
