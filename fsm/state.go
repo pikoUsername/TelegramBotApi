@@ -23,6 +23,12 @@ func (s *State) GetFullState() string {
 	return group + ":" + s.State
 }
 
+// For NewState("...").Group("...")
+func (s *State) Group(group string) *State {
+	s.GroupState = group
+	return s
+}
+
 // NewState init function
 func NewState(state string) *State {
 	return &State{
