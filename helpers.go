@@ -2,7 +2,6 @@ package tgp
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -69,6 +68,7 @@ func ObjectToJson(obj interface{}) string {
 func FormatMarkup(obj interface{}) string {
 	switch t := obj.(type) {
 	case *objects.ReplyKeyboardMarkup:
+		return t.String()
 	case *objects.InlineKeyboardMarkup:
 		return t.String()
 	default:
@@ -99,13 +99,13 @@ func extractIds(u *objects.Update) (cid_, uid_ int64) {
 
 func requestToUpdate(req *http.Request) (*objects.Update, error) {
 	if req.Method != http.MethodPost {
-		return &objects.Update{}, errors.New("wrong HTTP method required POST")
+		return nil, tgpErr.New("wrong HTTP method required POST")
 	}
 
 	var update *objects.Update
 	err := json.NewDecoder(req.Body).Decode(&update)
 	if err != nil {
-		return &objects.Update{}, err
+		return nil, err
 	}
 
 	return update, nil
@@ -130,11 +130,15 @@ func guessFileName(f interface{}) (string, error) {
 			return "", tgpErr.New("path is directory")
 		}
 		s = info.Name()
+		return s, nil
+
+	case *objects.InputFile:
+		return f.Path, nil
 
 	default:
 	}
 
-	return s, tgpErr.New("incorrect object type A , type must be in os.File, tgp.InputFile, string, os.FileInfo")
+	return s, tgpErr.New("incorrect object type A , type must be os.File, *objects.InputFile, string, os.FileInfo")
 }
 
 // Just write to map from url.Values
@@ -151,10 +155,8 @@ func urlValuesToMapString(v url.Values, w map[string]string) {
 // Result of Reponse saves in TelegramResponse.Result
 func responseDecode(respBody io.ReadCloser) (*objects.TelegramResponse, error) {
 	var tgresp *objects.TelegramResponse
-	// Maybe use the Unmarshal ...
-	err := json.NewDecoder(respBody).Decode(&tgresp)
-	if err != nil {
-		return tgresp, err
+	if err := json.NewDecoder(respBody).Decode(&tgresp); err != nil {
+		return nil, err
 	}
 	return tgresp, nil
 }
