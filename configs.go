@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+	"unsafe"
 
 	"github.com/pikoUsername/tgp/objects"
 )
@@ -145,8 +146,8 @@ type CopyMessageConfig struct {
 	MessageID             int64 // required
 	ReplyToMessageId      int64
 	CaptionEntities       []*objects.MessageEntity
+	ProtectContent        bool
 
-	// Note: Interface here is simple need
 	// type: Union[objects.InlineKeyboardMarkup, ReplyKeyboardMarkup]
 	ReplyMarkup interface{}
 }
@@ -155,6 +156,7 @@ func (cmc *CopyMessageConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(cmc.ChatID, 10))
 	v.Add("from_chat_id", strconv.FormatInt(cmc.ChatID, 10))
+	v.Add("protect_content", strconv.FormatBool(cmc.ProtectContent))
 	v.Add("message_id", strconv.FormatInt(cmc.MessageID, 10))
 	if cmc.Caption != "" {
 		v.Add("caption", cmc.Caption)
@@ -192,29 +194,31 @@ type SendMessageConfig struct {
 
 	DisableNotifiaction bool
 	ReplyKeyboard       *objects.InlineKeyboardMarkup
+	ProtectContent      bool
 }
 
 // values ...
 func (smc *SendMessageConfig) values() (url.Values, error) {
-	result := url.Values{}
-	result.Add("chat_id", strconv.FormatInt(smc.ChatID, 10))
+	v := url.Values{}
+	v.Add("chat_id", strconv.FormatInt(smc.ChatID, 10))
 
-	result.Add("text", smc.Text)
+	v.Add("text", smc.Text)
 
 	if smc.ParseMode != "" {
-		result.Add("parse_mode", smc.ParseMode)
+		v.Add("parse_mode", smc.ParseMode)
 	}
 
 	if smc.ReplyKeyboard != nil {
-		result.Add("reply_markup", FormatMarkup(smc.ReplyKeyboard))
+		v.Add("reply_markup", FormatMarkup(smc.ReplyKeyboard))
 	}
-	result.Add("disable_web_page_preview", strconv.FormatBool(smc.DisableWebPagePreview))
+	v.Add("disable_web_page_preview", strconv.FormatBool(smc.DisableWebPagePreview))
+	v.Add("protect_content", strconv.FormatBool(smc.ProtectContent))
 	if smc.Entities != nil {
 		// Must be work!
-		result.Add("entities", ObjectToJson(smc.Entities))
+		v.Add("entities", ObjectToJson(smc.Entities))
 	}
 
-	return result, nil
+	return v, nil
 }
 
 func (smc *SendMessageConfig) method() string {
@@ -283,7 +287,8 @@ func NewSetWebhook(url string) *SetWebhookConfig {
 // https://core.telegram.org/bots/api#sendphoto
 type SendPhotoConfig struct {
 	*BaseFile
-	Caption string
+	Caption        string
+	ProtectContent bool
 }
 
 func (spc *SendPhotoConfig) values() (url.Values, error) {
@@ -291,6 +296,7 @@ func (spc *SendPhotoConfig) values() (url.Values, error) {
 	if spc.Caption != "" {
 		v.Add("caption", spc.Caption)
 	}
+	v.Add("protect_content", strconv.FormatBool(spc.ProtectContent))
 	return v, nil
 }
 
@@ -327,6 +333,7 @@ type SendAudioConfig struct {
 	Duration        uint
 	Performer       string
 	Title           string
+	ProtectContent  bool
 	Thumb           *objects.InputFile
 	CaptionEntities []*objects.MessageEntity
 }
@@ -354,6 +361,7 @@ func (sac *SendAudioConfig) values() (url.Values, error) {
 	if sac.Title != "" {
 		v.Add("title", sac.Title)
 	}
+	v.Add("protect_content", strconv.FormatBool(sac.ProtectContent))
 	return v, nil
 }
 
@@ -394,6 +402,7 @@ type SendDocumentConfig struct {
 	CaptionEntities             []*objects.MessageEntity
 	DisableContentTypeDetection bool
 	DisableNotifiaction         bool
+	ProtectContent              bool
 	ReplyToMessageID            int64
 	AllowSendingWithoutReply    bool
 	ReplyMarkup                 interface{}
@@ -413,6 +422,7 @@ func (sdc *SendDocumentConfig) values() (v url.Values, err error) {
 		}
 	}
 	v.Add("disable_notification", strconv.FormatBool(sdc.DisableNotifiaction))
+	v.Add("protect_content", strconv.FormatBool(sdc.ProtectContent))
 	if sdc.ReplyToMessageID != 0 {
 		v.Add("reply_to_message_id", strconv.FormatInt(sdc.ReplyToMessageID, 10))
 	}
@@ -451,10 +461,11 @@ func NewDocumentConfig(cid int64, r *objects.InputFile) *SendDocumentConfig {
 // https://core.telegram.org/bots/api#sendvideo
 type SendVideoConfig struct {
 	*BaseFile
-	Duration uint32
-	Width    uint16
-	Height   uint16
-	Thumb    *objects.InputFile
+	Duration       uint32
+	Width          uint16
+	Height         uint16
+	ProtectContent bool
+	Thumb          *objects.InputFile
 }
 
 func (svc *SendVideoConfig) values() (url.Values, error) {
@@ -469,6 +480,7 @@ func (svc *SendVideoConfig) values() (url.Values, error) {
 	if svc.Height != 0 {
 		v.Add("height", strconv.FormatUint((uint64)(svc.Height), 10))
 	}
+	v.Add("protect_content", strconv.FormatBool(svc.ProtectContent))
 
 	return v, nil
 }
@@ -503,6 +515,8 @@ type SendAnimationConfig struct {
 	Thumb     *objects.InputFile
 	Caption   string
 	ParseMode string
+
+	ProtectContent bool
 }
 
 func (sac *SendAnimationConfig) values() (url.Values, error) {
@@ -517,6 +531,7 @@ func (sac *SendAnimationConfig) values() (url.Values, error) {
 	if sac.ParseMode != "" {
 		v.Add("parse_mode", sac.ParseMode)
 	}
+	v.Add("protect_content", strconv.FormatBool(sac.ProtectContent))
 
 	return v, nil
 }
@@ -545,9 +560,9 @@ type SendVoiceConfig struct {
 	Duration             int
 	DisableNotifications bool
 	ReplyToMessageID     int64
+	ProtectContent       bool
 
 	// for first time you can use InlineKeyboardMarkup
-	// TODO
 	ReplyMarkup *objects.InlineKeyboardMarkup
 }
 
@@ -564,6 +579,7 @@ func (svc *SendVoiceConfig) values() (url.Values, error) {
 	}
 
 	v.Add("caption_entities", ObjectToJson(svc.CaptionEntities))
+	v.Add("protect_content", strconv.FormatBool(svc.ProtectContent))
 	if svc.ReplyMarkup != nil {
 		v.Add("reply_markup", FormatMarkup(svc.ReplyMarkup))
 	}
@@ -584,14 +600,22 @@ type SendVideoNoteConfig struct {
 	Duration                 time.Duration
 	Length                   int64
 	Thumb                    *objects.InputFile
-	DisableNotification      bool
-	ReplyToMessageID         int64
 	AllowSendingWithoutReply bool
-	ReplyMarkup              objects.InlineKeyboardMarkup
+	ProtectContent           bool
 }
 
 func (svnc *SendVideoNoteConfig) values() (url.Values, error) {
-	return url.Values{}, nil
+	v, _ := svnc.BaseFile.values()
+	if svnc.Duration != 0 {
+		v.Add("duration", strconv.FormatInt(*(*int64)(unsafe.Pointer(&svnc.Duration)), 10))
+	}
+	if svnc.Length != 0 {
+		v.Add("length", strconv.FormatInt(svnc.Length, 10))
+	}
+	v.Add("allow_sending_without_reply", strconv.FormatBool(svnc.AllowSendingWithoutReply))
+	v.Add("protect_content", strconv.FormatBool(svnc.ProtectContent))
+
+	return v, nil
 }
 
 func (svnc *SendVideoNoteConfig) params() (v map[string]string, err error) {
@@ -625,6 +649,7 @@ type SendMediaGroupConfig struct {
 
 	// Optional fields
 	DisableNotification      bool
+	ProtectContent           bool
 	ReplyToMessageID         int64
 	AllowSendingWithoutReply bool
 }
@@ -632,6 +657,7 @@ type SendMediaGroupConfig struct {
 func (smgc *SendMediaGroupConfig) values() (url.Values, error) {
 	v := url.Values{}
 
+	v.Add("protect_sending", strconv.FormatBool(smgc.ProtectContent))
 	v.Add("chat_id", strconv.FormatInt(smgc.ChatID, 10))
 	// TOOD: media types
 	// v.Add("media", smgc.Media)
@@ -667,6 +693,7 @@ type SendLocationConfig struct {
 	DisableNotification      bool
 	ReplyToMessageID         int
 	AllowSendingWithoutReply bool
+	ProtectContent           bool
 }
 
 func (slc *SendLocationConfig) values() (url.Values, error) {
@@ -689,6 +716,7 @@ func (slc *SendLocationConfig) values() (url.Values, error) {
 
 	v.Add("proximity_alert_radius", strconv.FormatInt(int64(slc.ProximityAlertRadius), 10))
 	v.Add("disable_notification", strconv.FormatBool(slc.DisableNotification))
+	v.Add("protect_content", strconv.FormatBool(slc.ProtectContent))
 
 	if slc.ReplyToMessageID != 0 {
 		v.Add("reply_to_message_id", strconv.Itoa(slc.ReplyToMessageID))
@@ -916,6 +944,7 @@ type SendDiceConfig struct {
 	DisableNotifications     bool
 	ReplyToMessageId         int64
 	AllowSendingWithoutReply bool
+	ProtectContent           bool
 	// ReplyMarkup will be type of objects.KeynoardMarkup not inline, and reply and etc.
 	ReplyMarkup interface{}
 }
@@ -934,6 +963,7 @@ func (sdc *SendDiceConfig) values() (url.Values, error) {
 	if sdc.ReplyMarkup != nil {
 		v.Add("reply_markup", FormatMarkup(sdc.ReplyMarkup))
 	}
+	v.Add("protect_content", strconv.FormatBool(sdc.ProtectContent))
 	return v, nil
 }
 
@@ -965,9 +995,10 @@ type SendPollConfig struct {
 	ExplnationEntites     []*objects.MessageEntity
 
 	// Using int time, here can be used time.Time
-	OpenPeriod int64
-	CloseDate  int64
-	IsClosed   bool
+	OpenPeriod     int64
+	CloseDate      int64
+	IsClosed       bool
+	ProtectContent bool
 
 	// Please, always turn off this
 	DisableNotifications     bool
@@ -1003,6 +1034,7 @@ func (spc *SendPollConfig) values() (url.Values, error) {
 	if spc.ReplyToMessageID != 0 {
 		v.Add("reply_to_message_id", strconv.FormatInt(spc.ReplyToMessageID, 10))
 	}
+	v.Add("protect_content", strconv.FormatBool(spc.ProtectContent))
 	return v, nil
 }
 
@@ -1067,6 +1099,7 @@ type SendContactConfig struct {
 	ReplyToMessageID         int64
 	AllowSendingWithoutReply bool
 	ReplyKeyboard            interface{}
+	ProtectContent           bool
 }
 
 func (scc *SendContactConfig) values() (url.Values, error) {
@@ -1092,6 +1125,7 @@ func (scc *SendContactConfig) values() (url.Values, error) {
 	if scc.ReplyKeyboard != nil {
 		v.Add("reply_keyboard", FormatMarkup(scc.ReplyKeyboard))
 	}
+	v.Add("protect_content", strconv.FormatBool(scc.ProtectContent))
 	return v, nil
 }
 
@@ -1111,6 +1145,7 @@ type SendVenueConfig struct {
 	GooglePlaceId            string
 	GooglePlaceType          string
 	DisableNotification      bool
+	ProtectContent           bool
 	ReplyToMessageId         int64
 	AllowSendingWithoutReply bool
 	ReplyMarkup              interface{}
@@ -1129,6 +1164,7 @@ func (svc *SendVenueConfig) values() (url.Values, error) {
 	v.Add("title", svc.Title)
 	v.Add("address", svc.Address)
 	v.Add("allow_sending_without_reply", strconv.FormatBool(svc.AllowSendingWithoutReply))
+	v.Add("protect_content", strconv.FormatBool(svc.ProtectContent))
 	if svc.ReplyToMessageId != 0 {
 		v.Add("reply_to_message_id", strconv.FormatInt(svc.ReplyToMessageId, 10))
 	}
@@ -1221,7 +1257,7 @@ func NewRestrictMember(chat_id, user_id int64, perms *objects.ChatMemberPermissi
 	}
 }
 
-type EditInviteLinkConf struct {
+type EditChatInviteLinkConf struct {
 	ChatID             int64
 	InviteLink         string
 	Name               string
@@ -1230,7 +1266,7 @@ type EditInviteLinkConf struct {
 	CreatesJoinRequest bool
 }
 
-func (eilc *EditInviteLinkConf) values() (v url.Values, _ error) {
+func (eilc *EditChatInviteLinkConf) values() (v url.Values, _ error) {
 	v.Add("chat_id", strconv.FormatInt(eilc.ChatID, 10))
 	v.Add("invite_link", eilc.InviteLink)
 	if eilc.Name != "" {
@@ -1246,8 +1282,15 @@ func (eilc *EditInviteLinkConf) values() (v url.Values, _ error) {
 	return
 }
 
-func (eilc *EditInviteLinkConf) method() string {
-	return "editInviteLink"
+func (eilc *EditChatInviteLinkConf) method() string {
+	return "editChatInviteLink"
+}
+
+func NeweditChatInviteLink(ChatID int64, invite_link string) *EditChatInviteLinkConf {
+	return &EditChatInviteLinkConf{
+		ChatID:     ChatID,
+		InviteLink: invite_link,
+	}
 }
 
 type PromoteChatMemberConfig struct {
@@ -1270,4 +1313,63 @@ func (pcmc PromoteChatMemberConfig) values() (url.Values, error) {
 
 func (pcmc PromoteChatMemberConfig) method() string {
 	return "promoteChatMember"
+}
+
+func NewPromoteChat(ChatId int64, UserID int64) *PromoteChatMemberConfig {
+	return &PromoteChatMemberConfig{
+		ChatID: ChatId,
+		UserID: UserID,
+	}
+}
+
+// TODO: SendInvoice
+
+type SendGameConfig struct {
+	BaseChat                        // chat_id is required
+	GameShortName            string // required
+	DisableNotfication       bool
+	ProtectContent           bool
+	AllowSendingWithoutReply bool
+}
+
+func (sg *SendGameConfig) values() (url.Values, error) {
+	v, _ := sg.BaseChat.values()
+	v.Add("game_short_name", sg.GameShortName)
+	v.Add("disable_notification", strconv.FormatBool(sg.DisableNotfication))
+	v.Add("protect_content", strconv.FormatBool(sg.ProtectContent))
+	v.Add("allow_sending_without_reply", strconv.FormatBool(sg.AllowSendingWithoutReply))
+	return v, nil
+}
+
+func (sg *SendGameConfig) method() string {
+	return "sendGame"
+}
+
+type SendStickerConfig struct {
+	BaseChat                                    // chat_id required
+	Sticker                  *objects.InputFile // required
+	ProtectContent           bool
+	AllowSendingWithoutReply bool
+}
+
+func (stc *SendStickerConfig) values() (url.Values, error) {
+	v, _ := stc.BaseChat.values()
+	v.Add("protect_content", strconv.FormatBool(stc.ProtectContent))
+	v.Add("allow_sending_without_reply", strconv.FormatBool(stc.AllowSendingWithoutReply))
+	return v, nil
+}
+
+func (stc *SendStickerConfig) method() string {
+	return "sendSticker"
+}
+
+func (stc *SendStickerConfig) params() (map[string]string, error) {
+	v, _ := stc.BaseChat.params()
+	uv, _ := stc.values()
+	urlValuesToMapString(uv, v)
+	return v, nil
+}
+
+func (stc *SendStickerConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{stc.Sticker}
 }

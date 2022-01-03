@@ -26,6 +26,7 @@ type Markdown interface {
 	Bold(...string) string
 	UnderLine(...string) string
 	StrikeThrough(...string) string
+	Spoiler(...string) string
 }
 
 type HTMLMarkdown struct{}
@@ -73,7 +74,11 @@ func (hm *HTMLMarkdown) UnderLine(text ...string) string {
 }
 
 func (hm *HTMLMarkdown) StrikeThrough(text ...string) string {
-	return "<s>" + strings.Join(text, " ") + "</b>"
+	return "<s>" + strings.Join(text, " ") + "</s>"
+}
+
+func (hm *HTMLMarkdown) Spoiler(text ...string) string {
+	return "<tg-spoiler>" + fmt.Sprintln(text) + "</tg-spoiler>"
 }
 
 func NewHTMLMarkdown() *HTMLMarkdown {
@@ -116,6 +121,10 @@ func (md *Markdown2) Bold(text ...string) string {
 
 func (md *Markdown2) Strong(text ...string) string {
 	return "#" + fmt.Sprintln(text) + "#"
+}
+
+func (md *Markdown2) Spoiler(text ...string) string {
+	return "||" + fmt.Sprintln(text) + "||"
 }
 
 func NewMarkdown2() *Markdown2 {

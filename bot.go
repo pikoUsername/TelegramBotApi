@@ -25,12 +25,13 @@ type Bot struct {
 
 	// i will recomend to use HTML parse_mode
 	// bc, HTML easy to use, and more conforatble
-	ParseMode string `json:"parse_mode"`
+	ParseMode string   `json:"parse_mode"`
+	Markdown  Markdown `json:"-"`
 
 	// default server must be here
 	// if you wanna create own, just create
 	// using this structure instead of NewBot function
-	server *TelegramAPIServer
+	server *TelegramAPIServer `json:"-"`
 
 	// Using prefix Bot, for avoid names conflict
 	// and golang dont love name conflicts
@@ -42,7 +43,7 @@ type Bot struct {
 	Me *objects.User `json:"me"`
 
 	// Client uses for requests
-	Client *http.Client
+	Client *http.Client `json:"-"`
 }
 
 // NewBot returns a new bot struct which need to interact with Telegram Bot API
@@ -55,10 +56,17 @@ func NewBot(token string, parseMode string, client *http.Client) (*Bot, error) {
 	if client == nil {
 		client = &http.Client{}
 	}
+	var mrkdown Markdown
+	if strings.ToLower(parseMode) == "html" {
+		mrkdown = HTMLDecoration
+	} else {
+		mrkdown = MarkdownDecoration
+	}
 	return &Bot{
 		Token:     token,
 		ParseMode: parseMode,
 		server:    DefaultTelegramServer,
+		Markdown:  mrkdown,
 		Client:    client,
 	}, nil
 }
@@ -451,6 +459,14 @@ func (bot *Bot) SendVenue(config *SendVenueConfig) (*objects.Message, error) {
 	return bot.Send(config)
 }
 
+func (bot *Bot) SendGame(config *SendGameConfig) (*objects.Message, error) {
+	return bot.Send(config)
+}
+
+func (bot *Bot) SendSticker(config *SendStickerConfig) (*objects.Message, error) {
+	return bot.Send(config)
+}
+
 // =========================
 // Commands Methods
 // =========================
@@ -665,7 +681,7 @@ func (bot *Bot) ExportChatInviteLink(chat_id int64) (string, error) {
 }
 
 // EditInviteLink ...
-func (bot *Bot) EditInviteLink(c *EditInviteLinkConf) (cil *objects.ChatInviteLink, err error) {
+func (bot *Bot) EditInviteLink(c *EditChatInviteLinkConf) (cil *objects.ChatInviteLink, err error) {
 	v, _ := c.values()
 	resp, err := bot.Request(c.method(), v)
 	if err != nil {

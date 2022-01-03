@@ -225,12 +225,13 @@ func (dp *Dispatcher) SkipUpdates() (err error) {
 
 func (dp *Dispatcher) Context(upd *objects.Update) *Context {
 	return &Context{
-		Update:  upd,
-		data:    make(map[string]interface{}),
-		index:   AcceptIndex,
-		Bot:     dp.Bot,
-		Storage: dp.Storage,
-		mu:      sync.Mutex{},
+		Update:   upd,
+		data:     make(map[string]interface{}),
+		index:    AcceptIndex,
+		Bot:      dp.Bot,
+		Storage:  dp.Storage,
+		Markdown: dp.Bot.Markdown,
+		mu:       sync.Mutex{},
 	}
 }
 

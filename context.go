@@ -26,7 +26,7 @@ type Context struct {
 
 	Bot      *Bot
 	Storage  storage.Storage
-	Markdown *Markdown2
+	Markdown Markdown
 
 	data     map[string]interface{}
 	index    int
