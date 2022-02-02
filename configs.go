@@ -1373,3 +1373,153 @@ func (stc *SendStickerConfig) params() (map[string]string, error) {
 func (stc *SendStickerConfig) getFiles() []*objects.InputFile {
 	return []*objects.InputFile{stc.Sticker}
 }
+
+func NewSendStickerConf(base BaseChat, Sticker *objects.InputFile) *SendStickerConfig {
+	return &SendStickerConfig{
+		BaseChat: base,
+		Sticker:  Sticker,
+	}
+}
+
+type CreateNewStickerSetConf struct {
+	UserID        int64  // required
+	Name          string // required
+	Title         string // required
+	PngSticker    *objects.InputFile
+	TgsSticker    *objects.InputFile
+	WebmSticker   *objects.InputFile
+	Emojis        string // required
+	ContainsMasks bool
+	MaskPosition  *objects.MaskPosition
+}
+
+func (cns *CreateNewStickerSetConf) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{cns.PngSticker, cns.TgsSticker, cns.WebmSticker}
+}
+
+func (cns *CreateNewStickerSetConf) values() (url.Values, error) {
+	v := url.Values{}
+
+	v.Add("user_id", strconv.FormatInt(cns.UserID, 10))
+	v.Add("name", cns.Name)
+	v.Add("title", cns.Title)
+	v.Add("emojis", cns.Emojis)
+	v.Add("conatins_masks", strconv.FormatBool(cns.ContainsMasks))
+
+	if cns.MaskPosition != nil {
+		bs, err := json.Marshal(cns.MaskPosition)
+		if err != nil {
+			return nil, err
+		}
+		v.Add("mask_poistion", BytesToString(bs))
+	}
+
+	return v, nil
+}
+
+func (cns *CreateNewStickerSetConf) params() (map[string]string, error) {
+	w := make(map[string]string)
+	v, err := cns.values()
+	if err != nil {
+		return nil, err
+	}
+	urlValuesToMapString(v, w)
+	return w, nil
+}
+
+func (cns *CreateNewStickerSetConf) method() string {
+	return "createNewStickerSet"
+}
+
+func NewCreateStickerSet(user_id int64, name, title, emojis string) *CreateNewStickerSetConf {
+	return &CreateNewStickerSetConf{
+		UserID: user_id,
+		Name:   name,
+		Title:  title,
+		Emojis: emojis,
+	}
+}
+
+type AddStickerToSetConf struct {
+	UserID       int64  // required
+	Name         string // required
+	PngSticker   *objects.InputFile
+	TgsSticker   *objects.InputFile
+	WebmSticker  *objects.InputFile
+	Emojis       string // required
+	MaskPosition *objects.MaskPosition
+}
+
+func (ast *AddStickerToSetConf) values() (url.Values, error) {
+	v := url.Values{}
+
+	v.Add("user_id", strconv.FormatInt(ast.UserID, 10))
+	v.Add("name", ast.Name)
+	v.Add("emojis", ast.Emojis)
+
+	if ast.MaskPosition != nil {
+		bs, err := json.Marshal(ast.MaskPosition)
+		if err != nil {
+			return nil, err
+		}
+		v.Add("mask_poistion", BytesToString(bs))
+	}
+
+	return v, nil
+}
+
+func (ast *AddStickerToSetConf) params() (map[string]string, error) {
+	w := make(map[string]string)
+	v, err := ast.values()
+	if err != nil {
+		return nil, err
+	}
+	urlValuesToMapString(v, w)
+	return w, nil
+}
+
+func (ast *AddStickerToSetConf) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{ast.PngSticker, ast.TgsSticker, ast.WebmSticker}
+}
+
+func (ast *AddStickerToSetConf) method() string {
+	return "addStickerToSet"
+}
+
+func NewAddStickerToSet(user_id int64, name, emojis string) *AddStickerToSetConf {
+	return &AddStickerToSetConf{
+		UserID: user_id,
+		Name:   name,
+		Emojis: emojis,
+	}
+}
+
+type SetStickerSetThumbConf struct {
+	Name   string
+	UserId int64
+	Thumb  *objects.InputFile
+}
+
+func (sst *SetStickerSetThumbConf) values() (url.Values, error) {
+	v := url.Values{}
+
+	v.Add("name", sst.Name)
+	v.Add("user_id", strconv.FormatInt(sst.UserId, 10))
+
+	return v, nil
+}
+
+func (sst *SetStickerSetThumbConf) method() string {
+	return "setStickerSetThumb"
+}
+
+func (sst *SetStickerSetThumbConf) params() (map[string]string, error) {
+	p := make(map[string]string)
+	p["name"] = sst.Name
+	p["user_id"] = strconv.FormatInt(sst.UserId, 10)
+	return p, nil
+}
+
+func (sst *SetStickerSetThumbConf) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{sst.Thumb}
+}

@@ -732,13 +732,82 @@ func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserP
 	resp, err := bot.Request(c.method(), v)
 
 	if err != nil {
-		return &objects.UserProfilePhotos{}, err
+		return nil, err
 	}
 
 	var photos objects.UserProfilePhotos
 	json.Unmarshal(resp.Result, &photos)
 
 	return &photos, nil
+}
+
+// ====================
+// Sticker methods
+// ====================
+
+func (bot *Bot) DeleteStickerFromSet(sticker string) (bool, error) {
+	v := url.Values{}
+	v.Add("sticker", sticker)
+	return bot.BoolRequest("setStickerPositionInSet", v)
+}
+
+func (bot *Bot) SetStickerPositionInSet(sticker, position string) (bool, error) {
+	v := url.Values{}
+	v.Add("sticker", sticker)
+	v.Add("position", position)
+	return bot.BoolRequest("setStickerPositionInSet", v)
+}
+
+func (bot *Bot) GetStickerSet(name string) (ss *objects.StickerSet, err error) {
+	v := url.Values{}
+	v.Add("name", name)
+	resp, err := bot.Request("getStickerSet", v)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(resp.Result, ss)
+	return ss, err
+}
+
+func (bot *Bot) UploadStickerFile(user_id int64, png_sticker *objects.InputFile) (*objects.File, error) {
+	v := make(map[string]string)
+	v["user_id"] = strconv.FormatInt(user_id, 10)
+	resp, err := bot.UploadFile("uploadStickerFile	", v, png_sticker)
+	if err != nil {
+		return nil, err
+	}
+
+	var file *objects.File
+	err = json.Unmarshal(resp.Result, file)
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
+}
+
+func (bot *Bot) SetStickerSetThumb(c *SetStickerSetThumbConf) (bool, error) {
+	v, _ := c.params()
+	resp, err := bot.UploadFile("uploadStickerFile	", v, c.Thumb)
+	if err != nil {
+		return false, err
+	}
+
+	var ok bool
+	err = json.Unmarshal(resp.Result, &ok)
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
+func (bot *Bot) CreateNewStickerSet(c *CreateNewStickerSetConf) (bool, error) {
+	v, _ := c.values()
+	return bot.BoolRequest(c.method(), v)
+}
+
+func (bot *Bot) AddStickerToSet(c *AddStickerToSetConf) (bool, error) {
+	v, _ := c.values()
+	return bot.BoolRequest(c.method(), v)
 }
 
 // ====================

@@ -69,7 +69,6 @@ func (he *HandlerType) Handler(handler HandlerFunc) *HandlerType {
 }
 
 func (he *HandlerType) Copy() *HandlerType {
-	// cool naming
 	ht := &HandlerType{}
 	if he.handler != nil {
 		ht.handler = he.handler
@@ -104,6 +103,7 @@ func NewHandlerObj() *DefaultHandlerObj {
 }
 
 func (ho *DefaultHandlerObj) Handlers() []HandlerFunc {
+	// copies handlers object
 	l := make([]HandlerFunc, len(ho.handlers))
 	for _, h := range ho.handlers {
 		l = append(l, h.handler)
