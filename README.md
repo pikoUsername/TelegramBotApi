@@ -40,7 +40,7 @@ func main() {
 			fmt.Println(err)
 		}
 	})
-	dp.StartPolling(tgp.NewStartPollingConf(true))
+	dp.RunPolling(tgp.NewStartPollingConf(true))
 }
 ``` 
 (See more complicated examples in _examples/ directory)
