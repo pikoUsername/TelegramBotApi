@@ -238,6 +238,7 @@ func (dp *Dispatcher) Context(upd *objects.Update) *Context {
 		Storage:  dp.Storage,
 		Markdown: dp.Bot.Markdown,
 		mu:       sync.Mutex{},
+		hasDone:  make(chan struct{}, 1),
 	}
 }
 

@@ -35,6 +35,8 @@ type Context struct {
 
 	calledErrors []error
 	mu           sync.Mutex
+
+	hasDone chan struct{}
 }
 
 // Context.Set just set ctxVar to key in data context
@@ -63,15 +65,28 @@ func (ctx *Context) MustGet(key string) (v interface{}) {
 // Next calls next handler, and increment cursor
 func (ctx *Context) Next() {
 	if ctx.index >= AcceptIndex {
-		ctx.cursor++
-		if ctx.cursor >= len(ctx.handlers)-1 {
+		if ctx.cursor >= len(ctx.handlers) {
 			return
 		}
 		hand := ctx.GetCurrent()
-		if len(hand.filters) == 0 || checkFilters(hand.filters, ctx.Update) {
-			hand.GetHandler()(ctx)
-		}
+
+		ctx.mu.Lock()
+		ctx.cursor++
+		ctx.mu.Unlock()
+
+		ctx.call(hand)
 	}
+}
+
+func (ctx *Context) call(hand *HandlerType) {
+	if len(hand.filters) == 0 || checkFilters(hand.filters, ctx.Update) {
+		hand.GetHandler()(ctx)
+		ctx.hasDone <- struct{}{}
+	}
+}
+
+func (ctx *Context) Done() <-chan struct{} {
+	return ctx.hasDone
 }
 
 // Returns Context cursor
@@ -235,9 +250,3 @@ func (ctx *Context) Reset() {
 	ctx.handlers = ctx.handlers[:0]
 	ctx.Update = nil
 }
-
-// TODO:
-// func (c *Context) Deadline() (deadline time.Time, ok bool) {}
-// func (c *Context) Done() <-chan struct{}                   {}
-// func (c *Context) Err() error                              {}
-// func (c *Context) Value(key interface{}) interface{}       {}
