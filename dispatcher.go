@@ -3,6 +3,8 @@ package tgp
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -55,6 +57,8 @@ type Dispatcher struct {
 
 	closeChan   chan struct{}
 	functionsWG *sync.WaitGroup
+
+	Debugch chan *objects.Update
 }
 
 var (
@@ -152,6 +156,8 @@ type StartWebhookConfig struct {
 	*SetWebhookConfig
 	Handler http.Handler
 	KeyFile interface{}
+
+	CertificatePath string
 
 	// your domain, or 0.0.0.0 interface
 	Address            string
@@ -443,6 +449,7 @@ func (dp *Dispatcher) RunPolling(c *PollingConfig) error {
 	}
 
 	ch := make(chan *objects.Update)
+	dp.Debugch = ch
 	dp.MakeUpdatesChan(c, ch)
 
 	dp.ProcessUpdates(ch)
@@ -474,6 +481,7 @@ func (dp *Dispatcher) RunWebhook(c *StartWebhookConfig) error {
 	if dp.polling {
 		panic(ErrorConflictModes)
 	}
+	fmt.Println("The ip address: ", c.SetWebhookConfig.URL)
 	_, err := dp.Bot.SetWebhook(c.SetWebhookConfig)
 	if err != nil {
 		return err
@@ -496,10 +504,19 @@ func (dp *Dispatcher) RunWebhook(c *StartWebhookConfig) error {
 			return
 		}
 	})
-	certPath, err := guessFileName(c.Certificate)
-	if err != nil {
-		return err
+	var certPath string
+
+	if c.Certificate != nil {
+		certPath, err = guessFileName(c.Certificate)
+		if err != nil {
+			return err
+		}
+	} else if c.CertificatePath != "" {
+		certPath = c.CertificatePath
+	} else {
+		return errors.New("certificate path is not specified")
 	}
+
 	keyfile, err := guessFileName(c.KeyFile)
 	if err != nil {
 		return err

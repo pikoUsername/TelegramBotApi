@@ -538,7 +538,7 @@ func (bot *Bot) SetWebhook(c *SetWebhookConfig) (*objects.TelegramResponse, erro
 	meth := c.method()
 
 	// checkout for certificate, webhook may use without cert
-	if c.Certificate == nil {
+	if c.Certificate == nil { // you don't have to send your certificate to telegram
 		return bot.Request(meth, v)
 	}
 	if err != nil {
