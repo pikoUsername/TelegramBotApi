@@ -2,45 +2,36 @@ package tgp
 
 import (
 	"fmt"
+
+	"github.com/pikoUsername/tgp/fsm/storage"
 )
 
-type ITelegramServer interface {
-	ApiURL(Token string, Method string) string
-	FileURL(Token string, File string)
-}
-
-// TelegramApiServer(just copy paste from aiogram)
-// make easier use custom telegram api server
-type TelegramAPIServer struct {
-	// Base telegram, sendMessage and etc.
-	Base string `json:"base"`
-
-	// Url for file transfer, CDN and etc.
-	File string `json:"file"`
-}
-
-// NewTelegramApiServer ...
-func NewTelegramApiServer(Base string) *TelegramAPIServer {
-	template := "/bot%s/%s"
-	// /bot%s/%s is /bot<TOKEN>/<METHOD>
-	return &TelegramAPIServer{
-		Base: fmt.Sprint(Base, template),
-		File: fmt.Sprint(Base, "/file", template),
+func createBot(token string, storage storage.Storage) (*Dispatcher, error) {
+	bot, err := NewBot(token, "HTML", nil)
+	if err != nil {
+		return nil, err
 	}
+	dp := NewDispatcher(bot, storage)
+	return dp, nil
 }
 
-// ApiUrl creates from base telegram url
-func (tas *TelegramAPIServer) ApiURL(Token string, Method string) string {
-	return fmt.Sprintf(tas.Base, Token, Method)
+// RunPolling is more compact version of just dp.RunPolling
+func RunPolling(token string, storage storage.Storage) error {
+	dp, err := createBot(token, storage)
+	if err != nil {
+		return err
+	}
+
+	return dp.RunPolling(NewPollingConfig(true))
 }
 
-// FileUrl Creates at base of tas.File string
-// a url for send a request
-func (tas *TelegramAPIServer) FileURL(Token string, File string) string {
-	return fmt.Sprintf(tas.File, Token, File)
-}
+// RunWebhook similar to RunPolling function, but webhook
+func RunWebhook(token string, address string, storage storage.Storage) error {
+	dp, err := createBot(token, storage)
+	if err != nil {
+		return err
+	}
+	c := NewWebhookConfig(fmt.Sprintf("/%s", token), address)
 
-// Default telegram api server url
-var (
-	DefaultTelegramServer = NewTelegramApiServer("https://api.telegram.org")
-)
+	return dp.RunWebhook(c)
+}

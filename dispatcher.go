@@ -167,13 +167,13 @@ type StartWebhookConfig struct {
 }
 
 // NewWebhookConfig url is webhook url, address is host address
-func NewWebhookConfig(url string, address string) *StartWebhookConfig {
+func NewWebhookConfig(uri string, address string) *StartWebhookConfig {
 	return &StartWebhookConfig{
-		SetWebhookConfig:   NewSetWebhook(address + url),
+		SetWebhookConfig:   NewSetWebhook(address + uri),
 		Address:            address,
 		SafeExit:           true,
 		DropPendingUpdates: false,
-		URI:                url,
+		URI:                uri,
 	}
 }
 
