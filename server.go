@@ -2,9 +2,10 @@ package tgp
 
 import "fmt"
 
+// Interface for outer usage
 type ITelegramServer interface {
-	ApiURL(Token string, Method string) string
-	FileURL(Token string, File string)
+	ApiURL(string, string) string
+	FileURL(string, string) string
 }
 
 // TelegramApiServer(just copy paste from aiogram)
@@ -28,8 +29,8 @@ func NewTelegramApiServer(Base string) *TelegramAPIServer {
 }
 
 // ApiUrl creates from base telegram url
-func (tas *TelegramAPIServer) ApiURL(Token string, Method string) string {
-	return fmt.Sprintf(tas.Base, Token, Method)
+func (tas *TelegramAPIServer) ApiURL(token string, method string) string {
+	return fmt.Sprintf(tas.Base, token, method)
 }
 
 // FileUrl Creates at base of tas.File string

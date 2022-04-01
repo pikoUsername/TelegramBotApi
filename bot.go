@@ -31,7 +31,7 @@ type Bot struct {
 	// default server must be here
 	// if you wanna create own, just create
 	// using this structure instead of NewBot function
-	Server *TelegramAPIServer `json:"-"`
+	Server ITelegramServer `json:"-"`
 
 	// Using prefix Bot, for avoid names conflict
 	// and golang dont love name conflicts
