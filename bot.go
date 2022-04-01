@@ -31,7 +31,7 @@ type Bot struct {
 	// default server must be here
 	// if you wanna create own, just create
 	// using this structure instead of NewBot function
-	server *TelegramAPIServer `json:"-"`
+	Server *TelegramAPIServer `json:"-"`
 
 	// Using prefix Bot, for avoid names conflict
 	// and golang dont love name conflicts
@@ -65,7 +65,7 @@ func NewBot(token string, parseMode string, client *http.Client) (*Bot, error) {
 	return &Bot{
 		Token:     token,
 		ParseMode: parseMode,
-		server:    DefaultTelegramServer,
+		Server:    DefaultTelegramServer,
 		Markdown:  mrkdown,
 		Client:    client,
 	}, nil
@@ -85,7 +85,7 @@ func (bot *Bot) Request(Method string, params url.Values) (*objects.TelegramResp
 	// Creating URL
 	// fix bug with sending request,
 	// when url creates here or NewRequest not creates a correct url with url params
-	tgurl := bot.server.ApiURL(bot.Token, Method)
+	tgurl := bot.Server.ApiURL(bot.Token, Method)
 
 	request, err := http.NewRequest("POST", tgurl, strings.NewReader(params.Encode()))
 	if err != nil {
@@ -185,7 +185,7 @@ func (b *Bot) UploadFile(method string, v map[string]string, data ...*objects.In
 		}
 	}
 	// ms.AddValuesReader(f_v)
-	tgurl := b.server.ApiURL(b.Token, name)
+	tgurl := b.Server.ApiURL(b.Token, name)
 
 	req, err := http.NewRequest("POST", tgurl+method, nil)
 	if err != nil {
