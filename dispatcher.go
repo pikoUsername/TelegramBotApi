@@ -107,15 +107,18 @@ func (oc *OnConfig) Add(cb OnStartAndShutdownFunc) {
 }
 
 func NewOnConf(cb OnStartAndShutdownFunc) *OnConfig {
-	return &OnConfig{cb: []OnStartAndShutdownFunc{cb}}
+	return &OnConfig{cb: []OnStartAndShutdownFunc{cb}, Polling: true, Webhook: true}
 }
 
-func callListFuncs(funcs []OnStartAndShutdownFunc, dp *Dispatcher) {
+func callListFuncs(funcs []OnStartAndShutdownFunc, wg *sync.WaitGroup, dp *Dispatcher) {
 	for _, cb := range funcs {
-		dp.functionsWG.Add(1)
-		go cb(dp)
+		wg.Add(1)
+		go func(disp *Dispatcher) {
+			defer wg.Done()
+			cb(disp)
+		}(dp)
 	}
-	dp.functionsWG.Wait()
+	wg.Wait()
 }
 
 // Config for start polling method
@@ -250,7 +253,7 @@ func (dp *Dispatcher) Context(upd *objects.Update) *Context {
 // And SafeExit catch it, before OS terminate program
 func (dp *Dispatcher) shutdownPolling() {
 	if len(dp.OnPollingShutdown) > 0 {
-		callListFuncs(dp.OnPollingShutdown, dp)
+		callListFuncs(dp.OnPollingShutdown, dp.functionsWG, dp)
 	}
 }
 
@@ -259,14 +262,14 @@ func (dp *Dispatcher) shutdownPolling() {
 func (dp *Dispatcher) startupPolling() {
 	go dp.welcome()
 	if len(dp.OnPollingStartup) > 0 {
-		callListFuncs(dp.OnPollingStartup, dp)
+		callListFuncs(dp.OnPollingStartup, dp.functionsWG, dp)
 	}
 }
 
 // shutdownWebhook method, iterate over a callbacks from OnWebhookShutdown
 func (dp *Dispatcher) shutdownWebhook() {
 	if len(dp.OnWebhookShutdown) > 0 {
-		callListFuncs(dp.OnWebhookShutdown, dp)
+		callListFuncs(dp.OnWebhookShutdown, dp.functionsWG, dp)
 	}
 }
 
@@ -274,7 +277,7 @@ func (dp *Dispatcher) shutdownWebhook() {
 func (dp *Dispatcher) startupWebhook() {
 	go dp.welcome()
 	if len(dp.OnWebhookStartup) > 0 {
-		callListFuncs(dp.OnWebhookStartup, dp)
+		callListFuncs(dp.OnWebhookStartup, dp.functionsWG, dp)
 	}
 }
 
@@ -440,6 +443,10 @@ func (dp *Dispatcher) RunPolling(c *PollingConfig) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if c.SafeExit {
+		dp.safeExit()
 	}
 
 	if c.SkipUpdates {

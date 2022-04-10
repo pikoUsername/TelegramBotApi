@@ -551,6 +551,13 @@ func (sac *SendAnimationConfig) getFiles() []*objects.InputFile {
 	return []*objects.InputFile{sac.Animation, sac.Thumb}
 }
 
+func NewSendAnimtion(chat_id int64, animation *objects.InputFile) *SendAnimationConfig {
+	return &SendAnimationConfig{
+		ChatID:    chat_id,
+		Animation: animation,
+	}
+}
+
 type SendVoiceConfig struct {
 	*BaseFile
 	ChatID               int64

@@ -82,28 +82,20 @@ func (bot *Bot) SetTimeout(dur time.Duration) {
 // Request to telegram servers
 // and result parses to TelegramResponse
 func (bot *Bot) Request(Method string, params url.Values) (*objects.TelegramResponse, error) {
-	// Creating URL
-	// fix bug with sending request,
-	// when url creates here or NewRequest not creates a correct url with url params
 	tgurl := bot.Server.ApiURL(bot.Token, Method)
 
 	request, err := http.NewRequest("POST", tgurl, strings.NewReader(params.Encode()))
 	if err != nil {
 		return nil, err
 	}
-	// Using Content-Type x-www-form-urlencoded
-	// bc URL limitations, only 2048 charecters
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	// Most important staff doing here
-	// Sending Request to Telegram servers
 	resp, err := bot.Client.Do(request)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	// make eatable
 	tgresp, err := responseDecode(resp.Body)
 	if err != nil {
 		return nil, err
@@ -192,7 +184,6 @@ func (b *Bot) UploadFile(method string, v map[string]string, data ...*objects.In
 		return nil, err
 	}
 	ms.SetupRequest(req)
-
 	// sending request
 	resp, err := b.Client.Do(req)
 	if err != nil {

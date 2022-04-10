@@ -155,6 +155,7 @@ func urlValuesToMapString(v url.Values, w map[string]string) {
 // Result of Reponse saves in TelegramResponse.Result
 func responseDecode(respBody io.ReadCloser) (*objects.TelegramResponse, error) {
 	var tgresp *objects.TelegramResponse
+
 	if err := json.NewDecoder(respBody).Decode(&tgresp); err != nil {
 		return nil, err
 	}
