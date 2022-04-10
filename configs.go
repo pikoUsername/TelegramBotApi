@@ -1,19 +1,19 @@
 package tgp
 
 import (
+	"encoding/json"
 	"fmt"
-	"io"
 	"net/url"
 	"strconv"
 	"time"
+	"unsafe"
 
 	"github.com/pikoUsername/tgp/objects"
 )
 
 // This file stores ALL method configs
 
-// functions which startswith New and method name
-// uses for creating configs which stores ONLY required paramters
+// functions with New prefix, use with Context.Reply method
 
 // Configurable is interface for using by method
 type Configurable interface {
@@ -37,6 +37,7 @@ type BaseChat struct {
 	DisableNotification bool
 }
 
+// helper method
 func (c *BaseChat) params() (map[string]string, error) {
 	params := make(map[string]string)
 
@@ -110,6 +111,30 @@ func (bf *BaseFile) params() (v map[string]string, err error) {
 	return v, nil
 }
 
+type UserPermissionsConfig struct {
+	CanManageChat       bool `json:"can_manage_chat"`
+	CanPostMessage      bool `json:"can_post_message"`
+	CanEditMessages     bool `json:"can_edit_messages"`
+	CanDeleteMessages   bool `json:"can_delete_messages"`
+	CanManageVoiceChats bool `json:"can_manage_voice_chats"`
+	CanRestrictMembers  bool `json:"can_restrict_members"`
+	CanPromoteMembers   bool `json:"can_promote_members"`
+	CanChangeInfo       bool `json:"can_change_info"`
+	CanInviteUsers      bool `json:"can_invite_users"`
+	CanPinMessages      bool `json:"can_pin_messages"`
+}
+
+func (upc *UserPermissionsConfig) values() (url.Values, error) {
+	v := url.Values{}
+
+	// TODO:
+	// f := func(n string, b bool, iv url.Values) {
+	// 	iv.Add(n, strconv.FormatBool(b))
+	// }
+
+	return v, nil
+}
+
 // For CopyMessage method config
 // https://core.telegram.org/bots/api#copymessage
 type CopyMessageConfig struct {
@@ -121,8 +146,8 @@ type CopyMessageConfig struct {
 	MessageID             int64 // required
 	ReplyToMessageId      int64
 	CaptionEntities       []*objects.MessageEntity
+	ProtectContent        bool
 
-	// Note: Interface here is simple need
 	// type: Union[objects.InlineKeyboardMarkup, ReplyKeyboardMarkup]
 	ReplyMarkup interface{}
 }
@@ -131,6 +156,7 @@ func (cmc *CopyMessageConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("chat_id", strconv.FormatInt(cmc.ChatID, 10))
 	v.Add("from_chat_id", strconv.FormatInt(cmc.ChatID, 10))
+	v.Add("protect_content", strconv.FormatBool(cmc.ProtectContent))
 	v.Add("message_id", strconv.FormatInt(cmc.MessageID, 10))
 	if cmc.Caption != "" {
 		v.Add("caption", cmc.Caption)
@@ -168,39 +194,47 @@ type SendMessageConfig struct {
 
 	DisableNotifiaction bool
 	ReplyKeyboard       *objects.InlineKeyboardMarkup
+	ProtectContent      bool
 }
 
 // values ...
 func (smc *SendMessageConfig) values() (url.Values, error) {
-	result := url.Values{}
-	result.Add("chat_id", strconv.FormatInt(smc.ChatID, 10))
+	v := url.Values{}
+	v.Add("chat_id", strconv.FormatInt(smc.ChatID, 10))
 
-	result.Add("text", smc.Text)
+	v.Add("text", smc.Text)
 
 	if smc.ParseMode != "" {
-		result.Add("parse_mode", smc.ParseMode)
+		v.Add("parse_mode", smc.ParseMode)
 	}
 
 	if smc.ReplyKeyboard != nil {
-		result.Add("reply_markup", FormatMarkup(smc.ReplyKeyboard))
+		v.Add("reply_markup", FormatMarkup(smc.ReplyKeyboard))
 	}
-	result.Add("disable_web_page_preview", strconv.FormatBool(smc.DisableWebPagePreview))
+	v.Add("disable_web_page_preview", strconv.FormatBool(smc.DisableWebPagePreview))
+	v.Add("protect_content", strconv.FormatBool(smc.ProtectContent))
 	if smc.Entities != nil {
 		// Must be work!
-		result.Add("entities", ObjectToJson(smc.Entities))
+		v.Add("entities", ObjectToJson(smc.Entities))
 	}
 
-	return result, nil
+	return v, nil
 }
 
 func (smc *SendMessageConfig) method() string {
 	return "sendMessage"
 }
 
-func NewSendMessage(chat_id int64, text string) *SendMessageConfig {
+func NewSendMessage(text string, chat_id int64) *SendMessageConfig {
 	return &SendMessageConfig{
-		ChatID: chat_id,
 		Text:   text,
+		ChatID: chat_id,
+	}
+}
+
+func NewReplyMessage(text string) *SendMessageConfig {
+	return &SendMessageConfig{
+		Text: text,
 	}
 }
 
@@ -211,7 +245,7 @@ type SetWebhookConfig struct {
 	URL                string // required
 	Offset             int
 	MaxConnections     int
-	AllowedUpdates     bool
+	AllowedUpdates     []string
 	DropPendingUpdates bool
 	IP                 string // if you need u can use it ;)
 	Certificate        *objects.InputFile
@@ -220,11 +254,19 @@ type SetWebhookConfig struct {
 func (wc *SetWebhookConfig) values() (url.Values, error) {
 	v := url.Values{}
 	v.Add("url", wc.URL)
-	v.Add("ip_address", wc.IP) // required field
+	if wc.IP != "" {
+		v.Add("ip_address", wc.IP) // required field
+	}
 	if wc.MaxConnections != 0 {
 		v.Add("max_connections", strconv.Itoa(wc.MaxConnections))
 	}
-	v.Add("allowed_updates", strconv.FormatBool(wc.AllowedUpdates))
+	if len(wc.AllowedUpdates) != 0 {
+		bs, err := json.Marshal(wc.AllowedUpdates)
+		if err != nil {
+			return nil, err
+		}
+		v.Add("allowed_updates", BytesToString(bs))
+	}
 	v.Add("drop_pending_updates", strconv.FormatBool(wc.DropPendingUpdates))
 
 	return v, nil
@@ -234,6 +276,7 @@ func (wc *SetWebhookConfig) method() string {
 	return "setWebhook"
 }
 
+// URL must be full URL to your domain
 func NewSetWebhook(url string) *SetWebhookConfig {
 	return &SetWebhookConfig{
 		URL: url,
@@ -243,15 +286,17 @@ func NewSetWebhook(url string) *SetWebhookConfig {
 // SendPhotoConfig represnts telegram api method fields
 // https://core.telegram.org/bots/api#sendphoto
 type SendPhotoConfig struct {
-	BaseFile
-	Caption string
+	*BaseFile
+	Caption        string
+	ProtectContent bool
 }
 
 func (spc *SendPhotoConfig) values() (url.Values, error) {
-	v, _ := spc.BaseChat.values()
+	v, _ := spc.BaseFile.values()
 	if spc.Caption != "" {
 		v.Add("caption", spc.Caption)
 	}
+	v.Add("protect_content", strconv.FormatBool(spc.ProtectContent))
 	return v, nil
 }
 
@@ -267,10 +312,14 @@ func (spc *SendPhotoConfig) params() (map[string]string, error) {
 	return v, nil
 }
 
-func NewSendPhoto(chat_id int64, photo *objects.InputFile) *SendPhotoConfig {
+func (spc *SendPhotoConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{spc.File}
+}
+
+func NewSendPhoto(photo *objects.InputFile) *SendPhotoConfig {
 	return &SendPhotoConfig{
-		BaseFile: BaseFile{
-			BaseChat: BaseChat{ChatID: chat_id},
+		BaseFile: &BaseFile{
+			BaseChat: BaseChat{},
 			File:     photo,
 		},
 	}
@@ -284,6 +333,7 @@ type SendAudioConfig struct {
 	Duration        uint
 	Performer       string
 	Title           string
+	ProtectContent  bool
 	Thumb           *objects.InputFile
 	CaptionEntities []*objects.MessageEntity
 }
@@ -311,6 +361,7 @@ func (sac *SendAudioConfig) values() (url.Values, error) {
 	if sac.Title != "" {
 		v.Add("title", sac.Title)
 	}
+	v.Add("protect_content", strconv.FormatBool(sac.ProtectContent))
 	return v, nil
 }
 
@@ -331,10 +382,10 @@ func (sac *SendAudioConfig) getFiles() []*objects.InputFile {
 	return []*objects.InputFile{sac.File, sac.Thumb}
 }
 
-func NewSendAudio(chatId int64, audio *objects.InputFile) *SendAudioConfig {
+func NewSendAudio(audio *objects.InputFile) *SendAudioConfig {
 	return &SendAudioConfig{
 		BaseFile: BaseFile{
-			BaseChat:    BaseChat{ChatID: chatId},
+			BaseChat:    BaseChat{},
 			File:        audio,
 			UseExisting: false,
 		},
@@ -351,6 +402,7 @@ type SendDocumentConfig struct {
 	CaptionEntities             []*objects.MessageEntity
 	DisableContentTypeDetection bool
 	DisableNotifiaction         bool
+	ProtectContent              bool
 	ReplyToMessageID            int64
 	AllowSendingWithoutReply    bool
 	ReplyMarkup                 interface{}
@@ -370,6 +422,7 @@ func (sdc *SendDocumentConfig) values() (v url.Values, err error) {
 		}
 	}
 	v.Add("disable_notification", strconv.FormatBool(sdc.DisableNotifiaction))
+	v.Add("protect_content", strconv.FormatBool(sdc.ProtectContent))
 	if sdc.ReplyToMessageID != 0 {
 		v.Add("reply_to_message_id", strconv.FormatInt(sdc.ReplyToMessageID, 10))
 	}
@@ -408,10 +461,11 @@ func NewDocumentConfig(cid int64, r *objects.InputFile) *SendDocumentConfig {
 // https://core.telegram.org/bots/api#sendvideo
 type SendVideoConfig struct {
 	*BaseFile
-	Duration uint32
-	Width    uint16
-	Height   uint16
-	Thumb    *objects.InputFile
+	Duration       uint32
+	Width          uint16
+	Height         uint16
+	ProtectContent bool
+	Thumb          *objects.InputFile
 }
 
 func (svc *SendVideoConfig) values() (url.Values, error) {
@@ -426,6 +480,7 @@ func (svc *SendVideoConfig) values() (url.Values, error) {
 	if svc.Height != 0 {
 		v.Add("height", strconv.FormatUint((uint64)(svc.Height), 10))
 	}
+	v.Add("protect_content", strconv.FormatBool(svc.ProtectContent))
 
 	return v, nil
 }
@@ -450,7 +505,7 @@ func (svc *SendVideoConfig) method() string {
 // Represents Method SendAnimation Fields
 // https://core.telegram.org/bots/api#sendanimation
 type SendAnimationConfig struct {
-	ChatId    int64
+	ChatID    int64
 	Animation *objects.InputFile
 
 	Duration uint32
@@ -460,11 +515,13 @@ type SendAnimationConfig struct {
 	Thumb     *objects.InputFile
 	Caption   string
 	ParseMode string
+
+	ProtectContent bool
 }
 
 func (sac *SendAnimationConfig) values() (url.Values, error) {
 	v := url.Values{}
-	v.Add("chat_id", strconv.FormatInt(sac.ChatId, 10))
+	v.Add("chat_id", strconv.FormatInt(sac.ChatID, 10))
 	v.Add("duration", strconv.FormatUint(uint64(sac.Duration), 10))
 	v.Add("width", strconv.FormatUint(uint64(sac.Width), 10))
 	v.Add("height", strconv.FormatUint(uint64(sac.Height), 10))
@@ -474,6 +531,7 @@ func (sac *SendAnimationConfig) values() (url.Values, error) {
 	if sac.ParseMode != "" {
 		v.Add("parse_mode", sac.ParseMode)
 	}
+	v.Add("protect_content", strconv.FormatBool(sac.ProtectContent))
 
 	return v, nil
 }
@@ -493,24 +551,31 @@ func (sac *SendAnimationConfig) getFiles() []*objects.InputFile {
 	return []*objects.InputFile{sac.Animation, sac.Thumb}
 }
 
+func NewSendAnimtion(chat_id int64, animation *objects.InputFile) *SendAnimationConfig {
+	return &SendAnimationConfig{
+		ChatID:    chat_id,
+		Animation: animation,
+	}
+}
+
 type SendVoiceConfig struct {
 	*BaseFile
-	ChatId               int64
+	ChatID               int64
 	Caption              string
 	ParseMode            string
 	CaptionEntities      []*objects.MessageEntity
 	Duration             int
 	DisableNotifications bool
 	ReplyToMessageID     int64
+	ProtectContent       bool
 
 	// for first time you can use InlineKeyboardMarkup
-	// TODO
 	ReplyMarkup *objects.InlineKeyboardMarkup
 }
 
 func (svc *SendVoiceConfig) values() (url.Values, error) {
 	v := url.Values{}
-	v.Add("chat_id", strconv.FormatInt(svc.ChatId, 10))
+	v.Add("chat_id", strconv.FormatInt(svc.ChatID, 10))
 	v.Add("caption", svc.Caption)
 	if svc.Caption != "" {
 		v.Add("parse_mode", svc.Caption)
@@ -521,6 +586,7 @@ func (svc *SendVoiceConfig) values() (url.Values, error) {
 	}
 
 	v.Add("caption_entities", ObjectToJson(svc.CaptionEntities))
+	v.Add("protect_content", strconv.FormatBool(svc.ProtectContent))
 	if svc.ReplyMarkup != nil {
 		v.Add("reply_markup", FormatMarkup(svc.ReplyMarkup))
 	}
@@ -540,15 +606,23 @@ type SendVideoNoteConfig struct {
 	*BaseFile
 	Duration                 time.Duration
 	Length                   int64
-	Thumb                    io.Reader
-	DisableNotification      bool
-	ReplyToMessageID         int64
+	Thumb                    *objects.InputFile
 	AllowSendingWithoutReply bool
-	ReplyMarkup              objects.InlineKeyboardMarkup
+	ProtectContent           bool
 }
 
 func (svnc *SendVideoNoteConfig) values() (url.Values, error) {
-	return url.Values{}, nil
+	v, _ := svnc.BaseFile.values()
+	if svnc.Duration != 0 {
+		v.Add("duration", strconv.FormatInt(*(*int64)(unsafe.Pointer(&svnc.Duration)), 10))
+	}
+	if svnc.Length != 0 {
+		v.Add("length", strconv.FormatInt(svnc.Length, 10))
+	}
+	v.Add("allow_sending_without_reply", strconv.FormatBool(svnc.AllowSendingWithoutReply))
+	v.Add("protect_content", strconv.FormatBool(svnc.ProtectContent))
+
+	return v, nil
 }
 
 func (svnc *SendVideoNoteConfig) params() (v map[string]string, err error) {
@@ -559,14 +633,17 @@ func (svnc *SendVideoNoteConfig) params() (v map[string]string, err error) {
 	return
 }
 
+func (svnc *SendVideoNoteConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{svnc.File, svnc.Thumb}
+}
 func (svnc *SendVideoNoteConfig) method() string {
 	return "sendVideoName"
 }
 
-func NewSendVideoNote(chat_id int64, video_note *objects.InputFile) *SendVideoNoteConfig {
+func NewSendVideoNote(video_note *objects.InputFile) *SendVideoNoteConfig {
 	return &SendVideoNoteConfig{
 		BaseFile: &BaseFile{
-			BaseChat: BaseChat{ChatID: chat_id},
+			BaseChat: BaseChat{},
 			File:     video_note,
 		},
 	}
@@ -579,6 +656,7 @@ type SendMediaGroupConfig struct {
 
 	// Optional fields
 	DisableNotification      bool
+	ProtectContent           bool
 	ReplyToMessageID         int64
 	AllowSendingWithoutReply bool
 }
@@ -586,6 +664,7 @@ type SendMediaGroupConfig struct {
 func (smgc *SendMediaGroupConfig) values() (url.Values, error) {
 	v := url.Values{}
 
+	v.Add("protect_sending", strconv.FormatBool(smgc.ProtectContent))
 	v.Add("chat_id", strconv.FormatInt(smgc.ChatID, 10))
 	// TOOD: media types
 	// v.Add("media", smgc.Media)
@@ -604,10 +683,9 @@ func (smgc *SendMediaGroupConfig) method() string {
 	return "sendMediaGroup"
 }
 
-func NewSendMediaGroupConfig(chat_id int64, media []interface{}) *SendMediaGroupConfig {
+func NewSendMediaGroupConfig(media []interface{}) *SendMediaGroupConfig {
 	return &SendMediaGroupConfig{
-		ChatID: chat_id,
-		Media:  media,
+		Media: media,
 	}
 }
 
@@ -622,6 +700,7 @@ type SendLocationConfig struct {
 	DisableNotification      bool
 	ReplyToMessageID         int
 	AllowSendingWithoutReply bool
+	ProtectContent           bool
 }
 
 func (slc *SendLocationConfig) values() (url.Values, error) {
@@ -644,6 +723,7 @@ func (slc *SendLocationConfig) values() (url.Values, error) {
 
 	v.Add("proximity_alert_radius", strconv.FormatInt(int64(slc.ProximityAlertRadius), 10))
 	v.Add("disable_notification", strconv.FormatBool(slc.DisableNotification))
+	v.Add("protect_content", strconv.FormatBool(slc.ProtectContent))
 
 	if slc.ReplyToMessageID != 0 {
 		v.Add("reply_to_message_id", strconv.Itoa(slc.ReplyToMessageID))
@@ -654,9 +734,8 @@ func (slc *SendLocationConfig) values() (url.Values, error) {
 	return v, nil
 }
 
-func NewSendLocationConf(chat_id int64, latitude float32, longitude float32) *SendLocationConfig {
+func NewSendLocationConf(latitude float32, longitude float32) *SendLocationConfig {
 	return &SendLocationConfig{
-		ChatID:    chat_id,
 		Latitude:  latitude,
 		Longitude: longitude,
 	}
@@ -669,29 +748,55 @@ func (slc *SendLocationConfig) method() string {
 // LiveLocationConfig represents Telegram method fields of editmessageliveLocation
 // https://core.telegram.org/bots/api#editmessagelivelocation
 type EditMessageLLConf struct { // too long name anyway
-	Longitude float32
-	Latitude  float32
-	ChatID    int64
-	MessageID int64
+	Longitude            float64 // required
+	Latitude             float64 // required
+	InlineMessageID      int64
+	ChatID               int64
+	MessageID            int64
+	HorizontalAccuracy   float64
+	Heading              int64
+	ProximityAlertRadius int64
+	ReplyMarkup          *objects.InlineKeyboardMarkup
 }
 
-// Values is stub!!
 func (llc *EditMessageLLConf) values() (url.Values, error) {
 	v := url.Values{}
-	return v, nil // stub
+
+	v.Add("longitude", strconv.FormatFloat(llc.Longitude, 'E', -1, 64))
+	v.Add("latitude", strconv.FormatFloat(llc.Latitude, 'E', -1, 64))
+	if llc.InlineMessageID != 0 {
+		v.Add("inline_message_id", strconv.FormatInt(llc.InlineMessageID, 10))
+	}
+	if llc.ChatID != 0 {
+		v.Add("chat_id", strconv.FormatInt(llc.ChatID, 10))
+	}
+	if llc.MessageID != 0 {
+		v.Add("message_id", strconv.FormatInt(llc.MessageID, 10))
+	}
+	if llc.HorizontalAccuracy != 0.0 {
+		v.Add("horizontal_accuracy", strconv.FormatFloat(llc.HorizontalAccuracy, 'E', -1, 64))
+	}
+	if llc.Heading != 0 {
+		v.Add("heading", strconv.FormatInt(llc.Heading, 10))
+	}
+	if llc.ProximityAlertRadius != 0 {
+		v.Add("proximity_alert_radius", strconv.FormatInt(llc.ProximityAlertRadius, 10))
+	}
+	if llc.ReplyMarkup != nil {
+		v.Add("reply_markup", FormatMarkup(llc.ReplyMarkup))
+	}
+
+	return v, nil
 }
 
 func (llc *EditMessageLLConf) method() string {
 	return "editMessageLiveLocation"
 }
 
-// all fields are required
-func NewEditMessageLL(longitude float32, latit float32, chat_id int64, message_id int64) *EditMessageLLConf {
+func NewEditMessageLL(longitude float64, latit float64) *EditMessageLLConf {
 	return &EditMessageLLConf{
 		Longitude: longitude,
 		Latitude:  latit,
-		ChatID:    chat_id,
-		MessageID: message_id,
 	}
 }
 
@@ -703,8 +808,9 @@ type StopMessageLiveLocation struct {
 }
 
 // GetUpdate method fields
+// https://core.telegram.org/bots/api#getting-updates
 type GetUpdatesConfig struct {
-	Offset         int
+	Offset         int64
 	Limit          uint
 	Timeout        uint
 	AllowedUpdates []string
@@ -713,10 +819,21 @@ type GetUpdatesConfig struct {
 func (guc *GetUpdatesConfig) values() (url.Values, error) {
 	v := url.Values{}
 	if guc.Offset != 0 {
-		v.Add("offset", strconv.Itoa(guc.Offset))
+		v.Add("offset", strconv.FormatInt(guc.Offset, 10))
 	}
-	v.Add("limit", strconv.FormatUint(uint64(guc.Limit), 10))
-	v.Add("timeout", strconv.FormatUint(uint64(guc.Timeout), 10))
+	if guc.Limit != 0 {
+		v.Add("limit", strconv.FormatUint(uint64(guc.Limit), 10))
+	}
+	if guc.Timeout != 0 {
+		v.Add("timeout", strconv.FormatUint(uint64(guc.Timeout), 10))
+	}
+	if len(guc.AllowedUpdates) > 0 {
+		bs, err := json.Marshal(guc.AllowedUpdates)
+		if err != nil {
+			return v, err
+		}
+		v.Add("allowed_updates", BytesToString(bs))
+	}
 
 	return v, nil
 }
@@ -726,7 +843,7 @@ func (guc *GetUpdatesConfig) method() string {
 }
 
 // Uses for default values for Sending updates
-func NewGetUpdateConfig(Offset int) *GetUpdatesConfig {
+func NewGetUpdateConfig(Offset int64) *GetUpdatesConfig {
 	return &GetUpdatesConfig{
 		Offset:  Offset,
 		Limit:   20,
@@ -834,6 +951,7 @@ type SendDiceConfig struct {
 	DisableNotifications     bool
 	ReplyToMessageId         int64
 	AllowSendingWithoutReply bool
+	ProtectContent           bool
 	// ReplyMarkup will be type of objects.KeynoardMarkup not inline, and reply and etc.
 	ReplyMarkup interface{}
 }
@@ -852,6 +970,7 @@ func (sdc *SendDiceConfig) values() (url.Values, error) {
 	if sdc.ReplyMarkup != nil {
 		v.Add("reply_markup", FormatMarkup(sdc.ReplyMarkup))
 	}
+	v.Add("protect_content", strconv.FormatBool(sdc.ProtectContent))
 	return v, nil
 }
 
@@ -859,10 +978,9 @@ func (sdc *SendDiceConfig) method() string {
 	return "sendDice"
 }
 
-func NewSendDice(chatid int64, emoji string) *SendDiceConfig {
+func NewSendDice(emoji string) *SendDiceConfig {
 	return &SendDiceConfig{
-		ChatID: chatid,
-		Emoji:  emoji,
+		Emoji: emoji,
 	}
 }
 
@@ -884,9 +1002,10 @@ type SendPollConfig struct {
 	ExplnationEntites     []*objects.MessageEntity
 
 	// Using int time, here can be used time.Time
-	OpenPeriod int64
-	CloseDate  int64
-	IsClosed   bool
+	OpenPeriod     int64
+	CloseDate      int64
+	IsClosed       bool
+	ProtectContent bool
 
 	// Please, always turn off this
 	DisableNotifications     bool
@@ -922,6 +1041,7 @@ func (spc *SendPollConfig) values() (url.Values, error) {
 	if spc.ReplyToMessageID != 0 {
 		v.Add("reply_to_message_id", strconv.FormatInt(spc.ReplyToMessageID, 10))
 	}
+	v.Add("protect_content", strconv.FormatBool(spc.ProtectContent))
 	return v, nil
 }
 
@@ -929,9 +1049,8 @@ func (spc *SendPollConfig) method() string {
 	return "sendPoll"
 }
 
-func NewSendPoll(chatid int64, question string, options []string) *SendPollConfig {
+func NewSendPoll(question string, options []string) *SendPollConfig {
 	return &SendPollConfig{
-		ChatID:   chatid,
 		Question: question,
 		Options:  options,
 	}
@@ -987,6 +1106,7 @@ type SendContactConfig struct {
 	ReplyToMessageID         int64
 	AllowSendingWithoutReply bool
 	ReplyKeyboard            interface{}
+	ProtectContent           bool
 }
 
 func (scc *SendContactConfig) values() (url.Values, error) {
@@ -1012,6 +1132,7 @@ func (scc *SendContactConfig) values() (url.Values, error) {
 	if scc.ReplyKeyboard != nil {
 		v.Add("reply_keyboard", FormatMarkup(scc.ReplyKeyboard))
 	}
+	v.Add("protect_content", strconv.FormatBool(scc.ProtectContent))
 	return v, nil
 }
 
@@ -1031,6 +1152,7 @@ type SendVenueConfig struct {
 	GooglePlaceId            string
 	GooglePlaceType          string
 	DisableNotification      bool
+	ProtectContent           bool
 	ReplyToMessageId         int64
 	AllowSendingWithoutReply bool
 	ReplyMarkup              interface{}
@@ -1049,6 +1171,7 @@ func (svc *SendVenueConfig) values() (url.Values, error) {
 	v.Add("title", svc.Title)
 	v.Add("address", svc.Address)
 	v.Add("allow_sending_without_reply", strconv.FormatBool(svc.AllowSendingWithoutReply))
+	v.Add("protect_content", strconv.FormatBool(svc.ProtectContent))
 	if svc.ReplyToMessageId != 0 {
 		v.Add("reply_to_message_id", strconv.FormatInt(svc.ReplyToMessageId, 10))
 	}
@@ -1139,4 +1262,271 @@ func NewRestrictMember(chat_id, user_id int64, perms *objects.ChatMemberPermissi
 		UserID:      user_id,
 		Permissions: perms,
 	}
+}
+
+type EditChatInviteLinkConf struct {
+	ChatID             int64
+	InviteLink         string
+	Name               string
+	ExpireDate         int64
+	MemberLimit        int
+	CreatesJoinRequest bool
+}
+
+func (eilc *EditChatInviteLinkConf) values() (v url.Values, _ error) {
+	v.Add("chat_id", strconv.FormatInt(eilc.ChatID, 10))
+	v.Add("invite_link", eilc.InviteLink)
+	if eilc.Name != "" {
+		v.Add("name", eilc.Name)
+	}
+	if eilc.ExpireDate != 0 {
+		v.Add("expire_date", strconv.FormatInt(eilc.ExpireDate, 10))
+	}
+	if eilc.MemberLimit != 0 {
+		v.Add("member_limit", strconv.Itoa(eilc.MemberLimit))
+	}
+	v.Add("creates_join_request", strconv.FormatBool(eilc.CreatesJoinRequest))
+	return
+}
+
+func (eilc *EditChatInviteLinkConf) method() string {
+	return "editChatInviteLink"
+}
+
+func NeweditChatInviteLink(ChatID int64, invite_link string) *EditChatInviteLinkConf {
+	return &EditChatInviteLinkConf{
+		ChatID:     ChatID,
+		InviteLink: invite_link,
+	}
+}
+
+type PromoteChatMemberConfig struct {
+	UserPermissionsConfig
+
+	IsAnonymous bool  `json:"is_anonymous"`
+	ChatID      int64 `json:"chat_id"` // required
+	UserID      int64 `json:"user_id"` // required
+}
+
+func (pcmc PromoteChatMemberConfig) values() (url.Values, error) {
+	v, _ := pcmc.UserPermissionsConfig.values()
+
+	v.Add("chat_id", strconv.FormatInt(pcmc.ChatID, 10))
+	v.Add("user_id", strconv.FormatInt(pcmc.ChatID, 10))
+	v.Add("is_anonymous", strconv.FormatBool(pcmc.IsAnonymous))
+
+	return v, nil
+}
+
+func (pcmc PromoteChatMemberConfig) method() string {
+	return "promoteChatMember"
+}
+
+func NewPromoteChat(ChatId int64, UserID int64) *PromoteChatMemberConfig {
+	return &PromoteChatMemberConfig{
+		ChatID: ChatId,
+		UserID: UserID,
+	}
+}
+
+// TODO: SendInvoice
+
+type SendGameConfig struct {
+	BaseChat                        // chat_id is required
+	GameShortName            string // required
+	DisableNotfication       bool
+	ProtectContent           bool
+	AllowSendingWithoutReply bool
+}
+
+func (sg *SendGameConfig) values() (url.Values, error) {
+	v, _ := sg.BaseChat.values()
+	v.Add("game_short_name", sg.GameShortName)
+	v.Add("disable_notification", strconv.FormatBool(sg.DisableNotfication))
+	v.Add("protect_content", strconv.FormatBool(sg.ProtectContent))
+	v.Add("allow_sending_without_reply", strconv.FormatBool(sg.AllowSendingWithoutReply))
+	return v, nil
+}
+
+func (sg *SendGameConfig) method() string {
+	return "sendGame"
+}
+
+type SendStickerConfig struct {
+	BaseChat                                    // chat_id required
+	Sticker                  *objects.InputFile // required
+	ProtectContent           bool
+	AllowSendingWithoutReply bool
+}
+
+func (stc *SendStickerConfig) values() (url.Values, error) {
+	v, _ := stc.BaseChat.values()
+	v.Add("protect_content", strconv.FormatBool(stc.ProtectContent))
+	v.Add("allow_sending_without_reply", strconv.FormatBool(stc.AllowSendingWithoutReply))
+	return v, nil
+}
+
+func (stc *SendStickerConfig) method() string {
+	return "sendSticker"
+}
+
+func (stc *SendStickerConfig) params() (map[string]string, error) {
+	v, _ := stc.BaseChat.params()
+	uv, _ := stc.values()
+	urlValuesToMapString(uv, v)
+	return v, nil
+}
+
+func (stc *SendStickerConfig) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{stc.Sticker}
+}
+
+func NewSendStickerConf(base BaseChat, Sticker *objects.InputFile) *SendStickerConfig {
+	return &SendStickerConfig{
+		BaseChat: base,
+		Sticker:  Sticker,
+	}
+}
+
+type CreateNewStickerSetConf struct {
+	UserID        int64  // required
+	Name          string // required
+	Title         string // required
+	PngSticker    *objects.InputFile
+	TgsSticker    *objects.InputFile
+	WebmSticker   *objects.InputFile
+	Emojis        string // required
+	ContainsMasks bool
+	MaskPosition  *objects.MaskPosition
+}
+
+func (cns *CreateNewStickerSetConf) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{cns.PngSticker, cns.TgsSticker, cns.WebmSticker}
+}
+
+func (cns *CreateNewStickerSetConf) values() (url.Values, error) {
+	v := url.Values{}
+
+	v.Add("user_id", strconv.FormatInt(cns.UserID, 10))
+	v.Add("name", cns.Name)
+	v.Add("title", cns.Title)
+	v.Add("emojis", cns.Emojis)
+	v.Add("conatins_masks", strconv.FormatBool(cns.ContainsMasks))
+
+	if cns.MaskPosition != nil {
+		bs, err := json.Marshal(cns.MaskPosition)
+		if err != nil {
+			return nil, err
+		}
+		v.Add("mask_poistion", BytesToString(bs))
+	}
+
+	return v, nil
+}
+
+func (cns *CreateNewStickerSetConf) params() (map[string]string, error) {
+	w := make(map[string]string)
+	v, err := cns.values()
+	if err != nil {
+		return nil, err
+	}
+	urlValuesToMapString(v, w)
+	return w, nil
+}
+
+func (cns *CreateNewStickerSetConf) method() string {
+	return "createNewStickerSet"
+}
+
+func NewCreateStickerSet(user_id int64, name, title, emojis string) *CreateNewStickerSetConf {
+	return &CreateNewStickerSetConf{
+		UserID: user_id,
+		Name:   name,
+		Title:  title,
+		Emojis: emojis,
+	}
+}
+
+type AddStickerToSetConf struct {
+	UserID       int64  // required
+	Name         string // required
+	PngSticker   *objects.InputFile
+	TgsSticker   *objects.InputFile
+	WebmSticker  *objects.InputFile
+	Emojis       string // required
+	MaskPosition *objects.MaskPosition
+}
+
+func (ast *AddStickerToSetConf) values() (url.Values, error) {
+	v := url.Values{}
+
+	v.Add("user_id", strconv.FormatInt(ast.UserID, 10))
+	v.Add("name", ast.Name)
+	v.Add("emojis", ast.Emojis)
+
+	if ast.MaskPosition != nil {
+		bs, err := json.Marshal(ast.MaskPosition)
+		if err != nil {
+			return nil, err
+		}
+		v.Add("mask_poistion", BytesToString(bs))
+	}
+
+	return v, nil
+}
+
+func (ast *AddStickerToSetConf) params() (map[string]string, error) {
+	w := make(map[string]string)
+	v, err := ast.values()
+	if err != nil {
+		return nil, err
+	}
+	urlValuesToMapString(v, w)
+	return w, nil
+}
+
+func (ast *AddStickerToSetConf) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{ast.PngSticker, ast.TgsSticker, ast.WebmSticker}
+}
+
+func (ast *AddStickerToSetConf) method() string {
+	return "addStickerToSet"
+}
+
+func NewAddStickerToSet(user_id int64, name, emojis string) *AddStickerToSetConf {
+	return &AddStickerToSetConf{
+		UserID: user_id,
+		Name:   name,
+		Emojis: emojis,
+	}
+}
+
+type SetStickerSetThumbConf struct {
+	Name   string
+	UserId int64
+	Thumb  *objects.InputFile
+}
+
+func (sst *SetStickerSetThumbConf) values() (url.Values, error) {
+	v := url.Values{}
+
+	v.Add("name", sst.Name)
+	v.Add("user_id", strconv.FormatInt(sst.UserId, 10))
+
+	return v, nil
+}
+
+func (sst *SetStickerSetThumbConf) method() string {
+	return "setStickerSetThumb"
+}
+
+func (sst *SetStickerSetThumbConf) params() (map[string]string, error) {
+	p := make(map[string]string)
+	p["name"] = sst.Name
+	p["user_id"] = strconv.FormatInt(sst.UserId, 10)
+	return p, nil
+}
+
+func (sst *SetStickerSetThumbConf) getFiles() []*objects.InputFile {
+	return []*objects.InputFile{sst.Thumb}
 }

@@ -5,27 +5,25 @@ import (
 
 	"github.com/pikoUsername/tgp"
 	"github.com/pikoUsername/tgp/fsm/storage"
-	"github.com/pikoUsername/tgp/objects"
 )
 
 // main function entry function for whole program
 func main() {
-	bot, err := tgp.NewBot("<token>", "HTML")
+	bot, err := tgp.NewBot("<token>", "HTML", nil)
 
 	// check out for error
 	if err != nil {
 		panic(err)
 	}
 
-	// recommended set syncronus argument to false
 	dp := tgp.NewDispatcher(bot, storage.NewMemoryStorage())
 
 	// register a your callback
 	// this callback will be called on every message
 	// because handler havenot got any filters
-	dp.MessageHandler.Register(func(bot *tgp.Bot, m *objects.Message) {
+	dp.MessageHandler.Register(func(ctx *tgp.Context) {
 		// returning message text to same chat
-		_, err := bot.Send(tgp.NewSendMessage(m.Chat.ID, m.Text))
+		_, err := ctx.Reply(tgp.NewReplyMessage(ctx.Message.Text))
 		if err != nil {
 			// you can use a more complex logging systems
 			// it s just example
@@ -34,5 +32,5 @@ func main() {
 	})
 
 	// if your bot has a payment or something important, then put skip_updates on false
-	dp.StartPolling(tgp.NewStartPollingConf(true))
+	dp.RunPolling(tgp.NewPollingConfig(true))
 }

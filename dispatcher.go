@@ -1,20 +1,27 @@
 package tgp
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"reflect"
+	"sync"
 	"syscall"
 	"time"
 
-	"github.com/pikoUsername/tgp/fsm"
 	"github.com/pikoUsername/tgp/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
 )
+
+// StdLogger taken from logrus
+type Logger interface {
+	Printf(string, ...interface{})
+	Println(...interface{})
+}
 
 // Dispatcher's purpose is run bot, and comfortable pipeline
 // Bot struct uses as API wrapper
@@ -23,16 +30,18 @@ import (
 type Dispatcher struct {
 	Bot *Bot
 	// Handlers
-	MessageHandler       *HandlerObj
-	CallbackQueryHandler *HandlerObj
-	ChannelPostHandler   *HandlerObj
-	PollHandler          *HandlerObj
-	ChatMemberHandler    *HandlerObj
-	PollAnswerHandler    *HandlerObj
-	MyChatMemberHandler  *HandlerObj
-	Storage              storage.Storage
+	MessageHandler         HandlerObj
+	CallbackQueryHandler   HandlerObj
+	ChannelPostHandler     HandlerObj
+	PollHandler            HandlerObj
+	ChatMemberHandler      HandlerObj
+	PollAnswerHandler      HandlerObj
+	MyChatMemberHandler    HandlerObj
+	ChatJoinRequestHandler HandlerObj
 
-	currentUpdate *objects.Update
+	// Storage interface
+	Storage storage.Storage
+	logger  Logger
 
 	// If you want to add onshutdown function
 	// just append to this object, :P
@@ -41,10 +50,15 @@ type Dispatcher struct {
 	OnWebhookStartup  []OnStartAndShutdownFunc
 	OnPollingStartup  []OnStartAndShutdownFunc
 
-	Welcome    bool
-	Synchronus bool
-	polling    bool
-	webhook    bool
+	isClose bool
+	Welcome bool
+	polling bool
+	webhook bool
+
+	closeChan   chan struct{}
+	functionsWG *sync.WaitGroup
+
+	Debugch chan *objects.Update
 }
 
 var (
@@ -55,24 +69,23 @@ var (
 type OnStartAndShutdownFunc func(dp *Dispatcher)
 
 // NewDispathcer get a new Dispatcher with default values
-// settings -
-// 		syncronus: true
-// 		welcome: true
 func NewDispatcher(bot *Bot, storage storage.Storage) *Dispatcher {
 	dp := &Dispatcher{
-		Bot:        bot,
-		Synchronus: true,
-		Storage:    storage,
-		Welcome:    true,
+		Bot:         bot,
+		Storage:     storage,
+		Welcome:     true,
+		functionsWG: &sync.WaitGroup{},
+		closeChan:   make(chan struct{}, 1),
+		logger:      log.New(os.Stderr, "", log.LstdFlags),
 	}
 
-	dp.MessageHandler = NewHandlerObj(dp)
-	dp.CallbackQueryHandler = NewHandlerObj(dp)
-	dp.ChannelPostHandler = NewHandlerObj(dp)
-	dp.ChatMemberHandler = NewHandlerObj(dp)
-	dp.PollHandler = NewHandlerObj(dp)
-	dp.PollAnswerHandler = NewHandlerObj(dp)
-	dp.ChannelPostHandler = NewHandlerObj(dp)
+	dp.MessageHandler = NewHandlerObj()
+	dp.CallbackQueryHandler = NewHandlerObj()
+	dp.ChannelPostHandler = NewHandlerObj()
+	dp.ChatMemberHandler = NewHandlerObj()
+	dp.PollHandler = NewHandlerObj()
+	dp.PollAnswerHandler = NewHandlerObj()
+	dp.ChannelPostHandler = NewHandlerObj()
 
 	return dp
 }
@@ -81,8 +94,7 @@ func NewDispatcher(bot *Bot, storage storage.Storage) *Dispatcher {
 // You can add multiple functions to startup, or shutdown mthds
 // Example:
 // c := &OnConfig{}
-// // could be added a multiple functions in one call
-// c.Add(func(...) {})
+// c.Add(func(...) {...})
 // dp.OnStartup(c)
 type OnConfig struct {
 	Polling bool
@@ -95,64 +107,76 @@ func (oc *OnConfig) Add(cb OnStartAndShutdownFunc) {
 }
 
 func NewOnConf(cb OnStartAndShutdownFunc) *OnConfig {
-	return &OnConfig{
-		cb:      []OnStartAndShutdownFunc{cb},
-		Webhook: true,
-		Polling: true,
-	}
+	return &OnConfig{cb: []OnStartAndShutdownFunc{cb}, Polling: true, Webhook: true}
 }
 
-func callListFuncs(funcs []OnStartAndShutdownFunc, dp *Dispatcher) {
+func callListFuncs(funcs []OnStartAndShutdownFunc, wg *sync.WaitGroup, dp *Dispatcher) {
 	for _, cb := range funcs {
-		if dp.Synchronus {
-			cb(dp)
-		} else {
-			go cb(dp)
-		}
+		wg.Add(1)
+		go func(disp *Dispatcher) {
+			defer wg.Done()
+			cb(disp)
+		}(dp)
 	}
+	wg.Wait()
 }
 
 // Config for start polling method
-// idk where to put this config, configs or dispatcher?
-type StartPollingConfig struct {
+type PollingConfig struct {
 	*GetUpdatesConfig
+	Context      context.Context
 	SkipUpdates  bool
 	SafeExit     bool
 	ResetWebhook bool
-	ErrorSleep   uint
+	ErrorSleep   time.Duration
 	Relax        time.Duration
 	Timeout      time.Duration
 }
 
-func NewStartPollingConf(skip_updates bool) *StartPollingConfig {
-	return &StartPollingConfig{
+// returns config which filled by default values, except skip updates
+// values:
+//  Relax - 1 sec
+//  ResetWebhook - false
+//  Error Sleep - 0.5 second
+//  SafeExit - true
+//  Timeout - 5 seconds
+func NewPollingConfig(skip_updates bool) *PollingConfig {
+	return &PollingConfig{
 		GetUpdatesConfig: &GetUpdatesConfig{
-			Timeout: 20,
-			Limit:   0,
+			Timeout: 5,
 		},
 		Relax:        1 * time.Second,
 		ResetWebhook: false,
-		ErrorSleep:   5,
+		ErrorSleep:   500 * time.Millisecond,
 		SkipUpdates:  skip_updates,
 		SafeExit:     true,
 		Timeout:      5 * time.Second,
 	}
 }
 
+// StartWebhookConfig uses for start bot using webhooks
 type StartWebhookConfig struct {
 	*SetWebhookConfig
-	Handler            http.Handler
-	KeyFile            interface{}
-	BotURL             string
+	Handler http.Handler
+	KeyFile interface{}
+
+	CertificatePath string
+
+	// your domain, or 0.0.0.0 interface
 	Address            string
+	URI                string
 	DropPendingUpdates bool
 	SafeExit           bool
 }
 
-func NewStartWebhookConf(url string, address string) *StartWebhookConfig {
+// NewWebhookConfig url is webhook url, address is host address
+func NewWebhookConfig(uri string, address string) *StartWebhookConfig {
 	return &StartWebhookConfig{
-		BotURL:  url,
-		Address: address,
+		SetWebhookConfig:   NewSetWebhook(address + uri),
+		Address:            address,
+		SafeExit:           true,
+		DropPendingUpdates: false,
+		URI:                uri,
 	}
 }
 
@@ -164,176 +188,61 @@ func (dp *Dispatcher) ResetWebhook(check bool) error {
 			return err
 		}
 		if wi.URL == "" {
-			return errors.New("url is nothing")
+			return tgpErr.New("url is nothing")
 		}
 	}
 	_, err := dp.Bot.DeleteWebhook(&DeleteWebhookConfig{})
 	return err
 }
 
-// ProcessOneUpdate you guess, processes ONLY one comming update
-// Support only one Message update
-func (dp *Dispatcher) ProcessOneUpdate(update *objects.Update) error {
-	var err error
+// ProcessOneUpdate processes only one comming update
+func (dp *Dispatcher) ProcessOneUpdate(upd *objects.Update) error {
+	local_ctx := dp.Context(upd)
 
-	// very bad code, please dont see this bullshit
-	// ============================================
-	if update.Message != nil {
-		dp.MessageHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.MessageHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.Message))
-			if !ok {
-				return tgpErr.New("message handler type assertion error, need type func(*Bot, *Message), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-
-			err = dp.MessageHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.Message) })
-		}
-		dp.MessageHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
-	} else if update.CallbackQuery != nil {
-		dp.CallbackQueryHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.CallbackQueryHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.CallbackQuery))
-			if !ok {
-				return tgpErr.New("callbackquery handler type assertion error, need type func(*Bot, *CallbackQuery), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-			err = dp.CallbackQueryHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.CallbackQuery) })
-		}
-		dp.CallbackQueryHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
-	} else if update.ChannelPost != nil {
-		dp.ChannelPostHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.ChannelPostHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.Message))
-			if !ok {
-				return tgpErr.New("channelPost handler type assertion error, need type func(*Bot, *ChannelPost), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-			err = dp.ChannelPostHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.ChannelPost) })
-		}
-		dp.ChannelPostHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
-	} else if update.Poll != nil {
-		dp.PollHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.PollHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.Poll))
-			if !ok {
-				return tgpErr.New("poll handler type assertion error, need type func(*Bot, *Poll), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-			err = dp.PollHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.Poll) })
-		}
-		dp.PollHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
-	} else if update.PollAnswer != nil {
-		dp.PollAnswerHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.PollAnswerHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.PollAnswer))
-			if !ok {
-				return tgpErr.New("pollAnswer handler type assertion error, need type func(*Bot, *PollAnswer), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-			err = dp.PollAnswerHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.PollAnswer) })
-		}
-		dp.PollAnswerHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
-	} else if update.ChatMember != nil {
-		dp.ChatMemberHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.ChatMemberHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.ChatMember))
-			if !ok {
-				return tgpErr.New("ChatMember handler type assertion error, need type func(*Bot, *ChatMember), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-			err = dp.ChatMemberHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.ChatMember) })
-		}
-		dp.ChatMemberHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
-	} else if update.MyChatMember != nil {
-
-		dp.MyChatMemberHandler.TriggerMiddleware(dp.Bot, update, PREMIDDLEWARE)
-		for _, h := range dp.MyChatMemberHandler.handlers {
-			cb, ok := h.Callback.(func(*Bot, *objects.ChatMemberUpdated))
-			if !ok {
-				return tgpErr.New("MyChatMember handler type assertion error, need type func(*Bot, *ChatMemberUpdated), current type is - " + fmt.Sprintln(reflect.TypeOf(h.Callback)))
-			}
-			err = dp.MyChatMemberHandler.TriggerMiddleware(dp.Bot, update, PROCESSMIDDLEWARE)
-			if err != nil {
-				dp.Bot.logger.Println(err)
-				continue
-			}
-
-			h.Call(update, func() { cb(dp.Bot, update.MyChatMember) })
-		}
-		dp.MyChatMemberHandler.TriggerMiddleware(dp.Bot, update, POSTMIDDLEWARE)
-
+	if upd.Message != nil {
+		dp.MessageHandler.Trigger(local_ctx)
+	} else if upd.CallbackQuery != nil {
+		dp.CallbackQueryHandler.Trigger(local_ctx)
+	} else if upd.ChannelPost != nil {
+		dp.ChannelPostHandler.Trigger(local_ctx)
+	} else if upd.Poll != nil {
+		dp.PollHandler.Trigger(local_ctx)
+	} else if upd.PollAnswer != nil {
+		dp.PollAnswerHandler.Trigger(local_ctx)
+	} else if upd.ChatMember != nil {
+		dp.ChatMemberHandler.Trigger(local_ctx)
+	} else if upd.MyChatMember != nil {
+		dp.MyChatMemberHandler.Trigger(local_ctx)
+	} else if upd.ChatJoinRequest != nil {
+		dp.ChatJoinRequestHandler.Trigger(local_ctx)
 	} else {
-		text := "detected not supported type of updates, seems like telegram bot api updated before this package updated"
-		return tgpErr.New(text)
+		return tgpErr.New(
+			"detected not supported type of updates, seems like telegram bot api updated before this package updated")
 	}
 
-	// end of adventure
 	return nil
 }
 
 // SkipUpdates skip comming updates, sending to telegram servers
-func (dp *Dispatcher) SkipUpdates() {
-	dp.Bot.GetUpdates(&GetUpdatesConfig{
+func (dp *Dispatcher) SkipUpdates() (err error) {
+	_, err = dp.Bot.GetUpdates(&GetUpdatesConfig{
 		Offset:  -1,
 		Timeout: 1,
 	})
+	return
 }
 
-// SetState set a state which passed for a current user in current chat
-// works only in handler, or in middleware, nor outside
-func (dp *Dispatcher) SetState(state *fsm.State) error {
-	u := dp.currentUpdate
-	if u != nil {
-		cid, uid := getUidAndCidFromUpd(u)
-		return dp.Storage.SetState(cid, uid, state.GetFullState())
+func (dp *Dispatcher) Context(upd *objects.Update) *Context {
+	return &Context{
+		Update:   upd,
+		data:     make(map[string]interface{}),
+		index:    AcceptIndex,
+		Bot:      dp.Bot,
+		Storage:  dp.Storage,
+		Markdown: dp.Bot.Markdown,
+		mu:       sync.Mutex{},
+		hasDone:  make(chan struct{}, 1),
 	}
-	return nil
-}
-
-// ResetState reset state for current user, and current chat
-func (dp *Dispatcher) ResetState() error {
-	if dp.currentUpdate != nil {
-		cid, uid := getUidAndCidFromUpd(dp.currentUpdate)
-		return dp.Storage.SetState(cid, uid, fsm.DefaultState.GetFullState())
-	}
-	return nil
 }
 
 // ========================================
@@ -341,27 +250,35 @@ func (dp *Dispatcher) ResetState() error {
 // ========================================
 
 // Shutdown calls when you enter ^C(which means SIGINT)
-// And SafeExit catch it, before you exit
+// And SafeExit catch it, before OS terminate program
 func (dp *Dispatcher) shutdownPolling() {
-	callListFuncs(dp.OnPollingShutdown, dp)
+	if len(dp.OnPollingShutdown) > 0 {
+		callListFuncs(dp.OnPollingShutdown, dp.functionsWG, dp)
+	}
 }
 
 // startUpPolling function, iterate over a callbacks from OnStartupCallbacks
 // Calls in StartPolling function
 func (dp *Dispatcher) startupPolling() {
-	callListFuncs(dp.OnPollingStartup, dp)
-	dp.welcome()
+	go dp.welcome()
+	if len(dp.OnPollingStartup) > 0 {
+		callListFuncs(dp.OnPollingStartup, dp.functionsWG, dp)
+	}
 }
 
 // shutdownWebhook method, iterate over a callbacks from OnWebhookShutdown
 func (dp *Dispatcher) shutdownWebhook() {
-	callListFuncs(dp.OnWebhookShutdown, dp)
+	if len(dp.OnWebhookShutdown) > 0 {
+		callListFuncs(dp.OnWebhookShutdown, dp.functionsWG, dp)
+	}
 }
 
 // startupPolling method, iterate over a callbacks from OnWebhookStartup
 func (dp *Dispatcher) startupWebhook() {
-	callListFuncs(dp.OnWebhookStartup, dp)
-	dp.welcome()
+	go dp.welcome()
+	if len(dp.OnWebhookStartup) > 0 {
+		callListFuncs(dp.OnWebhookStartup, dp.functionsWG, dp)
+	}
 }
 
 // Onstartup method append to OnStartupCallbaks a callbacks
@@ -369,7 +286,7 @@ func (dp *Dispatcher) startupWebhook() {
 // And golang doesnot support generics, and type equals
 func (dp *Dispatcher) OnStartup(c *OnConfig) {
 	if !c.Webhook && !c.Polling {
-		dp.Bot.logger.Println("this expression have not got any effect")
+		return
 	}
 
 	if c.Webhook {
@@ -384,7 +301,7 @@ func (dp *Dispatcher) OnStartup(c *OnConfig) {
 // Same code like OnStartup
 func (dp *Dispatcher) OnShutdown(c *OnConfig) {
 	if !c.Webhook && !c.Polling {
-		dp.Bot.logger.Println("!polling and !webhook expression have not got any effect")
+		return
 	}
 
 	if c.Webhook {
@@ -395,7 +312,7 @@ func (dp *Dispatcher) OnShutdown(c *OnConfig) {
 	}
 }
 
-func (dp *Dispatcher) Start() {
+func (dp *Dispatcher) start() {
 	if dp.polling {
 		dp.startupPolling()
 	}
@@ -404,7 +321,7 @@ func (dp *Dispatcher) Start() {
 	}
 }
 
-func (dp *Dispatcher) Shutdown() {
+func (dp *Dispatcher) runShutDown() {
 	if dp.polling {
 		dp.shutdownPolling()
 	}
@@ -413,31 +330,43 @@ func (dp *Dispatcher) Shutdown() {
 	}
 }
 
-// SafeExit method uses for notify about exit from program
-// Thanks: https://stackoverflow.com/questions/11268943/is-it-possible-to-capture-a-ctrlc-signal-and-run-a-cleanup-function-in-a-defe
-func (dp *Dispatcher) SafeExit() {
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		dp.shutDown()
-		os.Exit(0)
-	}()
-}
-
-// ShutDownDP calls ResetWebhook for reset webhook in telegram servers, if yes
-func (dp *Dispatcher) shutDown() {
-	dp.Bot.logger.Println("Stop polling!")
-	dp.ResetWebhook(true)
-	dp.Storage.Close()
-	dp.Shutdown()
-}
-
-func (dp *Dispatcher) welcome() {
-	if dp.Welcome {
-		dp.Bot.GetMe()
-		dp.Bot.logger.Println("Bot: ", dp.Bot.Me)
+// stop ...
+func (dp *Dispatcher) stop() {
+	// bad design
+	dp.isClose = true
+	if dp.webhook {
+		errCh := make(chan error)
+		go func() { errCh <- dp.ResetWebhook(true) }()
+		<-errCh
+		close(errCh)
 	}
+	if dp.Storage != nil {
+		dp.Storage.Close()
+	}
+	dp.runShutDown()
+	dp.closeChan <- struct{}{}
+}
+
+func (dp *Dispatcher) welcome() error {
+	if dp.Welcome {
+		_, err := dp.Bot.GetMe()
+		if err != nil {
+			return err
+		}
+		dp.logger.Println("Bot: ", dp.Bot.Me.Username)
+	}
+	return nil
+}
+
+func (dp *Dispatcher) safeExit() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT)
+	go func() {
+		for range signals {
+			dp.stop()
+			os.Exit(0)
+		}
+	}()
 }
 
 // =========================================
@@ -449,7 +378,7 @@ func (dp *Dispatcher) welcome() {
 // Time.Sleep here for stop goroutine for a c.Relax time
 //
 // yeah it bad, and works only on crutches, but works
-func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Update) {
+func (dp *Dispatcher) MakeUpdatesChan(c *PollingConfig, ch chan *objects.Update) {
 	go func() {
 		for {
 			if c.Relax != 0 {
@@ -458,9 +387,9 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Up
 
 			updates, err := dp.Bot.GetUpdates(c.GetUpdatesConfig)
 			if err != nil {
-				dp.Bot.logger.Println(err.Error())
-				dp.Bot.logger.Println("Error with getting updates")
-				time.Sleep(time.Duration(c.ErrorSleep))
+				dp.logger.Println(err.Error())
+				dp.logger.Println("Error with getting updates")
+				time.Sleep(c.ErrorSleep)
 
 				continue
 			}
@@ -475,21 +404,25 @@ func (dp *Dispatcher) MakeUpdatesChan(c *StartPollingConfig, ch chan *objects.Up
 	}()
 }
 
-// ProcessUpdates iterate <-chan *objects.Update
-//
-// Note: use after a MakeUpdatesChan call
+// ProcessUpdates iterates <-chan *objects.Update
 func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
+	cherr := make(chan error, 1)
+
 	for upd := range ch {
 		if upd == nil {
 			continue
 		}
-		dp.currentUpdate = upd
-		err := dp.ProcessOneUpdate(upd)
-		if err != nil {
-			return err
+		go func() { cherr <- dp.ProcessOneUpdate(upd) }()
+
+		select {
+		case err := <-cherr:
+			if err != nil {
+				return err
+			}
+		case <-dp.closeChan:
+			return nil
 		}
 	}
-
 	return nil
 }
 
@@ -497,35 +430,43 @@ func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 // If yes, Telegram Get to your bot a Update
 // Using GetUpdates method in Bot structure
 // GetUpdates config using for getUpdates method
-func (dp *Dispatcher) StartPolling(c *StartPollingConfig) error {
+func (dp *Dispatcher) RunPolling(c *PollingConfig) error {
+	var err error
 	if dp.webhook {
-		panic(ErrorConflictModes)
+		return ErrorConflictModes
 	}
 
 	dp.polling = true
-	dp.Start()
-	if c.SafeExit {
-		dp.SafeExit()
-	}
+	dp.start()
 	if c.ResetWebhook {
-		dp.ResetWebhook(true)
+		err = dp.ResetWebhook(true)
+		if err != nil {
+			return err
+		}
+	}
+
+	if c.SafeExit {
+		dp.safeExit()
 	}
 
 	if c.SkipUpdates {
-		dp.SkipUpdates()
+		err = dp.SkipUpdates()
+		if err != nil {
+			return err
+		}
 	}
 
 	ch := make(chan *objects.Update)
-
+	dp.Debugch = ch
 	dp.MakeUpdatesChan(c, ch)
-	dp.ProcessUpdates(ch)
 
+	dp.ProcessUpdates(ch)
 	return nil
 }
 
 // MakeWebhookChan adds a http Handler with c.BotURL path
 func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig, ch chan *objects.Update) {
-	http.HandleFunc(c.BotURL, func(wr http.ResponseWriter, req *http.Request) {
+	http.HandleFunc(c.URL, func(wr http.ResponseWriter, req *http.Request) {
 		update, err := requestToUpdate(req)
 		if err != nil {
 			errMsg, _ := json.Marshal(map[string]string{"error": err.Error()})
@@ -544,39 +485,46 @@ func (dp *Dispatcher) MakeWebhookChan(c *StartWebhookConfig, ch chan *objects.Up
 // Startup method executes after SetWebhook method call
 //
 // NOTE: you should to add a webhook close callback function, using OnShutdown
-func (dp *Dispatcher) StartWebhook(c *StartWebhookConfig) error {
+func (dp *Dispatcher) RunWebhook(c *StartWebhookConfig) error {
 	if dp.polling {
 		panic(ErrorConflictModes)
 	}
+	fmt.Println("The ip address: ", c.SetWebhookConfig.URL)
 	_, err := dp.Bot.SetWebhook(c.SetWebhookConfig)
 	if err != nil {
 		return err
 	}
 	dp.webhook = true
-	dp.Start()
 	if c.SafeExit {
-		dp.SafeExit()
+		dp.safeExit()
 	}
-	http.HandleFunc(c.BotURL, func(wr http.ResponseWriter, req *http.Request) {
+	dp.start()
+	http.HandleFunc(c.URI, func(wr http.ResponseWriter, req *http.Request) {
 		update, err := requestToUpdate(req)
 		if err != nil {
-			errMsg, _ := json.Marshal(map[string]string{"error": err.Error()})
-			wr.WriteHeader(http.StatusBadRequest)
-			wr.Header().Set("Content-Type", "application/json")
-			wr.Write(errMsg)
+			WriteRequestError(wr, err)
 			return
 		}
 
-		dp.currentUpdate = update
-		err = dp.ProcessOneUpdate(update)
+		err = dp.ProcessOneUpdate(update) // will run in stock mode
 		if err != nil {
-			fmt.Println(err)
+			WriteRequestError(wr, err)
+			return
 		}
 	})
-	certPath, err := guessFileName(c.Certificate)
-	if err != nil {
-		return err
+	var certPath string
+
+	if c.Certificate != nil {
+		certPath, err = guessFileName(c.Certificate)
+		if err != nil {
+			return err
+		}
+	} else if c.CertificatePath != "" {
+		certPath = c.CertificatePath
+	} else {
+		return errors.New("certificate path is not specified")
 	}
+
 	keyfile, err := guessFileName(c.KeyFile)
 	if err != nil {
 		return err

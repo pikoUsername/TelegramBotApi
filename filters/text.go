@@ -7,12 +7,12 @@ import (
 )
 
 type TextFilter struct {
-	text        string
-	ignore_case bool
-	equals      bool
-	contains    bool
-	endswith    bool
-	startswith  bool
+	Text        string
+	Ignore_case bool
+	Equals      bool
+	Contains    bool
+	Endswith    bool
+	Startswith  bool
 }
 
 func (t *TextFilter) Check(u *objects.Update) bool {
@@ -29,18 +29,18 @@ func (t *TextFilter) Check(u *objects.Update) bool {
 		text = u.Poll.Question
 	}
 
-	if t.ignore_case {
+	if t.Ignore_case {
 		text = strings.ToLower(text)
 	}
 
-	if t.equals {
-		return t.text == text
-	} else if t.contains {
-		return strings.Contains(text, t.text)
-	} else if t.endswith {
-		return strings.HasSuffix(text, t.text)
-	} else if t.startswith {
-		return strings.HasPrefix(text, t.text)
+	if t.Equals {
+		return t.Text == text
+	} else if t.Contains {
+		return strings.Contains(text, t.Text)
+	} else if t.Endswith {
+		return strings.HasSuffix(text, t.Text)
+	} else if t.Startswith {
+		return strings.HasPrefix(text, t.Text)
 	}
 
 	return false
@@ -48,8 +48,8 @@ func (t *TextFilter) Check(u *objects.Update) bool {
 
 func Text(text string) *TextFilter {
 	return &TextFilter{
-		text:        text,
-		ignore_case: true,
+		Text:        text,
+		Ignore_case: true,
 		// other fields is false, by default, boolean type by default is false
 	}
 }

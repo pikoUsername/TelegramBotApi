@@ -1,9 +1,5 @@
 package fsm
 
-import (
-	"fmt"
-)
-
 // State ...
 type State struct {
 	State      string
@@ -24,19 +20,24 @@ func (s *State) GetFullState() string {
 		group = "@"
 	}
 
-	return fmt.Sprintf("%s:%s", group, s.State)
+	return group + ":" + s.State
+}
+
+// For NewState("...").Group("...")
+func (s *State) Group(group string) *State {
+	s.GroupState = group
+	return s
 }
 
 // NewState init function
-func NewState(state string, groupstate string) *State {
+func NewState(state string) *State {
 	return &State{
-		State:      state,
-		GroupState: groupstate,
+		State: state,
 	}
 }
 
 // Uses for any purpose
 var (
-	DefaultState = NewState("", "")
-	AnyState     = NewState("*", "")
+	DefaultState = NewState("")
+	AnyState     = NewState("*")
 )

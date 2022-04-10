@@ -1,8 +1,7 @@
 package filters
 
 import (
-	"reflect"
-
+	"github.com/pikoUsername/tgp/fsm"
 	"github.com/pikoUsername/tgp/fsm/storage"
 	"github.com/pikoUsername/tgp/objects"
 )
@@ -10,7 +9,7 @@ import (
 // StateFilter uses for filter a state
 type FSMStateFilter struct {
 	Storage storage.Storage
-	State   interface{}
+	State   *fsm.State
 }
 
 func (sf *FSMStateFilter) GetState(u *objects.Update) string {
@@ -38,31 +37,19 @@ func (sf *FSMStateFilter) GetState(u *objects.Update) string {
 }
 
 func (sf *FSMStateFilter) checkState(state string) bool {
-	if reflect.TypeOf(sf.State).Comparable() && sf.State == state {
-		return true
-	}
-
-	switch st := sf.State.(type) {
-	case string:
-		return st == state
-	case []string:
-		for _, s := range st {
-			if s == state {
-				return true
-			}
-		}
-	}
-
-	return false
+	return sf.State.GetFullState() == state
 }
 
 func (sf *FSMStateFilter) Check(u *objects.Update) bool {
 	state := sf.GetState(u)
-	return sf.checkState(state) || state == "*"
+	h := sf.checkState(state) || state == "*"
+	return h
 }
 
-func StateFilter(state struct{}) *FSMStateFilter {
+// StateFilter state argument types - State
+func StateFilter(state *fsm.State, storage storage.Storage) *FSMStateFilter {
 	return &FSMStateFilter{
-		State: state,
+		State:   state,
+		Storage: storage,
 	}
 }

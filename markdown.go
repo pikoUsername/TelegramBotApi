@@ -11,23 +11,22 @@ var (
 	httpRegex = getHTTPRegex()
 )
 
-type parseMode interface {
-	Link(link, text string)
-
-	Bold(text ...string)
-	UnderLine(text ...string)
-	StrikeThrough(text ...string)
-
-	Pre(text ...string)
-	Code(code string, language string)
-	PreCode(code string, language string)
-
-	mode() string
-}
-
 func getHTTPRegex() *regexp.Regexp {
 	regex, _ := regexp.Compile("^(http|https)://")
 	return regex
+}
+
+type Markdown interface {
+	Link(string, string) (string, error)
+	Strong(...string) string
+	Italic(...string) string
+	Code(string, ...string) string
+	Pre(...string) string
+	PreCode(string, string) string
+	Bold(...string) string
+	UnderLine(...string) string
+	StrikeThrough(...string) string
+	Spoiler(...string) string
 }
 
 type HTMLMarkdown struct{}
@@ -51,9 +50,9 @@ func (ht *HTMLMarkdown) Italic(text ...string) string {
 }
 
 // Code is Code, telegram only lanuage- startswith classes for code
-func (hm *HTMLMarkdown) Code(code string, language string) string {
+func (hm *HTMLMarkdown) Code(language string, code ...string) string {
 	return fmt.Sprintf(
-		"<code class='language-%s'>%s</code>", language, code,
+		"<code class='language-%s'>%s</code>", language, strings.Join(code, ""),
 	)
 }
 
@@ -75,7 +74,11 @@ func (hm *HTMLMarkdown) UnderLine(text ...string) string {
 }
 
 func (hm *HTMLMarkdown) StrikeThrough(text ...string) string {
-	return "<s>" + strings.Join(text, " ") + "</b>"
+	return "<s>" + strings.Join(text, " ") + "</s>"
+}
+
+func (hm *HTMLMarkdown) Spoiler(text ...string) string {
+	return "<tg-spoiler>" + fmt.Sprintln(text) + "</tg-spoiler>"
 }
 
 func NewHTMLMarkdown() *HTMLMarkdown {
@@ -84,8 +87,8 @@ func NewHTMLMarkdown() *HTMLMarkdown {
 
 type Markdown2 struct{}
 
-func (md *Markdown2) Link(url string, text ...string) string {
-	return "[" + fmt.Sprintln(text) + "](" + url + ")"
+func (md *Markdown2) Link(url string, text string) (string, error) {
+	return "[" + fmt.Sprintln(text) + "](" + url + ")", nil
 }
 
 func (md *Markdown2) Pre(text ...string) string {
@@ -114,6 +117,14 @@ func (md *Markdown2) Italic(text ...string) string {
 
 func (md *Markdown2) Bold(text ...string) string {
 	return "*" + fmt.Sprintln(text) + "*"
+}
+
+func (md *Markdown2) Strong(text ...string) string {
+	return "#" + fmt.Sprintln(text) + "#"
+}
+
+func (md *Markdown2) Spoiler(text ...string) string {
+	return "||" + fmt.Sprintln(text) + "||"
 }
 
 func NewMarkdown2() *Markdown2 {

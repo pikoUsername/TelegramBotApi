@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 github.com/cespare/xxhash/v2 v2.1.1 h1:6MnRN8NT7+YBpUIWxHtefFZOKTAPgGjpQSxqLNn0+qY=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cespare/xxhash/v2 v2.1.2 h1:YRXhKfTDauu4ajMg1TPgFO5jnlC2HCbmLXMcTG5cbYE=
@@ -95,3 +96,9 @@ gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.2.4/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.3.0/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
+=======
+github.com/pikoUsername/MultipartReader v0.0.0-20211222125707-c33be79cc71b h1:5C/Embs+nDx0XTe/Etx1/aYtrBnYTQxH90hzQOJG01A=
+github.com/pikoUsername/MultipartReader v0.0.0-20211222125707-c33be79cc71b/go.mod h1:HBtpjBa+PZcXHrQVNOvjk17yHfopdvCcjMQx+lGNFDc=
+github.com/pikoUsername/multipartReader v0.0.0-20211222123924-eb4751a8c049 h1:r9wEistgDMsnlvUDC4bL6YxBUmCznGDHSm0j3URCmb0=
+github.com/pikoUsername/multipartReader v0.0.0-20211222123924-eb4751a8c049/go.mod h1:h+jaM8PtT3bi48hgmUN5LvLkLxWbT6Nr/6cf6g8gu/g=
+>>>>>>> test

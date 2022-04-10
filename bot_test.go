@@ -1,4 +1,4 @@
-package tgp_test
+package tgp
 
 import (
 	"fmt"
@@ -7,49 +7,38 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/pikoUsername/tgp"
 	"github.com/pikoUsername/tgp/objects"
 )
 
 var (
-	ParseMode     = "HTML"
-	TestChatID, _ = strconv.ParseInt(os.Getenv("test_chat_id"), 10, 64)
-	FileDirectory = "./.sandbox"
-	SaveFile      = path.Join(FileDirectory, "file")
-	WebhookURL    = ""
-	TestToken     = os.Getenv("TEST_TOKEN")
+	parseMode     = "HTML"
+	testChatID, _ = strconv.ParseInt(os.Getenv("test_chat_id"), 10, 64)
+	fileDirectory = "./.sandbox"
+	saveFile      = path.Join(fileDirectory, "file")
+	webhookURL    = ""
+	testToken     = os.Getenv("TEST_TOKEN")
 
 	// here could be any image, file, anthing else
-	DownloadFromURL = "https://random.imagecdn.app/500/150"
-	NothingInbytes  = []byte{}
-	Timeout         = 2 * time.Second
+	downloadFromURL = "https://random.imagecdn.app/500/150"
 )
 
-func FailIfErr(t *testing.T, err error) {
+func failIfErr(t *testing.T, err error) {
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func PanicIfErr(t *testing.T, err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
-func getBot(t *testing.T) *tgp.Bot {
-	b, err := tgp.NewBot(TestToken, ParseMode, nil)
+func getBot(t *testing.T) *Bot {
+	b, err := NewBot(testToken, parseMode, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b.Debug = true
 	return b
 }
 
 func TestCheckToken(t *testing.T) {
-	b, err := tgp.NewBot("bla:bla", "HTML", nil)
+	b, err := NewBot("bla:bla", "HTML", nil)
 	if err != nil && b == nil {
 		t.Fatal(err)
 	}
@@ -57,10 +46,10 @@ func TestCheckToken(t *testing.T) {
 
 func TestDownloadFile(t *testing.T) {
 	b := getBot(t)
-	dir, err := os.Open(FileDirectory)
+	dir, err := os.Open(fileDirectory)
 	if err == os.ErrNotExist {
-		os.Mkdir(FileDirectory, 0777)
-		dir, err = os.Open(FileDirectory)
+		os.Mkdir(fileDirectory, 0777)
+		dir, err = os.Open(fileDirectory)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,14 +59,14 @@ func TestDownloadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !stat.IsDir() {
-		t.Fatal("Sorry but -"+FileDirectory, "Is file, delete file and try again!")
+		t.Fatal("Sorry but -"+fileDirectory, "Is file, delete file and try again!")
 	}
 
-	f, err := os.OpenFile(SaveFile, os.O_RDWR|os.O_CREATE, 0666)
+	f, err := os.OpenFile(saveFile, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = b.DownloadFile(DownloadFromURL, f, true)
+	err = b.DownloadFile(downloadFromURL, f)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,10 +76,10 @@ func TestDownloadFile(t *testing.T) {
 	}
 	bs := make([]byte, stat.Size())
 	f.Read(bs)
-	if bs == nil || strings.Compare(string(bs), "") == -1 && DownloadFromURL != "" {
+	if len(bs) == 0 || strings.Compare(string(bs), "") == -1 && downloadFromURL != "" {
 		t.Fatal(
 			"Cannot download file from ethernet, debug: file - ", bs,
-			", URL: ", DownloadFromURL, ", Directory: ", stat.Name(), ", Bot: ", b)
+			", URL: ", downloadFromURL, ", Directory: ", stat.Name(), ", Bot: ", b)
 	}
 }
 
@@ -110,7 +99,7 @@ func TestGetMe(t *testing.T) {
 
 func TestGetUpdates(t *testing.T) {
 	b := getBot(t)
-	_, err := b.GetUpdates(&tgp.GetUpdatesConfig{})
+	_, err := b.GetUpdates(&GetUpdatesConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,12 +107,12 @@ func TestGetUpdates(t *testing.T) {
 
 func TestParseMode(t *testing.T) {
 	b := getBot(t)
-	line, err := tgp.NewHTMLMarkdown().Link("https://www.google.com", "lol")
+	line, err := NewHTMLMarkdown().Link("https://www.google.com", "lol")
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := &tgp.SendMessageConfig{
-		ChatID: int64(TestChatID),
+	m := &SendMessageConfig{
+		ChatID: int64(testChatID),
 		Text:   line,
 	}
 	_, err = b.SendMessageable(m)
@@ -134,7 +123,7 @@ func TestParseMode(t *testing.T) {
 
 func TestSetWebhook(t *testing.T) {
 	b := getBot(t)
-	resp, err := b.SetWebhook(tgp.NewSetWebhook(WebhookURL))
+	resp, err := b.SetWebhook(NewSetWebhook(webhookURL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,11 +134,11 @@ func TestSetCommands(t *testing.T) {
 	// OK
 	b := getBot(t)
 	cmd := &objects.BotCommand{Command: "31321", Description: "ALLOO"}
-	ok, err := b.SetMyCommands(tgp.NewSetMyCommands(cmd))
+	ok, err := b.SetMyCommands(NewSetMyCommands(cmd))
 	if err != nil {
 		t.Fatal(err, ok)
 	}
-	cmds, err := b.GetMyCommands(&tgp.GetMyCommandsConfig{})
+	cmds, err := b.GetMyCommands(&GetMyCommandsConfig{})
 	if err != nil {
 		t.Fatal(err, cmds)
 	}

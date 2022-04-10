@@ -2,7 +2,6 @@ package objects
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"time"
 )
@@ -22,17 +21,29 @@ func (f *InputFile) Read(p []byte) (n int, err error) {
 	if f.File != nil && f.URL == "" {
 		return f.File.Read(p)
 	}
-	bs, err := ioutil.ReadFile(f.Path)
+	file, err := os.Open(f.Path)
 	if err != nil {
 		return 0, err
 	}
-	p = bs
-	bs_len := len(bs)
-	f.Length = bs_len
-	return bs_len, nil
+	stat, err := file.Stat()
+	if err != nil {
+		return 0, err
+	}
+
+	// you should call Close after Read function
+	f.File = file
+	f.Length = (int)(stat.Size())
+	return f.Length, nil
 }
 
-func NewInputFile(path string, name string) (*InputFile, error) {
+func (f *InputFile) Close() error {
+	if s, ok := f.File.(io.ReadCloser); ok {
+		return s.Close()
+	}
+	return nil
+}
+
+func NewInputFile(path, name string) (*InputFile, error) {
 	var err error
 
 	f, err := os.OpenFile(path, os.O_RDONLY, 0)
@@ -46,11 +57,12 @@ func NewInputFile(path string, name string) (*InputFile, error) {
 	return &InputFile{
 		File:   f,
 		Path:   path,
+		Name:   name,
 		Length: int(stat.Size()),
 	}, nil
 }
 
-func InputFileFromReader(r io.Reader, length int, name string) *InputFile {
+func NewInputFileFromReader(r io.Reader, length int, name string) *InputFile {
 	return &InputFile{
 		File:   r,
 		Length: length,

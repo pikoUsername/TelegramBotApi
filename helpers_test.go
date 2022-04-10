@@ -1,4 +1,4 @@
-package tgp_test
+package tgp
 
 import (
 	"net/url"
@@ -15,7 +15,10 @@ func TestUrlvaluesToMapString(t *testing.T) {
 
 	v.Add("kek", value_text)
 
+<<<<<<< HEAD
 	// go test -v dont working ???
+=======
+>>>>>>> test
 	// urlValuesToMapString(v, val)
 
 	if v, ok := val["kek"]; !ok || v != value_text {

@@ -9,7 +9,10 @@ import (
 // https://core.telegram.org/bots/api#message
 type Message struct {
 	// MessageId ...
-	MessageID int32 `json:"message_id"`
+	MessageID int64 `json:"message_id"`
+
+	// oops...
+	Date int64 `json:"date"`
 
 	// From User
 	From *User `json:"from"`

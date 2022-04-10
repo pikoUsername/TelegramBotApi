@@ -1,61 +1,62 @@
-simple Telegram Bot Api wrapper, maybe will grow to framework 
+# TGP 
 
-<h1>
-This package is on alpha version,
-and any update can broke backward capability
-</h1>
+| golang version 1.15+ 
 
-NOTE: Please, don't try to use this package in serious projects 
+> Telegram Golang Package
 
-## version 0.1.1
-<br>
+> go get -u github.com/pikoUsername/tgp
 
-## docs
-<br>
- (WIP) for first time, you can read the code 
+# Overview
+TGP(bad name) - telegram bot api client library. 
+Developed as better version of other same libraries, 
+but not tested, made of shit and sticks, and not optimized version. 
 
-Download This package using `go get -v github.com/pikoUsername/tgp` command 
+Requires golang 1.15+ version 
 
-This package based/expired/copy_pasted on go-telegram-bot, and aiogram
-
-## Example
+# Examples
+Here is simple example of echo bot: 
 ```go
 package main
 
 import (
 	"fmt"
-	"log"
-    
-    "github.com/pikoUsername/tgp"
-	"github.com/pikoUsername/tgp/utils"
-    "github.com/pikoUsername/tgp/objects"
+
+	"github.com/pikoUsername/tgp"
+	"github.com/pikoUsername/tgp/fsm/storage"
 )
 
-func handler(bot *tgp.Bot, m *objects.Message) { 
-    if m.Text == "" { 
-        return
-    }
-
-    _, err := bot_.SendMessage(&tgp.SendMessageConfig{
-        ChatID: m.Chat.ID, 
-        Text: m.Text, 
-    })
-    if err != nil { 
-        fmt.Println(err)
-    }
-}
-
 func main() {
-	bot, err := tgp.NewBot("<token>", true, utils.ModeHTML)
+	bot, err := tgp.NewBot("<token>", "HTML", nil)
+
 	if err != nil {
 		panic(err)
 	}
 
-	dp := tgp.NewDispatcher(bot)
-	if err != nil {
-		panic(err)
-	}
-    dp.MessageHandler.Register(handler)
-    dp.StartPolling(tgp.NewStartPollingConfig(true))
+	dp := tgp.NewDispatcher(bot, storage.NewMemoryStorage())
+
+	dp.MessageHandler.Register(func(ctx *tgp.Context) {
+		_, err := bot.Send(tgp.NewSendMessage(ctx.Message.Chat.ID, ctx.Message.Text))
+		if err != nil {
+			fmt.Println(err)
+		}
+	})
+	dp.RunPolling(tgp.NewStartPollingConf(true))
 }
-```
+``` 
+(See more complicated examples in _examples/ directory)
+
+# FSM
+Finate State Machine - Sets state for every user in bot,
+and uses special filter for interact with user, using Finate States
+Currently FSM on testing period, and not well tested
+See example in _examples directory. 
+
+# Filters
+Filters support - as i mentioned before, filters uses as filters. 
+Currently supported Regex, FSM, command, test, content-type, chat-type filters.  
+
+# Warning
+If you wanna use this package, for something more than hello, world bot.
+Don't do it! Package have no stable version in this moment
+
+Current Version of TGP - 0.13.0v
