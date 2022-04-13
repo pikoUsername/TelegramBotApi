@@ -21,15 +21,15 @@ func main() {
 
 	dp := tgp.NewDispatcher(bot, storage.NewMemoryStorage())
 
-	dp.MessageHandler.Register(func(ctx *tgp.Context) {
+	dp.MessageHandler.HandlerFunc(func(ctx *tgp.Context) {
 		ctx.Reply(tgp.NewSendMessage("Donald Duck is watching you."))
 		ctx.SetState(first_state)
 	})
 
-	dp.MessageHandler.Register(func(ctx *tgp.Context) {
+	dp.MessageHandler.HandlerFunc(func(ctx *tgp.Context) {
 		ctx.Reply(tgp.NewSendMessage("And big floppa too."))
 		ctx.SetState(second_state)
-	}, filters.StateFilter(first_state, dp.Storage))
+	}.Filters(filters.StateFilter(first_state, dp.Storage))
 
 	dp.RunPolling(tgp.NewPollingConfig(true))
 }

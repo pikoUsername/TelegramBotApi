@@ -21,7 +21,7 @@ func main() {
 	// register a your callback
 	// this callback will be called on every message
 	// because handler havenot got any filters
-	dp.MessageHandler.Register(func(ctx *tgp.Context) {
+	dp.MessageHandler.HandlerFunc(func(ctx *tgp.Context) {
 		// returning message text to same chat
 		_, err := ctx.Reply(tgp.NewReplyMessage(ctx.Message.Text))
 		if err != nil {

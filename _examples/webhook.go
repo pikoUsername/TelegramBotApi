@@ -21,7 +21,7 @@ func main() {
 	failIfErr(err)
 	dp := tgp.NewDispatcher(bot, storage.NewMemoryStorage())
 
-	dp.MessageHandler.Register(func(ctx *tgp.Context) {
+	dp.MessageHandler.HandlerFunc(func(ctx *tgp.Context) {
 		_, err := ctx.Reply(tgp.NewSendMessage(ctx.Message.Text))
 		if err != nil {
 			fmt.Println(err)

@@ -34,7 +34,7 @@ func TestRegister(t *testing.T) {
 	dp, err := GetDispatcher(false)
 	failIfErr(t, err)
 	// Simple echo handler
-	dp.MessageHandler.Register(func(ctx *Context) {
+	dp.MessageHandler.HandlerFunc(func(ctx *Context) {
 		bot := dp.Bot
 		msg, err := bot.Send(&SendMessageConfig{
 			ChatID: int64(ctx.Message.From.ID),
@@ -44,7 +44,7 @@ func TestRegister(t *testing.T) {
 			panic(err)
 		}
 		fmt.Println(msg.Text)
-	}, filters.CommandStart())
+	}).Filters(filters.CommandStart())
 	if len(dp.MessageHandler.Handlers()) == 0 {
 		t.Fatal("No handlers has been registered")
 	}
@@ -56,7 +56,7 @@ func TestHandlerTrigger(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dp.MessageHandler.Register(func(ctx *Context) {
+	dp.MessageHandler.HandlerFunc(func(ctx *Context) {
 		t.Log("Working!!")
 		t.Fatal("Working!")
 		ctx.Error("312313")
@@ -78,7 +78,7 @@ func BenchmarkTriggerHandler(b *testing.B) {
 		b.Fail()
 	}
 
-	dp.MessageHandler.Register(func(ctx *Context) {})
+	dp.MessageHandler.HandlerFunc(func(ctx *Context) {})
 
 	upd := &objects.Update{
 		UpdateID: 100,

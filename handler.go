@@ -58,6 +58,11 @@ func (he *HandlerType) GetHandler() HandlerFunc {
 }
 
 // Use middleware registration implementation
+// Middleware can be used as error handlers
+// There are 2 middleware types.
+// First is middleware that wrapps a handler.
+// Second one is just handler that uses Next method to go next handler
+// (i m not sure, can this be considered as middleware and not fsm?)
 func (he *HandlerType) Use(middleware MiddlewareFunc) *HandlerType {
 	he.handler = middleware(he.handler)
 	return he
@@ -85,24 +90,25 @@ func NewHandlerType(handler HandlerFunc) *HandlerType {
 	}
 }
 
-type HandlerObj interface {
+type HandlerChain interface {
 	Trigger(*Context)
 	HandlerFunc(HandlerFunc) *HandlerType
-	Register(...interface{}) *HandlerType
 	Handlers() []HandlerFunc
+	Use(md ...MiddlewareFunc)
 }
 
-type DefaultHandlerObj struct {
-	handlers []*HandlerType
-	mu       sync.Mutex
+type DefaultHandlerChain struct {
+	middleware []MiddlewareFunc
+	handlers   []*HandlerType
+	mu         sync.Mutex
 }
 
-// NewHandlerObj creates new DefaultHandlerObj
-func NewHandlerObj() *DefaultHandlerObj {
-	return &DefaultHandlerObj{mu: sync.Mutex{}}
+// NewHandlerChain creates new DefaultHandlerChain
+func NewHandlerChain() *DefaultHandlerChain {
+	return &DefaultHandlerChain{mu: sync.Mutex{}}
 }
 
-func (ho *DefaultHandlerObj) Handlers() []HandlerFunc {
+func (ho *DefaultHandlerChain) Handlers() []HandlerFunc {
 	// copies handlers object
 	l := make([]HandlerFunc, len(ho.handlers))
 	for _, h := range ho.handlers {
@@ -111,55 +117,30 @@ func (ho *DefaultHandlerObj) Handlers() []HandlerFunc {
 	return l
 }
 
-func (ho *DefaultHandlerObj) Trigger(c *Context) {
+func (ho *DefaultHandlerChain) Trigger(c *Context) {
 	c.handlers = ho.handlers
 	for i, h := range ho.handlers {
 		if len(h.filters) == 0 || checkFilters(h.filters, c.Update) {
-			h.handler(c)
+			if len(ho.middleware) > 0 {
+				for _, md := range ho.middleware {
+					md(h.handler)(c)
+				}
+			} else {
+				h.handler(c)
+			}
 			c.cursor = i
 			break
 		}
 	}
 }
 
-// HandlerFunc appends new handlerType, and returns it
-func (ho *DefaultHandlerObj) HandlerFunc(h HandlerFunc) *HandlerType {
-	handler := &HandlerType{handler: h}
-	ho.handlers = append(ho.handlers, handler)
-	return handler
+func (ho *DefaultHandlerChain) Use(md ...MiddlewareFunc) {
+	ho.middleware = append(ho.middleware, md...)
 }
 
-// Register could work in two modes
-//
-// 1. registers a filters, and handlers, this mode will register chain in the end of function
-// 2. registers handlerchain instantly
-// works for every functions argument
-func (ho *DefaultHandlerObj) Register(callbacks ...interface{}) *HandlerType {
-	var partial bool
-	handler := &HandlerType{}
-
-	for _, elem := range callbacks {
-		switch conv := elem.(type) {
-		case Filter:
-			partial = true
-			handler.Filters(conv)
-
-		case func(*Context):
-			partial = true
-			handler.Handler(conv)
-
-		case *HandlerType:
-			ho.mu.Lock()
-			ho.handlers = append(ho.handlers, conv)
-			ho.mu.Unlock()
-		default:
-			return nil
-		}
-	}
-	if partial {
-		ho.mu.Lock()
-		ho.handlers = append(ho.handlers, handler)
-		ho.mu.Unlock()
-	}
+// HandlerFunc appends new handlerType, and returns it
+func (ho *DefaultHandlerChain) HandlerFunc(h HandlerFunc) *HandlerType {
+	handler := &HandlerType{handler: h}
+	ho.handlers = append(ho.handlers, handler)
 	return handler
 }

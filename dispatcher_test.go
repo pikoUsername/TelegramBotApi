@@ -47,7 +47,7 @@ func BenchmarkProcessOneUpdate(b *testing.B) {
 		b.Fail()
 	}
 
-	dp.MessageHandler.Register(func(ctx *Context) {
+	dp.MessageHandler.HandlerFunc(func(ctx *Context) {
 	})
 
 	upd := &objects.Update{

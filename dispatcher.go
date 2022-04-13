@@ -43,8 +43,6 @@ type Dispatcher struct {
 	Storage storage.Storage
 	logger  Logger
 
-	// If you want to add onshutdown function
-	// just append to this object, :P
 	OnWebhookShutdown []OnStartAndShutdownFunc
 	OnPollingShutdown []OnStartAndShutdownFunc
 	OnWebhookStartup  []OnStartAndShutdownFunc
@@ -333,6 +331,9 @@ func (dp *Dispatcher) runShutDown() {
 // stop ...
 func (dp *Dispatcher) stop() {
 	// bad design
+	if dp.isClose {
+		return
+	}
 	dp.isClose = true
 	if dp.webhook {
 		errCh := make(chan error)
@@ -420,6 +421,7 @@ func (dp *Dispatcher) ProcessUpdates(ch <-chan *objects.Update) error {
 				return err
 			}
 		case <-dp.closeChan:
+			dp.stop()
 			return nil
 		}
 	}
