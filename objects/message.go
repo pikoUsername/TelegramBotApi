@@ -74,6 +74,8 @@ type Message struct {
 	NewChatTitle   string        `json:"new_chat_title"`
 	NewChatPhoto   []*PhotoSize  `json:"new_chat_photo"`
 	LeftChatMember *User         `json:"left_chat_member"`
+
+	WebAppData *WebAppData `json:"web_app_data"`
 }
 
 func (m *Message) GetContentType() string {

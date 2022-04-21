@@ -20,6 +20,7 @@ type KeyboardButton struct {
 	RequestContact  bool                    `json:"request_contact"`
 	RequestLocation bool                    `json:"request_location"`
 	RequestPoll     *KeyboardButtonPollType `json:"request_poll"`
+	WebApp          *WebAppInfo             `json:"web_app"`
 }
 
 // ReplyKeyboardMarkup represents ReplyKeyboardMarkup object

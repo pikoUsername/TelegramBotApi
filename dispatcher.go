@@ -30,14 +30,14 @@ type Logger interface {
 type Dispatcher struct {
 	Bot *Bot
 	// Handlers
-	MessageHandler         HandlerObj
-	CallbackQueryHandler   HandlerObj
-	ChannelPostHandler     HandlerObj
-	PollHandler            HandlerObj
-	ChatMemberHandler      HandlerObj
-	PollAnswerHandler      HandlerObj
-	MyChatMemberHandler    HandlerObj
-	ChatJoinRequestHandler HandlerObj
+	MessageHandler         HandlerChain
+	CallbackQueryHandler   HandlerChain
+	ChannelPostHandler     HandlerChain
+	PollHandler            HandlerChain
+	ChatMemberHandler      HandlerChain
+	PollAnswerHandler      HandlerChain
+	MyChatMemberHandler    HandlerChain
+	ChatJoinRequestHandler HandlerChain
 
 	// Storage interface
 	Storage storage.Storage
@@ -77,13 +77,13 @@ func NewDispatcher(bot *Bot, storage storage.Storage) *Dispatcher {
 		logger:      log.New(os.Stderr, "", log.LstdFlags),
 	}
 
-	dp.MessageHandler = NewHandlerObj()
-	dp.CallbackQueryHandler = NewHandlerObj()
-	dp.ChannelPostHandler = NewHandlerObj()
-	dp.ChatMemberHandler = NewHandlerObj()
-	dp.PollHandler = NewHandlerObj()
-	dp.PollAnswerHandler = NewHandlerObj()
-	dp.ChannelPostHandler = NewHandlerObj()
+	dp.MessageHandler = NewHandlerChain()
+	dp.CallbackQueryHandler = NewHandlerChain()
+	dp.ChannelPostHandler = NewHandlerChain()
+	dp.ChatMemberHandler = NewHandlerChain()
+	dp.PollHandler = NewHandlerChain()
+	dp.PollAnswerHandler = NewHandlerChain()
+	dp.ChannelPostHandler = NewHandlerChain()
 
 	return dp
 }

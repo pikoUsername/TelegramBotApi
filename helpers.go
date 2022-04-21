@@ -44,7 +44,7 @@ type Permissions struct {
 	CanPostMessages       bool `json:"can_post_message"`
 	CanEditMessages       bool `json:"can_edit_messages"`
 	CanDeleteMessage      bool `json:"can_delete_message"`
-	CanManageVoicechats   bool `json:"can_manage_voice_chats"`
+	CanManageVideochats   bool `json:"can_manage_video_chats"`
 	CanRestrictMembers    bool `json:"can_restrict_members"`
 	CanPromoteMembers     bool `json:"can_promote_members"`
 	CanChangeInfo         bool `json:"can_change_info"`

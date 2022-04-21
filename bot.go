@@ -14,6 +14,9 @@ import (
 	"github.com/pikoUsername/tgp/objects"
 )
 
+// If TG API method's arguments count less than 3,
+// then it will be passed as arguments in the function.
+
 // Bot can be created using Json config,
 // Copy-pasted from go-telegram-bot-api
 //
@@ -614,7 +617,10 @@ func (bot *Bot) GetChatMemberCount(chat_id int64) (int, error) {
 	if err != nil {
 		return count, err
 	}
-	json.Unmarshal(resp.Result, &count)
+	err = json.Unmarshal(resp.Result, &count)
+	if err != nil {
+		return 0, err
+	}
 	return count, nil
 }
 
@@ -712,6 +718,39 @@ func (bot *Bot) ApproveChatJoinRequest(chat_id int64, user_id int64) (bool, erro
 	return bot.BoolRequest("approveChatJoinRequest", v)
 }
 
+func (bot *Bot) SetMyDefaultAdministratorRights(rights *objects.ChatAdministratorRights, for_channels bool) (bool, error) {
+	v := url.Values{}
+
+	if rights != nil {
+		bs, err := json.Marshal(rights)
+		if err != nil {
+			return false, err
+		}
+		v.Add("rights", BytesToString(bs))
+	}
+	v.Add("for_channels", strconv.FormatBool(for_channels))
+	return bot.BoolRequest("setMyDefaultAdministratorRights", v)
+}
+
+func (bot *Bot) GetMyDefaultAdministratorRights(for_channels bool) (*objects.ChatAdministratorRights, error) {
+	v := url.Values{}
+
+	v.Add("for_channels", strconv.FormatBool(for_channels))
+	resp, err := bot.Request("getMyDefaultAdministratorRights", v)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var rights *objects.ChatAdministratorRights
+	err = json.Unmarshal(resp.Result, rights)
+	if err != nil {
+		return nil, err
+	}
+
+	return rights, nil
+}
+
 // ================
 // User methods
 // ================
@@ -727,7 +766,10 @@ func (bot *Bot) GetUserProfilePhotos(c GetUserProfilePhotosConf) (*objects.UserP
 	}
 
 	var photos objects.UserProfilePhotos
-	json.Unmarshal(resp.Result, &photos)
+	err = json.Unmarshal(resp.Result, &photos)
+	if err != nil {
+		return nil, err
+	}
 
 	return &photos, nil
 }
@@ -834,4 +876,52 @@ func (bot *Bot) PromoteChatMember(config PromoteChatMemberConfig) (bool, error) 
 		return false, err
 	}
 	return ok, nil
+}
+
+// =====================
+// Web
+// =====================
+func (bot *Bot) AnswerWebAppQuery(c AnswerWebAppQueryConf) (*objects.SentWebAppMessage, error) {
+	v, err := c.values()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := bot.Request(c.method(), v)
+	if err != nil {
+		return nil, err
+	}
+	var result *objects.SentWebAppMessage
+	err = json.Unmarshal(resp.Result, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (bot *Bot) SetChatMenuButton(ChatID int64, MenuButton *objects.MenuButton) (ok bool, err error) {
+	v := url.Values{}
+
+	v.Add("chat_id", strconv.FormatInt(ChatID, 10))
+	bs, err := json.Marshal(MenuButton)
+
+	if err != nil {
+		return false, err
+	}
+	v.Add("menu_button", BytesToString(bs))
+
+	return bot.BoolRequest("setChatMenuButton", v)
+}
+
+func (bot *Bot) GetChatMenuButton(ChatID int64) (menu *objects.MenuButton, err error) {
+	v := url.Values{}
+	v.Add("chat_id", strconv.FormatInt(ChatID, 10))
+	resp, err := bot.Request("getChatMenuButton", v)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(resp.Result, menu)
+	if err != nil {
+		return nil, err
+	}
+	return menu, nil
 }

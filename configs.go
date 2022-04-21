@@ -116,7 +116,7 @@ type UserPermissionsConfig struct {
 	CanPostMessage      bool `json:"can_post_message"`
 	CanEditMessages     bool `json:"can_edit_messages"`
 	CanDeleteMessages   bool `json:"can_delete_messages"`
-	CanManageVoiceChats bool `json:"can_manage_voice_chats"`
+	CanManageVideoChats bool `json:"can_manage_video_chats"`
 	CanRestrictMembers  bool `json:"can_restrict_members"`
 	CanPromoteMembers   bool `json:"can_promote_members"`
 	CanChangeInfo       bool `json:"can_change_info"`
@@ -1529,4 +1529,41 @@ func (sst *SetStickerSetThumbConf) params() (map[string]string, error) {
 
 func (sst *SetStickerSetThumbConf) getFiles() []*objects.InputFile {
 	return []*objects.InputFile{sst.Thumb}
+}
+
+func NewSetStickerSetThumb(name string, userId int64) *SetStickerSetThumbConf {
+	return &SetStickerSetThumbConf{
+		Name:   name,
+		UserId: userId,
+	}
+}
+
+type AnswerWebAppQueryConf struct {
+	WebAppQueryId string
+	Result        objects.InlineQueryResult
+}
+
+func (awpq *AnswerWebAppQueryConf) method() string {
+	return "answerWebAppQuery"
+}
+
+func (awpq *AnswerWebAppQueryConf) values() (url.Values, error) {
+	v := url.Values{}
+
+	v.Add("web_app_query_id", awpq.WebAppQueryId)
+
+	bs, err := json.Marshal(awpq.Result)
+	if err != nil {
+		return nil, err
+	}
+	v.Add("result", BytesToString(bs))
+
+	return v, nil
+}
+
+func NewAnswerWebQuery(web_app_query_id string, result objects.InlineQueryResult) *AnswerWebAppQueryConf {
+	return &AnswerWebAppQueryConf{
+		WebAppQueryId: web_app_query_id,
+		Result:        result,
+	}
 }

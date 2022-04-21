@@ -1,5 +1,7 @@
 package objects
 
+import "time"
+
 // Chat type
 type Chat struct {
 	ID        int64  `json:"id"`
@@ -24,7 +26,7 @@ type ChatMember struct {
 	CanPostMessages       bool `json:"can_post_message"`
 	CanEditMessages       bool `json:"can_edit_messages"`
 	CanDeleteMessage      bool `json:"can_delete_message"`
-	CanManageVoicechats   bool `json:"can_manage_voice_chats"`
+	CanManageVideochats   bool `json:"can_manage_video_chats"`
 	CanRestrictMembers    bool `json:"can_restrict_members"`
 	CanPromoteMembers     bool `json:"can_promote_members"`
 	CanChangeInfo         bool `json:"can_change_info"`
@@ -35,6 +37,11 @@ type ChatMember struct {
 	CanSendPolls          bool `json:"can_send_polls"`
 	CanSendOtherMessage   bool `json:"can_send_other_messages"`
 	CanAddWebPagePreviews bool `json:"can_add_web_page_previews"`
+}
+
+type ChatMemberMember struct {
+	Status string `json:"status"`
+	User   *User  `json:"user"`
 }
 
 // ChatInviteLink represents ChatInvite object
@@ -51,6 +58,28 @@ type ChatInviteLink struct {
 	PendingJoinRequestCount int    `json:"pending_join_request_count"`
 }
 
+type ChatMemberRestricted struct {
+	ChatMemberMember
+	ChatMemberPermissions
+	UntilDate int `json:"until_date"`
+}
+
+type ChatMemberLeft struct {
+	ChatMemberMember
+}
+
+type ChatMemberBanned struct {
+	ChatMemberMember
+	UntilDate time.Duration `json:"until_date"`
+}
+
+type ChatMemberOwner struct {
+	Status      string `json:"status"`
+	User        *User  `json:"user"`
+	IsAnonymous bool   `json:"is_anonymous"`
+	CustomTitle string `json:"custom_title"`
+}
+
 // ChatMemberUpdated object represents changes in the status of a chat member.
 // https://core.telegram.org/bots/api#chatmemberupdated
 type ChatMemberUpdated struct {
@@ -60,6 +89,24 @@ type ChatMemberUpdated struct {
 	OldChatMember *ChatMember     `json:"old_chat_member"`
 	NewChatMember *ChatMember     `json:"new_chat_member"`
 	InviteLink    *ChatInviteLink `json:"invite_link"`
+}
+
+type ChatMemberAdministrator struct {
+	Status              string `json:"status"`
+	User                *User  `json:"user"`
+	IsAnonymous         bool   `json:"is_anonymous"`
+	CanBeEdited         bool   `json:"can_be_edited"`
+	CanManageChat       bool   `json:"can_manage_chat"`
+	CanPostMessages     bool   `json:"can_post_message"`
+	CanEditMessages     bool   `json:"can_edit_messages"`
+	CanDeleteMessage    bool   `json:"can_delete_message"`
+	CanManageVideochats bool   `json:"can_manage_video_chats"`
+	CanRestrictMembers  bool   `json:"can_restrict_members"`
+	CanPromoteMembers   bool   `json:"can_promote_members"`
+	CanChangeInfo       bool   `json:"can_change_info"`
+	CanInviteUsers      bool   `json:"can_invite_users"`
+	CanPinMessages      bool   `json:"can_pin_messages"`
+	CustomTitle         string `json:"custom_title"`
 }
 
 // ChatPhoto object represents photo of chat

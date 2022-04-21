@@ -51,6 +51,7 @@ type InlineKeyboardButton struct {
 	Text                         string        `json:"text"`
 	URL                          string        `json:"url"`
 	LoginURL                     *LoginURL     `json:"login_url"`
+	WebApp                       *WebAppInfo   `json:"web_app"`
 	CallbackData                 string        `json:"callback_data"`
 	SwitchInlineQuery            string        `json:"switch_inline_query"`
 	SwitchInlineQueryCurrentChat string        `json:"switch_inline_query_current_chat"`
