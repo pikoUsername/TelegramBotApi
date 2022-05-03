@@ -34,13 +34,13 @@ func main() {
 
 	dp := tgp.NewDispatcher(bot, storage.NewMemoryStorage())
 
-	dp.MessageHandler.Register(func(ctx *tgp.Context) {
+	dp.MessageHandler.HandlerFunc(func(ctx *tgp.Context) {
 		_, err := bot.Send(tgp.NewSendMessage(ctx.Message.Chat.ID, ctx.Message.Text))
 		if err != nil {
 			fmt.Println(err)
 		}
 	})
-	dp.RunPolling(tgp.NewStartPollingConf(true))
+	dp.RunPolling(tgp.NewPollingConfig(true))
 }
 ``` 
 (See more complicated examples in _examples/ directory)
