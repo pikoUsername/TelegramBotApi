@@ -144,3 +144,29 @@ func (ho *DefaultHandlerChain) HandlerFunc(h HandlerFunc) *HandlerType {
 	ho.handlers = append(ho.handlers, handler)
 	return handler
 }
+
+// for later usages in experimental versions...
+type AllHandlerTypes struct {
+	MessageHandler         HandlerChain
+	CallbackQueryHandler   HandlerChain
+	ChannelPostHandler     HandlerChain
+	PollHandler            HandlerChain
+	ChatMemberHandler      HandlerChain
+	PollAnswerHandler      HandlerChain
+	MyChatMemberHandler    HandlerChain
+	ChatJoinRequestHandler HandlerChain
+}
+
+func newHandlerTypes() *AllHandlerTypes {
+	r := &AllHandlerTypes{}
+
+	r.MessageHandler = NewHandlerChain()
+	r.CallbackQueryHandler = NewHandlerChain()
+	r.ChannelPostHandler = NewHandlerChain()
+	r.ChatMemberHandler = NewHandlerChain()
+	r.PollHandler = NewHandlerChain()
+	r.PollAnswerHandler = NewHandlerChain()
+	r.ChannelPostHandler = NewHandlerChain()
+
+	return r
+}

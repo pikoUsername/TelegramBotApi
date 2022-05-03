@@ -29,15 +29,9 @@ type Logger interface {
 // Another level of abstraction
 type Dispatcher struct {
 	Bot *Bot
-	// Handlers
-	MessageHandler         HandlerChain
-	CallbackQueryHandler   HandlerChain
-	ChannelPostHandler     HandlerChain
-	PollHandler            HandlerChain
-	ChatMemberHandler      HandlerChain
-	PollAnswerHandler      HandlerChain
-	MyChatMemberHandler    HandlerChain
-	ChatJoinRequestHandler HandlerChain
+
+	// handlers
+	*AllHandlerTypes
 
 	// Storage interface
 	Storage storage.Storage
@@ -77,13 +71,7 @@ func NewDispatcher(bot *Bot, storage storage.Storage) *Dispatcher {
 		logger:      log.New(os.Stderr, "", log.LstdFlags),
 	}
 
-	dp.MessageHandler = NewHandlerChain()
-	dp.CallbackQueryHandler = NewHandlerChain()
-	dp.ChannelPostHandler = NewHandlerChain()
-	dp.ChatMemberHandler = NewHandlerChain()
-	dp.PollHandler = NewHandlerChain()
-	dp.PollAnswerHandler = NewHandlerChain()
-	dp.ChannelPostHandler = NewHandlerChain()
+	dp.AllHandlerTypes = newHandlerTypes()
 
 	return dp
 }
