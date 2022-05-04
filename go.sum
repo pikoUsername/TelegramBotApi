@@ -1,4 +1,8 @@
 github.com/pikoUsername/MultipartReader v0.0.0-20211222125707-c33be79cc71b h1:5C/Embs+nDx0XTe/Etx1/aYtrBnYTQxH90hzQOJG01A=
 github.com/pikoUsername/MultipartReader v0.0.0-20211222125707-c33be79cc71b/go.mod h1:HBtpjBa+PZcXHrQVNOvjk17yHfopdvCcjMQx+lGNFDc=
+github.com/pikoUsername/MultipartReader v0.0.0-20211222134957-e03ad17e7cdc h1:ikKk8oAsisWYf8Zipmd55evQQr33EAgMFM9z9brr8MQ=
+github.com/pikoUsername/MultipartReader v0.0.0-20211222134957-e03ad17e7cdc/go.mod h1:HBtpjBa+PZcXHrQVNOvjk17yHfopdvCcjMQx+lGNFDc=
+github.com/pikoUsername/MultipartReader v0.0.0-20220503172724-5bf1593475e1 h1:4CU4vbqyh/CRIcMst08UCwwmG+m+zml9QWWCJkUQIcw=
+github.com/pikoUsername/MultipartReader v0.0.0-20220503172724-5bf1593475e1/go.mod h1:HBtpjBa+PZcXHrQVNOvjk17yHfopdvCcjMQx+lGNFDc=
 github.com/pikoUsername/multipartReader v0.0.0-20211222123924-eb4751a8c049 h1:r9wEistgDMsnlvUDC4bL6YxBUmCznGDHSm0j3URCmb0=
 github.com/pikoUsername/multipartReader v0.0.0-20211222123924-eb4751a8c049/go.mod h1:h+jaM8PtT3bi48hgmUN5LvLkLxWbT6Nr/6cf6g8gu/g=
